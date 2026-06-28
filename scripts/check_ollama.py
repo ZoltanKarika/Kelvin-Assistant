@@ -3,9 +3,8 @@
 import asyncio
 import logging
 
-import httpx2
-
 from kelvin_assistant.adapters.ollama import OllamaProvider
+from kelvin_assistant.ports.llm import LLMProviderError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ def main() -> int:
     )
     try:
         response = asyncio.run(request_probe())
-    except (httpx2.HTTPError, KeyError, TypeError, ValueError) as exc:
+    except LLMProviderError as exc:
         LOGGER.error("Ollama connectivity check failed: %s", exc)
         return 1
 

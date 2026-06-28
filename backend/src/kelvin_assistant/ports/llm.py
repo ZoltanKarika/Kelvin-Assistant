@@ -3,6 +3,18 @@
 from typing import Protocol
 
 
+class LLMProviderError(RuntimeError):
+    """Base error raised by language model providers."""
+
+
+class LLMUnavailableError(LLMProviderError):
+    """Raised when the configured language model runtime cannot be reached."""
+
+
+class LLMResponseError(LLMProviderError):
+    """Raised when a language model runtime returns an unusable response."""
+
+
 class LLMProvider(Protocol):
     """Interface for language model providers."""
 
