@@ -30,30 +30,15 @@ class OllamaProvider(LLMProvider):
     async def generate(self, prompt: str) -> str:
         """Generate a response using the configured Ollama model."""
 
-        try:
-            async with httpx2.AsyncClient(
-                base_url=self.settings.ollama_base_url,
-                timeout=self.settings.ollama_timeout,
-                transport=self._transport,
-            ) as client:
-                response = await client.post(
-                    "/api/generate",
-                    json={
-                        "model": self.settings.ollama_model,
-                        "prompt": prompt,
-                        "stream": False,
-                    },
-                )
-            response.raise_for_status()
-        except httpx2.RequestError as exc:
-            LOGGER.warning("Ollama runtime is unavailable: %s", exc)
-            raise LLMUnavailableError("Ollama runtime is unavailable") from exc
-        except httpx2.HTTPStatusError as exc:
-            status_code = exc.response.status_code
-            LOGGER.warning("Ollama returned HTTP status %d", status_code)
-            raise LLMResponseError(
-                f"Ollama returned HTTP status {status_code}"
-            ) from exc
+        response = await self._request(
+            "POST",
+            "/api/generate",
+            payload={
+                "model": self.settings.ollama_model,
+                "prompt": prompt,
+                "stream": False,
+            },
+        )
 
         try:
             data = response.json()
@@ -67,3 +52,70 @@ class OllamaProvider(LLMProvider):
             raise LLMResponseError("Ollama returned an invalid response")
 
         return result
+
+    async def check_readiness(self) -> None:
+        """Check that Ollama is reachable and the configured model exists."""
+
+        response = await self._request("GET", "/api/tags")
+
+        try:
+            data = response.json()
+            models = data["models"]
+        except (KeyError, TypeError, ValueError) as exc:
+            LOGGER.warning("Ollama returned an invalid model list")
+            raise LLMResponseError("Ollama returned an invalid model list") from exc
+
+        if not isinstance(models, list):
+            LOGGER.warning("Ollama model list is not an array")
+            raise LLMResponseError("Ollama returned an invalid model list")
+
+        model_names: set[str] = set()
+        for model in models:
+            if not isinstance(model, dict):
+                LOGGER.warning("Ollama model list contains an invalid entry")
+                raise LLMResponseError("Ollama returned an invalid model list")
+            for key in ("name", "model"):
+                value = model.get(key)
+                if isinstance(value, str):
+                    model_names.add(value)
+
+        if self.settings.ollama_model not in model_names:
+            LOGGER.warning(
+                "Configured Ollama model is not installed: %s",
+                self.settings.ollama_model,
+            )
+            raise LLMResponseError(
+                f"Configured Ollama model is not installed: "
+                f"{self.settings.ollama_model}"
+            )
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        payload: dict[str, object] | None = None,
+    ) -> httpx2.Response:
+        """Send a request and translate transport-level Ollama errors."""
+
+        try:
+            async with httpx2.AsyncClient(
+                base_url=self.settings.ollama_base_url,
+                timeout=self.settings.ollama_timeout,
+                transport=self._transport,
+            ) as client:
+                if payload is None:
+                    response = await client.request(method, path)
+                else:
+                    response = await client.request(method, path, json=payload)
+            response.raise_for_status()
+        except httpx2.RequestError as exc:
+            LOGGER.warning("Ollama runtime is unavailable: %s", exc)
+            raise LLMUnavailableError("Ollama runtime is unavailable") from exc
+        except httpx2.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            LOGGER.warning("Ollama returned HTTP status %d", status_code)
+            raise LLMResponseError(
+                f"Ollama returned HTTP status {status_code}"
+            ) from exc
+
+        return response

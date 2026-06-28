@@ -21,3 +21,7 @@ class LLMProvider(Protocol):
     async def generate(self, prompt: str) -> str:
         """Generate a text response for the given prompt."""
         ...
+
+    async def check_readiness(self) -> None:
+        """Raise a provider error when the configured model is not ready."""
+        ...
