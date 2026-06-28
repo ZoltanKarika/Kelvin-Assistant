@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kelvin-assistant"
+version = "0.1.0"
+description = "Modular, offline-first local AI assistant"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Kelvin Assistant contributors" },
+]
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/src/kelvin_assistant"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["backend/src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["backend/src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "backend/src"
+
+[tool.coverage.run]
+branch = true
+source = ["kelvin_assistant"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
