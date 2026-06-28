@@ -1,9 +1,29 @@
 # Kelvin Assistant
 
 A Kelvin Assistant egy moduláris, elsődlegesen offline működésre tervezett,
-helyi AI-asszisztens. Az AI-infrastruktúra egy Ubuntu Server 24.04 LTS
-Hyper-V virtuális gépen fut, míg a későbbi PowerShell-kliens a Windows 11
-hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
+helyi AI-asszisztens. A célállapotban az AI-infrastruktúra egy Ubuntu Server
+24.04 LTS Hyper-V virtuális gépen fog futni, míg a későbbi PowerShell-kliens
+a Windows 11 hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
+
+## Jelenlegi állapot
+
+A projekt a **v0.1 Foundation** mérföldkőben jár. A FastAPI backend Windowson
+helyileg fut, az automatikus ellenőrzések pedig GitHub Actions alatt Ubuntu
+24.04 és Python 3.12 környezetben is sikeresek.
+
+Jelenleg működik:
+
+- `uv`-alapú, zárolt Python-környezet;
+- FastAPI és Uvicorn;
+- Pydantic Settings konfiguráció;
+- strukturált JSON- és fejlesztői konzolnaplózás;
+- `/`, `/health` és `/version` végpont;
+- pytest, Ruff és mypy ellenőrzés;
+- GitHub Actions CI.
+
+Az Ollama, Gemma, chat, RAG, memória és agentfunkciók még nincsenek
+integrálva. Az Ubuntu VM-re történő tényleges telepítés szintén külön,
+következő infrastruktúra-lépés.
 
 ## Projektcél
 
@@ -23,7 +43,7 @@ A cél a teljesen offline futás. A telepítőcsomagokat, Python-függőségeket
 modellfájlokat az offline üzembe helyezés előtt ellenőrzött módon kell
 beszerezni és a virtuális gépre átvinni.
 
-## Architektúra
+## Célarchitektúra
 
 ```mermaid
 flowchart LR
@@ -47,9 +67,10 @@ flowchart LR
     PS --> TOOLS
 ```
 
-A backend portokon keresztül éri el a modelleket, embedding-szolgáltatókat,
-vektortárakat és dokumentumbetöltőket. Az Ollama és a ChromaDB ezek
-adapterei lesznek, ezért később más implementációra cserélhetők.
+A diagram a tervezett célállapotot mutatja. A backend később portokon
+keresztül éri el a modelleket, embedding-szolgáltatókat, vektortárakat és
+dokumentumbetöltőket. Az Ollama és a ChromaDB ezek adapterei lesznek, ezért
+más implementációra cserélhetők.
 
 A Windows hoston végzett PowerShell-, Git- és fájlműveleteket a hostoldali
 kliens hajtja végre. A Linux VM nem kap korlátlan távoli hozzáférést a
@@ -60,42 +81,57 @@ Részletesen: [docs/architecture.md](docs/architecture.md).
 
 ## Telepítés
 
-A projekt jelenleg az inicializálási szakaszban van, ezért még nem tartalmaz
-futtatható szolgáltatást. A célkörnyezet és a későbbi telepítési folyamat:
+Fejlesztői indítás Windowson:
 
-1. Ubuntu Server VM előkészítése;
-2. offline csomag- és modellcsomag összeállítása;
-3. Python virtuális környezet létrehozása;
-4. Ollama, a backend és az adattárolás konfigurálása;
-5. szolgáltatások regisztrálása és állapotellenőrzése;
-6. Windows PowerShell-kliens telepítése.
+```powershell
+git clone https://github.com/ZoltanKarika/Kelvin-Assistant.git
+Set-Location "Kelvin-Assistant"
+Copy-Item .env.example .env
+uv sync --locked --all-groups
+uv run kelvin-api
+```
+
+A szerver alapértelmezetten a `http://127.0.0.1:8000` címen indul. Leállítása
+`Ctrl+C` billentyűkombinációval történik.
 
 Részletesen: [docs/installation.md](docs/installation.md).
 
 ## Használat
 
-Futtatható alkalmazás még nincs. A tervezett használati módok:
+Az API ellenőrzése PowerShellből:
 
-- HTTP API helyi alkalmazások számára;
-- Open WebUI böngészős felület;
-- `kelvin` parancs a Windows PowerShellben;
-- dokumentumok betöltése és forrásalapú kérdezés.
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/version
+```
 
-A használati parancsokat csak a hozzájuk tartozó funkció implementálása és
-tesztelése után rögzítjük.
+Interaktív API-dokumentáció:
+
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
+
+Fejlesztői ellenőrzések:
+
+```powershell
+uv run ruff check backend tests
+uv run ruff format --check backend tests
+uv run mypy backend/src tests
+uv run pytest --cov=kelvin_assistant --cov-report=term-missing
+```
 
 ## Roadmap
 
-1. projektalapok és fejlesztési szabályok;
-2. Ubuntu VM és offline telepítési folyamat;
-3. Python backend és health API;
-4. Ollama- és modellintegráció;
-5. chat API és streaming;
-6. dokumentumfeldolgozás és RAG;
-7. hosszú távú memória;
-8. Open WebUI-integráció;
-9. PowerShell agentkliens és engedélyezett eszközhasználat;
-10. beszéd és automatizálás.
+| Verzió | Cél | Állapot |
+| --- | --- | --- |
+| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Tervezett |
+| v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
+| v0.4 Knowledge | RAG és ChromaDB | Tervezett |
+| v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
+| v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
+| v0.7 Voice | Whisper és Piper | Tervezett |
+| v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 Részletesen: [docs/roadmap.md](docs/roadmap.md).
 

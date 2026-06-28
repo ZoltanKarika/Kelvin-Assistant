@@ -1,62 +1,67 @@
 # Fejlesztési roadmap
 
-Minden szakasz külön jóváhagyási pont. Egy szakasz csak akkor tekinthető
-késznek, ha a dokumentációja és az automatizált ellenőrzései is elkészültek.
+Minden mérföldkő külön jóváhagyási pont. Egy mérföldkő akkor kész, ha a
+funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkészült.
 
-## 0. Projektalapok
+## Áttekintés
 
-- könyvtárstruktúra és induló dokumentáció;
-- Git repository és alapértelmezett `main` ág;
-- biztonságos `.gitignore` és `.env.example`;
-- Conventional Commits és branchszabályok;
-- Python minőségi eszközök alapkonfigurációja.
+| Verzió | Cél | Állapot |
+| --- | --- | --- |
+| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Tervezett |
+| v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
+| v0.4 Knowledge | RAG és ChromaDB | Tervezett |
+| v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
+| v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
+| v0.7 Voice | Whisper és Piper | Tervezett |
+| v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
-Elfogadási feltétel: tiszta repository, ellenőrzött első commit és
-dokumentált fejlesztési folyamat.
+## v0.1 Foundation
 
-## 1. Ubuntu és offline előkészítés
+Elkészült:
 
-- VM-erőforrások rögzítése;
-- adattárolási és hálózati terv;
-- natív szolgáltatásfelhasználók;
-- offline csomag- és modellimport;
-- ellenőrző összegek;
-- mentési helyek.
+- Git repository, feature branch és pull request munkafolyamat;
+- projektstruktúra és architekturális dokumentáció;
+- FastAPI, Uvicorn és Pydantic Settings alap;
+- strukturált naplózás;
+- `/`, `/health` és `/version` végpont;
+- `uv` környezet és lockfájl;
+- pytest, Ruff és mypy ellenőrzés;
+- GitHub Actions Ubuntu 24.04 / Python 3.12 alatt;
+- Apache-2.0 projektlicenc és licencleltár.
 
-Elfogadási feltétel: az alap VM dokumentáltan újra létrehozható, és futás
-közben nem igényel internetet.
+Még szükséges:
 
-## 2. Backend-alap
+- Ubuntu VM erőforrás-, hálózati és adattárolási tervének véglegesítése;
+- backend telepítése és ellenőrzése a saját Ubuntu Server VM-en;
+- `systemd` szolgáltatás;
+- offline Python csomag-előkészítés és ellenőrző összegek;
+- mentési és visszaállítási helyek dokumentálása.
 
-- FastAPI alkalmazásgyár;
-- típusos konfiguráció;
-- logging és központi kivételkezelés;
-- `health` és `ready` végpont;
-- unit tesztek és minőségi ellenőrzések.
+Elfogadási feltétel: a dokumentált Ubuntu VM újra létrehozható, a backend
+szolgáltatásként elindul, és futás közben nem igényel internetet.
 
-Elfogadási feltétel: a backend lokálisan elindul, és minden automatikus
-ellenőrzés sikeres.
-
-## 3. LLM-integráció
+## v0.2 Runtime
 
 - általános LLM-port;
 - Ollama adapter;
-- hardverhez választott Gemma modell;
-- timeout, megszakítás és streaming;
+- hardverhez választott Gemma modell és kvantálás;
+- konfigurálható modellválasztás;
+- timeout, megszakítás és readiness ellenőrzés;
 - mockolt unit és opcionális helyi integrációs teszt.
 
-Elfogadási feltétel: a modell konfigurációból cserélhető, és hiba esetén
-érthető API-válasz keletkezik.
+Elfogadási feltétel: a modell konfigurációból cserélhető, az API pedig
+érthető állapotot ad akkor is, ha az Ollama nem érhető el.
 
-## 4. Chat API és munkamenetek
+## v0.3 Conversation
 
 - verziózott chat végpont;
 - munkamenet-azonosítás;
 - kontextusablak-kezelés;
-- streaming klienskapcsolat;
-- API-szerződés tesztelése.
+- tokenenkénti válaszstreamelés;
+- megszakítás és API-szerződés tesztelése.
 
-## 5. Dokumentumfeldolgozás és RAG
+## v0.4 Knowledge
 
 - szöveg- és Markdown-betöltő;
 - darabolási stratégia;
@@ -68,44 +73,38 @@ Elfogadási feltétel: a modell konfigurációból cserélhető, és hiba eseté
 Elfogadási feltétel: egy indexelt dokumentumból visszakeresett válasz
 ellenőrizhető forráshivatkozást tartalmaz.
 
-## 6. Hosszú távú memória
+## v0.5 Memory
 
-- elkülönített memóriatár;
+- elkülönített rövid és hosszú távú memóriatár;
 - mentési és visszakeresési szabályok;
 - deduplikáció;
 - felhasználói listázás és törlés;
-- később összefoglalás és elévülés.
+- összefoglalás és elévülés.
 
-## 7. Open WebUI
+## v0.6 Agent
 
-- helyi integráció;
-- API-kapcsolat;
-- hálózati korlátozás;
-- üzemeltetési dokumentáció.
-
-## 8. PowerShell agentkliens
-
-- `kelvin` terminálparancs;
-- interaktív munkamenet és folytatás;
-- aktuális munkakönyvtár kezelése;
+- agentciklus és eszközregiszter;
+- `kelvin` PowerShell-parancs;
 - fájl-, keresési és Git-eszközök;
-- PowerShell-végrehajtó;
+- szabályozott PowerShell-végrehajtó;
 - jóváhagyási módok és auditnapló;
 - diffalapú változásellenőrzés.
 
 Elfogadási feltétel: az agent csak a megadott munkakönyvtárban és a
 jóváhagyott jogosultságokkal tud állapotot változtatni.
 
-## 9. Hang
+## v0.7 Voice
 
 - Whisper beszédfelismerő adapter;
 - Piper TTS adapter;
 - hangfolyam és megszakítás;
 - eszközválasztás és késleltetési mérés.
 
-## 10. Automatizálás
+## v1.0 Stable
 
-- ütemezhető feladatok;
-- korlátozott automatizálási eszközök;
-- explicit jogosultságok;
-- biztonságos leállítás és auditálás.
+- stabil és verziózott API;
+- dokumentált telepítés, frissítés, mentés és visszaállítás;
+- offline kiadási és licencleltár-folyamat;
+- biztonsági és jogosultsági alapértelmezések;
+- ütemezhető, korlátozott automatizálás;
+- teljes regressziós és üzemeltetési ellenőrzés.
