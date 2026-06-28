@@ -16,8 +16,10 @@ they are not vendored in this repository.
 | Pydantic Settings | 2.14.2 | MIT |
 | Uvicorn | 0.49.0 | BSD-3-Clause |
 | HTTPX2 (development) | 2.5.0 | BSD-3-Clause |
+| mypy (development) | 2.1.0 | MIT |
 | pytest (development) | 9.1.1 | MIT |
 | pytest-cov (development) | 7.1.0 | MIT |
+| Ruff (development) | 0.15.20 | MIT |
 
 Exact resolved versions, including transitive dependencies, are recorded in
 `uv.lock`. Before distributing an offline dependency bundle, generate and

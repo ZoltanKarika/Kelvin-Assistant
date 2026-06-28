@@ -23,4 +23,3 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = active_settings
     app.include_router(router)
     return app
-

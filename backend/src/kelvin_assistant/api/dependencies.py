@@ -13,4 +13,3 @@ def get_runtime_settings(request: Request) -> Settings:
         msg = "Application settings are not configured."
         raise RuntimeError(msg)
     return settings
-
