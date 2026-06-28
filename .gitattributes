@@ -1,7 +1,7 @@
 # Normalize text in the repository and make cross-platform checkouts predictable.
-* text=auto
+* text=auto eol=lf
 
-# Linux, Python, and documentation files
+# Linux, Python, configuration, and documentation files
 *.py text eol=lf
 *.toml text eol=lf
 *.md text eol=lf
@@ -11,19 +11,27 @@
 *.sh text eol=lf
 *.service text eol=lf
 *.env text eol=lf
+*.lock text eol=lf
+*.txt text eol=lf
+LICENSE text eol=lf
+NOTICE text eol=lf
 .gitignore text eol=lf
 .gitattributes text eol=lf
 
-# Windows PowerShell files
+# Windows PowerShell and batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
 *.ps1 text eol=crlf
-*.psm1 text eol=crlf
 *.psd1 text eol=crlf
+*.psm1 text eol=crlf
 
 # Binary assets
-*.png binary
-*.jpg binary
-*.jpeg binary
 *.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
 *.pdf binary
+*.png binary
+*.webp binary
 *.zip binary
 *.gguf binary
