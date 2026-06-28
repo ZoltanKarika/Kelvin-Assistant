@@ -45,13 +45,25 @@ szolgáltatásként elindul, és futás közben nem igényel internetet.
 
 - általános LLM-port;
 - Ollama adapter;
-- hardverhez választott Gemma modell és kvantálás;
+- Windows hoston futó Ollama runtime (GPU-gyorsítással);
+- Ubuntu VM-ben futó Kelvin backend, amely HTTP-n keresztül kapcsolódik az Ollamához;
+- hardverhez választott Gemma 4 modell és kvantálás;
 - konfigurálható modellválasztás;
 - timeout, megszakítás és readiness ellenőrzés;
 - mockolt unit és opcionális helyi integrációs teszt.
 
-Elfogadási feltétel: a modell konfigurációból cserélhető, az API pedig
-érthető állapotot ad akkor is, ha az Ollama nem érhető el.
+**Validated runtime architecture**
+
+- Windows 11 host
+- Ollama runtime
+- Gemma 4 E4B
+- AMD Radeon RX 6650 XT GPU acceleration
+- Ubuntu VM running Kelvin Backend
+
+Elfogadási feltétel:
+- a modell konfigurációból cserélhető;
+- a backend eléri a hoston futó Ollama API-t;
+- az API érthető állapotot ad akkor is, ha az Ollama nem érhető el.
 
 ## v0.3 Conversation
 
