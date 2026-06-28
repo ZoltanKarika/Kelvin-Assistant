@@ -1,6 +1,9 @@
 """Language model provider port."""
 
+from collections.abc import Sequence
 from typing import Protocol
+
+from kelvin_assistant.domain.chat import ChatMessage
 
 
 class LLMProviderError(RuntimeError):
@@ -20,6 +23,10 @@ class LLMProvider(Protocol):
 
     async def generate(self, prompt: str) -> str:
         """Generate a text response for the given prompt."""
+        ...
+
+    async def chat(self, messages: Sequence[ChatMessage]) -> str:
+        """Generate an assistant response for structured chat messages."""
         ...
 
     async def check_readiness(self) -> None:
