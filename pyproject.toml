@@ -16,7 +16,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "pydantic-settings>=2.6.1",
     "uvicorn>=0.30.6",
-    "httpx>=0.28.0",
+    "httpx2>=2.4.0",
 ]
 
 [project.scripts]
@@ -25,7 +25,6 @@ kelvin-api = "kelvin_assistant.main:main"
 [dependency-groups]
 dev = [
     "httpx2>=2.4.0",
-    "httpx>=0.28.0",
     "mypy>=2.1.0",
     "pytest>=8.3.2",
     "pytest-cov>=5.0.0",
