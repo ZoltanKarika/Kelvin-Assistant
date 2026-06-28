@@ -9,8 +9,9 @@ ellenőrizhető.
 
 A GitHub Actions ugyanezt a projektet Ubuntu 24.04 és Python 3.12 alatt
 ellenőrzi. A Windows hoston futó Ollama adaptere és helyi integrációs
-ellenőrzése működik. A VM és a host közötti korlátozott hálózati kapcsolat,
-valamint az offline csomagimport még külön üzemeltetési lépés.
+ellenőrzése működik. A VM és a host közötti, tűzfallal korlátozott Ollama
+kapcsolat, a readiness végpont és a GPU-gyorsított generálás is ellenőrzött.
+Az offline csomagimport még külön üzemeltetési lépés.
 
 ## Célkörnyezet
 
@@ -162,6 +163,24 @@ A tényleges CPU/GPU megoszlás ellenőrzése egy futó modell mellett:
 ```powershell
 ollama ps
 ```
+
+### Ellenőrzött end-to-end mérés
+
+A 2026-06-28-i ellenőrzés során az Ubuntu VM-ből indított kérés a Windows
+host Ollamáján keresztül sikeres választ adott:
+
+| Tulajdonság | Mért érték |
+| --- | --- |
+| Modell | `gemma4:e4b` |
+| Modellcsalád | Gemma 4 |
+| Paraméterméret | 8.0B |
+| Kvantálás | Q4_K_M |
+| Betöltött méret | 3.3 GB |
+| Feldolgozó | 100% GPU |
+| Context length | 4096 |
+
+Ez az ellenőrzés a teljes útvonalat lefedte: Ubuntu systemd szolgáltatás →
+Windows host → Ollama → AMD Radeon RX 6650 XT → Gemma modell.
 
 Ahhoz, hogy az Ubuntu VM elérje a Windows host Ollamáját, Windows felhasználói
 környezeti változóként be kell állítani:
@@ -379,9 +398,10 @@ A host 16 GB RAM-mal, 12 logikai processzorral és AMD Radeon RX 6650 XT
 8 GB GPU-val rendelkezik. A Windows 11 Hyper-V nem biztosít ehhez a
 consumer Radeon kártyához támogatott közvetlen VM-hozzárendelést.
 
-Ezért a v0.2 elsődleges terve:
+Az ellenőrzött v0.2 runtime felépítése:
 
 - a FastAPI és az alkalmazásréteg az Ubuntu VM-en fut;
-- az Ollama a Windows hoston próbálja használni a Radeon GPU-t;
+- az Ollama a Windows hoston használja a Radeon GPU-t;
 - a VM korlátozott helyi hálózati API-n keresztül éri el az Ollamát;
-- a tényleges GPU-használatot mérés és `ollama ps` igazolja.
+- a Windows tűzfal csak a VM IP-címéről engedi a TCP 11434 portot;
+- az `ollama ps` mérése 100% GPU-feldolgozást igazolt.

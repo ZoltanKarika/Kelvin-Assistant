@@ -28,12 +28,12 @@ Jelenleg működik:
 - cserélhető LLM-port és Ollama adapter;
 - konfigurálható modell, runtime URL és timeout;
 - egységes Ollama hibák és modell-readiness ellenőrzés;
-- hálózatfüggetlen unit tesztek és opcionális élő Ollama-próba.
+- hálózatfüggetlen unit tesztek és opcionális élő Ollama-próba;
+- Ubuntu VM-ből elért Windows Ollama és 100% GPU-n futó Gemma 4 E4B.
 
 A chat API, streaming, RAG, memória és agentfunkciók még nincsenek
-integrálva. Az Ubuntu VM és a Windows host közötti Ollama-kapcsolat végleges
-tűzfalszabálya, az offline csomag-előkészítés és a mentési eljárás még
-hátralévő üzemeltetési feladat.
+integrálva. A DHCP-foglalás, az offline csomag-előkészítés és a mentési
+eljárás még hátralévő üzemeltetési feladat.
 
 ## Projektcél
 

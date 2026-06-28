@@ -55,32 +55,30 @@ Elkészült ezen az ágon:
 - egységes provider-, elérhetőségi és válaszhibák;
 - `/ready` végpont runtime- és modell-ellenőrzéssel;
 - mockolt unit tesztek és opcionális élő integrációs ellenőrzés;
-- helyi Windows → Ollama kapcsolat ellenőrzése.
+- helyi Windows → Ollama kapcsolat ellenőrzése;
+- Ubuntu VM → Windows Ollama end-to-end kapcsolat;
+- Gemma 4 E4B, 8.0B, Q4_K_M modellválasztás;
+- `ollama ps` méréssel igazolt 100% GPU-feldolgozás.
 
 Még szükséges:
 
-- Windows hoston futó Ollama runtime (GPU-gyorsítással);
-- Ubuntu VM-ben futó Kelvin backend, amely HTTP-n keresztül kapcsolódik az
-  Ollamához;
-- hardverhez választott Gemma 4 modell és kvantálás;
-- megszakítás és üzemeltetési mérés.
+- v0.2 verzióemelés és mérföldkőlezárás.
 
-Ellenőrzött helyi runtime:
+Ellenőrzött end-to-end runtime:
 
 - Windows 11 host;
 - Ollama runtime;
-- Gemma 4 E4B;
-- Kelvin backendből sikeres generálás és readiness ellenőrzés.
+- Gemma 4 E4B, 8.0B, Q4_K_M;
+- Ubuntu VM-en futó Kelvin backend;
+- sikeres generálás és readiness ellenőrzés;
+- AMD Radeon RX 6650 XT, `ollama ps` szerint 100% GPU;
+- 4096 tokenes context length.
 
-A Radeon RX 6650 XT tényleges gyorsítását futó modell mellett az
-`ollama ps` `PROCESSOR` oszlopa igazolja; ezt külön üzemeltetési mérésben
-kell rögzíteni.
+Elfogadási feltételek ellenőrzése:
 
-Elfogadási feltétel:
-
-- a modell konfigurációból cserélhető;
-- a backend eléri a hoston futó Ollama API-t;
-- az API érthető állapotot ad akkor is, ha az Ollama nem érhető el.
+- [x] a modell konfigurációból cserélhető;
+- [x] a backend eléri a hoston futó Ollama API-t;
+- [x] az API érthető állapotot ad akkor is, ha az Ollama nem érhető el.
 
 ## v0.3 Conversation
 
