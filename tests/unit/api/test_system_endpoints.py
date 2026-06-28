@@ -7,19 +7,50 @@ from fastapi.testclient import TestClient
 
 from kelvin_assistant.api.app import create_app
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.ports.llm import (
+    LLMProviderError,
+    LLMUnavailableError,
+)
+
+
+class StubLLMProvider:
+    """Deterministic language model provider for API tests."""
+
+    def __init__(self, readiness_error: LLMProviderError | None = None) -> None:
+        self._readiness_error = readiness_error
+
+    async def generate(self, prompt: str) -> str:
+        """Return a deterministic generated response."""
+
+        return f"generated: {prompt}"
+
+    async def check_readiness(self) -> None:
+        """Raise the configured readiness error, if any."""
+
+        if self._readiness_error is not None:
+            raise self._readiness_error
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
-    """Create an isolated API client with deterministic test settings."""
+def settings() -> Settings:
+    """Create deterministic API test settings."""
 
-    settings = Settings(
+    return Settings(
         app_name="Kelvin Test",
         app_version="9.9.9",
         environment="test",
         log_format="console",
+        ollama_model="gemma4:test",
     )
-    with TestClient(create_app(settings)) as test_client:
+
+
+@pytest.fixture
+def client(settings: Settings) -> Iterator[TestClient]:
+    """Create an isolated API client with a ready language model."""
+
+    with TestClient(
+        create_app(settings, llm_provider=StubLLMProvider())
+    ) as test_client:
         yield test_client
 
 
@@ -43,6 +74,35 @@ def test_health_reports_ok(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_readiness_reports_configured_model(client: TestClient) -> None:
+    """The readiness endpoint reports the ready provider and model."""
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "provider": "ollama",
+        "model": "gemma4:test",
+    }
+
+
+def test_readiness_reports_unavailable_provider(settings: Settings) -> None:
+    """The readiness endpoint returns 503 while process health stays OK."""
+
+    provider = StubLLMProvider(
+        readiness_error=LLMUnavailableError("Ollama runtime is unavailable")
+    )
+    with TestClient(create_app(settings, llm_provider=provider)) as unavailable_client:
+        readiness_response = unavailable_client.get("/ready")
+        health_response = unavailable_client.get("/health")
+
+    assert readiness_response.status_code == 503
+    assert readiness_response.json() == {"detail": "Ollama runtime is unavailable"}
+    assert health_response.status_code == 200
+    assert health_response.json() == {"status": "ok"}
 
 
 def test_version_returns_configured_version(client: TestClient) -> None:

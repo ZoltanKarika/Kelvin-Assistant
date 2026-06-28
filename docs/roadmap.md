@@ -8,7 +8,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | Verzió | Cél | Állapot |
 | --- | --- | --- |
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
-| v0.2 Runtime | FastAPI, Ollama és Gemma | Tervezett |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Folyamatban |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
@@ -47,15 +47,40 @@ szolgáltatásként elindul, és futás közben nem igényel internetet.
 
 ## v0.2 Runtime
 
+Elkészült ezen az ágon:
+
 - általános LLM-port;
 - Ollama adapter;
-- hardverhez választott Gemma modell és kvantálás;
-- konfigurálható modellválasztás;
-- timeout, megszakítás és readiness ellenőrzés;
-- mockolt unit és opcionális helyi integrációs teszt.
+- konfigurálható modell, runtime URL és timeout;
+- egységes provider-, elérhetőségi és válaszhibák;
+- `/ready` végpont runtime- és modell-ellenőrzéssel;
+- mockolt unit tesztek és opcionális élő integrációs ellenőrzés;
+- helyi Windows → Ollama kapcsolat ellenőrzése.
 
-Elfogadási feltétel: a modell konfigurációból cserélhető, az API pedig
-érthető állapotot ad akkor is, ha az Ollama nem érhető el.
+Még szükséges:
+
+- Windows hoston futó Ollama runtime (GPU-gyorsítással);
+- Ubuntu VM-ben futó Kelvin backend, amely HTTP-n keresztül kapcsolódik az
+  Ollamához;
+- hardverhez választott Gemma 4 modell és kvantálás;
+- megszakítás és üzemeltetési mérés.
+
+Ellenőrzött helyi runtime:
+
+- Windows 11 host;
+- Ollama runtime;
+- Gemma 4 E4B;
+- Kelvin backendből sikeres generálás és readiness ellenőrzés.
+
+A Radeon RX 6650 XT tényleges gyorsítását futó modell mellett az
+`ollama ps` `PROCESSOR` oszlopa igazolja; ezt külön üzemeltetési mérésben
+kell rögzíteni.
+
+Elfogadási feltétel:
+
+- a modell konfigurációból cserélhető;
+- a backend eléri a hoston futó Ollama API-t;
+- az API érthető állapotot ad akkor is, ha az Ollama nem érhető el.
 
 ## v0.3 Conversation
 

@@ -7,10 +7,11 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt a **v0.1 Foundation** mérföldkőben jár. A FastAPI backend Windowson
-fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig automatikusan
-induló `systemd` szolgáltatásként fut. Az ellenőrzések helyileg, a VM-en és
-GitHub Actions alatt Ubuntu 24.04 / Python 3.12 környezetben is sikeresek.
+A projekt a **v0.2 Runtime** mérföldkő fejlesztésében jár. A FastAPI backend
+Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
+automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések helyileg,
+a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12 környezetben is
+sikeresek.
 
 Jelenleg működik:
 
@@ -18,16 +19,21 @@ Jelenleg működik:
 - FastAPI és Uvicorn;
 - Pydantic Settings konfiguráció;
 - strukturált JSON- és fejlesztői konzolnaplózás;
-- `/`, `/health` és `/version` végpont;
+- `/`, `/health`, `/ready` és `/version` végpont;
 - pytest, Ruff és mypy ellenőrzés;
 - GitHub Actions CI;
 - Hyper-V Generation 2 Ubuntu Server VM;
 - SSH-kulcsos adminisztráció és UFW tűzfal;
-- újraindítás után automatikusan felálló FastAPI szolgáltatás.
+- újraindítás után automatikusan felálló FastAPI szolgáltatás;
+- cserélhető LLM-port és Ollama adapter;
+- konfigurálható modell, runtime URL és timeout;
+- egységes Ollama hibák és modell-readiness ellenőrzés;
+- hálózatfüggetlen unit tesztek és opcionális élő Ollama-próba.
 
-Az Ollama, Gemma, chat, RAG, memória és agentfunkciók még nincsenek
-integrálva. Az offline csomag-előkészítés és a mentési eljárás még a v0.1
-hátralévő része.
+A chat API, streaming, RAG, memória és agentfunkciók még nincsenek
+integrálva. Az Ubuntu VM és a Windows host közötti Ollama-kapcsolat végleges
+tűzfalszabálya, az offline csomag-előkészítés és a mentési eljárás még
+hátralévő üzemeltetési feladat.
 
 ## Projektcél
 
@@ -113,7 +119,14 @@ Az API ellenőrzése PowerShellből:
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/
 Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/ready
 Invoke-RestMethod http://127.0.0.1:8000/version
+```
+
+Opcionális élő Ollama-ellenőrzés:
+
+```powershell
+uv run python scripts/check_ollama.py
 ```
 
 Interaktív API-dokumentáció:
@@ -124,9 +137,9 @@ Interaktív API-dokumentáció:
 Fejlesztői ellenőrzések:
 
 ```powershell
-uv run ruff check backend tests
-uv run ruff format --check backend tests
-uv run mypy backend/src tests
+uv run ruff check backend tests scripts
+uv run ruff format --check backend tests scripts
+uv run mypy backend/src tests scripts
 uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 ```
 
@@ -135,7 +148,7 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | Verzió | Cél | Állapot |
 | --- | --- | --- |
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
-| v0.2 Runtime | FastAPI, Ollama és Gemma | Tervezett |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Folyamatban |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |

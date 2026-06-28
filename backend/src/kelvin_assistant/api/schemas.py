@@ -19,6 +19,14 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
 
 
+class ReadinessResponse(BaseModel):
+    """Readiness payload for the configured language model runtime."""
+
+    status: Literal["ready"]
+    provider: str
+    model: str
+
+
 class VersionResponse(BaseModel):
     """Version endpoint payload."""
 

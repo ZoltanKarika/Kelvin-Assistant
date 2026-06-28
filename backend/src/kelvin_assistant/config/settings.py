@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65535)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_format: Literal["json", "console"] = "json"
+    ollama_base_url: str = Field(default="http://localhost:11434")
+    ollama_model: str = Field(default="gemma4:e4b")
+    ollama_timeout: float = Field(default=120.0, gt=0)
+    llm_provider: Literal["ollama"] = Field(default="ollama")
 
 
 @lru_cache(maxsize=1)

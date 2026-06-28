@@ -44,13 +44,13 @@ jobs:
         run: uv sync --locked --all-groups
 
       - name: Lint
-        run: uv run --locked ruff check backend tests
+        run: uv run --locked ruff check backend tests scripts
 
       - name: Check formatting
-        run: uv run --locked ruff format --check backend tests
+        run: uv run --locked ruff format --check backend tests scripts
 
       - name: Type check
-        run: uv run --locked mypy backend/src tests
+        run: uv run --locked mypy backend/src tests scripts
 
       - name: Test
         run: uv run --locked pytest --cov=kelvin_assistant --cov-report=term-missing
