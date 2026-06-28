@@ -119,3 +119,16 @@ refactor: separate retrieval from prompt assembly
 test: cover document chunking edge cases
 chore: configure python quality tools
 ```
+
+## Licenc
+
+A Kelvin Assistant saját forráskódja és dokumentációja az Apache License 2.0
+feltételei alatt használható. A külső függőségek, modellek és önálló
+komponensek saját licencei és felhasználási feltételei továbbra is érvényesek.
+
+Részletek:
+
+- [LICENSE](LICENSE)
+- [NOTICE](NOTICE)
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- [docs/licensing.md](docs/licensing.md)
