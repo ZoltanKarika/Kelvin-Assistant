@@ -4,10 +4,13 @@
 
 A FastAPI backend Windowson fejlesztői módban, a saját Ubuntu Server VM-en
 pedig `systemd` szolgáltatásként fut. A VM újraindítása után automatikusan
-elindul, és a helyi hálózatról elérhető health végponttal ellenőrizhető.
+elindul, és a helyi hálózatról elérhető health és readiness végponttal
+ellenőrizhető.
 
 A GitHub Actions ugyanezt a projektet Ubuntu 24.04 és Python 3.12 alatt
-ellenőrzi. Az offline csomagimport és az Ollama még külön következő lépések.
+ellenőrzi. A Windows hoston futó Ollama adaptere és helyi integrációs
+ellenőrzése működik. A VM és a host közötti korlátozott hálózati kapcsolat,
+valamint az offline csomagimport még külön üzemeltetési lépés.
 
 ## Célkörnyezet
 
@@ -17,13 +20,13 @@ ellenőrzi. Az offline csomagimport és az Ollama még külön következő lép�
 - Hyper-V;
 - PowerShell;
 - Git;
-- Visual Studio Code.
+- Visual Studio Code;
+- Ollama és a helyileg telepített Gemma modell.
 
 ### Guest
 
 - Ubuntu Server 24.04 LTS;
 - Python 3.12 vagy újabb;
-- Ollama;
 - később Open WebUI és ChromaDB.
 
 ### Ellenőrzött VM-konfiguráció
@@ -75,7 +78,7 @@ Hozd létre a saját, Git által figyelmen kívül hagyott `.env` fájlodat:
 Copy-Item .env.example .env
 ```
 
-A v0.1 által használt változók:
+A jelenlegi backend által használt változók:
 
 | Változó | Alapérték | Jelentés |
 | --- | --- | --- |
@@ -84,6 +87,10 @@ A v0.1 által használt változók:
 | `KELVIN_LOG_FORMAT` | `json` | `json` vagy `console` formátum |
 | `KELVIN_API_HOST` | `127.0.0.1` | Figyelt hálózati cím |
 | `KELVIN_API_PORT` | `8000` | Figyelt TCP-port |
+| `KELVIN_LLM_PROVIDER` | `ollama` | Aktív LLM-adapter |
+| `KELVIN_OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API alapcíme |
+| `KELVIN_OLLAMA_MODEL` | `gemma4:e4b` | Telepített modell neve |
+| `KELVIN_OLLAMA_TIMEOUT` | `120` | Kérés időkorlátja másodpercben |
 
 A `.env` fájlban ne tárolj repositoryba kerülő jelszót, tokent vagy más
 titkot. A fájlt soha ne commitold.
@@ -118,8 +125,13 @@ Ellenőrzés egy másik PowerShell-ablakból:
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/
 Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/ready
 Invoke-RestMethod http://127.0.0.1:8000/version
 ```
+
+Az `/health` csak a FastAPI folyamat állapotát jelzi. A `/ready` az Ollama
+elérhetőségét és a konfigurált modell telepítettségét is ellenőrzi. Ha ezek
+nem állnak rendelkezésre, a végpont HTTP 503 választ ad.
 
 Az interaktív Swagger UI a `http://127.0.0.1:8000/docs` címen érhető el.
 A szerver `Ctrl+C` billentyűkombinációval állítható le.
@@ -127,13 +139,60 @@ A szerver `Ctrl+C` billentyűkombinációval állítható le.
 ## Fejlesztői ellenőrzések
 
 ```powershell
-uv run ruff check backend tests
-uv run ruff format --check backend tests
-uv run mypy backend/src tests
+uv run ruff check backend tests scripts
+uv run ruff format --check backend tests scripts
+uv run mypy backend/src tests scripts
 uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 ```
 
 Ugyanezeket a fő ellenőrzéseket futtatja a GitHub Actions pull requestnél.
+
+## Ollama a Windows hoston
+
+Az Ollama Windows alatt alapértelmezetten csak a
+`http://127.0.0.1:11434` címen figyel. Helyi fejlesztésnél ez megfelelő:
+
+```powershell
+ollama list
+uv run python scripts/check_ollama.py
+```
+
+A tényleges CPU/GPU megoszlás ellenőrzése egy futó modell mellett:
+
+```powershell
+ollama ps
+```
+
+Ahhoz, hogy az Ubuntu VM elérje a Windows host Ollamáját, Windows felhasználói
+környezeti változóként be kell állítani:
+
+```text
+OLLAMA_HOST=0.0.0.0:11434
+```
+
+Ezután az Ollama tálcaalkalmazást teljesen ki kell léptetni és újra kell
+indítani. A Windows tűzfalon a TCP 11434 portot kizárólag a VM IP-címéről
+vagy a megbízható helyi alhálózatról szabad engedélyezni. Routeres
+porttovábbítás nem használható, mert a helyi Ollama API nem igényel
+hitelesítést.
+
+Az Ubuntu szerver `/etc/kelvin-assistant/kelvin.env` fájljában:
+
+```text
+KELVIN_LLM_PROVIDER=ollama
+KELVIN_OLLAMA_BASE_URL=http://<WINDOWS_HOST_IP>:11434
+KELVIN_OLLAMA_MODEL=gemma4:e4b
+KELVIN_OLLAMA_TIMEOUT=120
+```
+
+Kapcsolat ellenőrzése a VM-ről:
+
+```bash
+curl http://<WINDOWS_HOST_IP>:11434/api/tags
+```
+
+Az `OLLAMA_HOST` Windows-konfigurációját az
+[Ollama hivatalos FAQ-ja](https://docs.ollama.com/faq) dokumentálja.
 
 ## Ubuntu VM alapbeállítása
 
@@ -257,6 +316,10 @@ KELVIN_ENVIRONMENT=production
 KELVIN_LOG_FORMAT=json
 KELVIN_API_HOST=0.0.0.0
 KELVIN_API_PORT=8000
+KELVIN_LLM_PROVIDER=ollama
+KELVIN_OLLAMA_BASE_URL=http://<WINDOWS_HOST_IP>:11434
+KELVIN_OLLAMA_MODEL=gemma4:e4b
+KELVIN_OLLAMA_TIMEOUT=120
 ```
 
 A szolgáltatásegység telepítése és indítása:
@@ -281,6 +344,7 @@ Külső health ellenőrzés Windows PowerShellből:
 
 ```powershell
 Invoke-RestMethod http://<VM_IP>:8000/health
+Invoke-RestMethod http://<VM_IP>:8000/ready
 Invoke-RestMethod http://<VM_IP>:8000/version
 ```
 
