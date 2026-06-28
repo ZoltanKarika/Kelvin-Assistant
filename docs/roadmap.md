@@ -78,11 +78,18 @@ Elfogadási feltételek ellenőrzése:
 
 ## v0.3 Conversation
 
-- verziózott chat végpont;
-- munkamenet-azonosítás;
-- kontextusablak-kezelés;
-- tokenenkénti válaszstreamelés;
+- `POST /api/v1/chat` nem streamelt végpont;
+- szerver által létrehozott UUID sessionazonosító;
+- cserélhető `SessionStore` port és első memóriabeli adapter;
+- alkalmazási `ChatService`, amely elkülönül a FastAPI route-tól;
+- többfordulós kontextusablak-kezelés;
+- párhuzamos sessionmódosítás kezelése;
+- tokenenkénti válaszstreamelés külön végponton;
 - megszakítás és API-szerződés tesztelése.
+
+Elfogadási feltétel: új és meglévő sessionben is folytatható a beszélgetés,
+az ismeretlen session és modellhiba stabil HTTP-választ ad, a streaming
+pedig megszakítható anélkül, hogy félkész fordulót mentene.
 
 ## v0.4 Knowledge
 
