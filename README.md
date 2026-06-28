@@ -7,11 +7,11 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt a **v0.2 Runtime** mérföldkő fejlesztésében jár. A FastAPI backend
-Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
-automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések helyileg,
-a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12 környezetben is
-sikeresek.
+A projekt **v0.2 Runtime** mérföldköve elkészült; a következő fejlesztési
+szakasz a v0.3 Conversation. A FastAPI backend Windowson fejlesztői
+folyamatként, a saját Ubuntu Server VM-en pedig automatikusan induló
+`systemd` szolgáltatásként fut. Az ellenőrzések helyileg, a VM-en és GitHub
+Actions alatt Ubuntu 24.04 / Python 3.12 környezetben is sikeresek.
 
 Jelenleg működik:
 
@@ -147,8 +147,8 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 
 | Verzió | Cél | Állapot |
 | --- | --- | --- |
-| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
-| v0.2 Runtime | FastAPI, Ollama és Gemma | Folyamatban |
+| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |

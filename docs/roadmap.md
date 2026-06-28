@@ -7,8 +7,8 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 
 | Verzió | Cél | Állapot |
 | --- | --- | --- |
-| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
-| v0.2 Runtime | FastAPI, Ollama és Gemma | Folyamatban |
+| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
@@ -36,7 +36,7 @@ Elkészült:
 - hordozható, korlátozott jogosultságú systemd egység a repositoryban;
 - dedikált `kelvin` felhasználós `/opt` telepítés üzemeltetési ellenőrzése.
 
-Még szükséges:
+Későbbi üzemeltetési továbbfejlesztések:
 
 - a VM DHCP-címének tartós foglalása;
 - offline Python csomag-előkészítés és ellenőrző összegek;
@@ -59,10 +59,6 @@ Elkészült ezen az ágon:
 - Ubuntu VM → Windows Ollama end-to-end kapcsolat;
 - Gemma 4 E4B, 8.0B, Q4_K_M modellválasztás;
 - `ollama ps` méréssel igazolt 100% GPU-feldolgozás.
-
-Még szükséges:
-
-- v0.2 verzióemelés és mérföldkőlezárás.
 
 Ellenőrzött end-to-end runtime:
 
