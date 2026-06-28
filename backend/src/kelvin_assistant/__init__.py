@@ -1,3 +1,5 @@
-"""Kelvin Assistant backend package."""
+"""Kelvin Assistant package."""
 
-__version__ = "0.1.0"
+from kelvin_assistant.version import APP_VERSION
+
+__version__ = APP_VERSION
