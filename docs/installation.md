@@ -2,12 +2,12 @@
 
 ## Jelenlegi állapot
 
-A FastAPI backend fejlesztői módban Windowson futtatható. A GitHub Actions
-ugyanezt a projektet Ubuntu 24.04 és Python 3.12 alatt is ellenőrzi.
+A FastAPI backend Windowson fejlesztői módban, a saját Ubuntu Server VM-en
+pedig `systemd` szolgáltatásként fut. A VM újraindítása után automatikusan
+elindul, és a helyi hálózatról elérhető health végponttal ellenőrizhető.
 
-Ez még nem jelenti azt, hogy a backend telepítve van a projekt saját Ubuntu
-Server VM-jére. A VM-hálózat, a `systemd` szolgáltatás, az offline
-csomagimport és az Ollama külön következő lépések.
+A GitHub Actions ugyanezt a projektet Ubuntu 24.04 és Python 3.12 alatt
+ellenőrzi. Az offline csomagimport és az Ollama még külön következő lépések.
 
 ## Célkörnyezet
 
@@ -25,6 +25,23 @@ csomagimport és az Ollama külön következő lépések.
 - Python 3.12 vagy újabb;
 - Ollama;
 - később Open WebUI és ChromaDB.
+
+### Ellenőrzött VM-konfiguráció
+
+| Beállítás | Érték |
+| --- | --- |
+| Hyper-V generáció | Generation 2 |
+| Operációs rendszer | Ubuntu Server 24.04.4 LTS |
+| Virtuális processzor | 6 |
+| Induló memória | 6144 MB |
+| Dinamikus memória | 4096–8192 MB |
+| Virtuális lemez | 40 GB, dinamikusan növekvő VHDX |
+| Hálózat | External Switch |
+| Secure Boot sablon | Microsoft UEFI Certificate Authority |
+
+A VM IP-címét DHCP osztja ki. A dokumentációban szereplő `<VM_IP>` helyére
+mindig a `hostname -I` paranccsal ellenőrzött aktuális cím kerül. Tartós
+üzemeltetéshez DHCP-foglalás ajánlott a routeren.
 
 ## Fejlesztői előfeltételek
 
@@ -118,18 +135,159 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 
 Ugyanezeket a fő ellenőrzéseket futtatja a GitHub Actions pull requestnél.
 
-## Ubuntu VM telepítési terv
+## Ubuntu VM alapbeállítása
 
-1. A VM CPU-, memória-, lemez- és hálózati erőforrásainak rögzítése.
-2. Dedikált szolgáltatásfelhasználó és adatkönyvtárak létrehozása.
-3. Git, `uv`, Python és a virtuális környezet ellenőrzése.
-4. Verziórögzített offline Python wheelhouse előkészítése.
-5. Ollama és a kiválasztott modell ellenőrzött átvitele.
-6. A backend telepítése és lokális konfigurálása.
-7. `systemd` egységek telepítése.
-8. Health és readiness ellenőrzés.
-9. Open WebUI csatlakoztatása.
-10. A Windows PowerShell-kliens telepítése.
+Az első rendszerfrissítés:
+
+```bash
+sudo apt update
+sudo apt upgrade
+sudo reboot
+```
+
+Az OpenSSH szerver telepítve van. A nyilvános kulcs sikeres ellenőrzése után
+a `/etc/ssh/sshd_config.d/99-kelvin-hardening.conf` fájl tartalma:
+
+```text
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+```
+
+Módosítás után mindig ellenőrizni kell a szintaxist az SSH újratöltése előtt:
+
+```bash
+sudo sshd -t
+sudo systemctl reload ssh
+```
+
+Az UFW alapértelmezetten tiltja a bejövő kapcsolatokat. Az SSH és az API csak
+a példában használt helyi hálózatról érhető el:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow from 192.168.10.0/24 to any port 22 proto tcp comment 'SSH from LAN'
+sudo ufw allow from 192.168.10.0/24 to any port 8000 proto tcp comment 'Kelvin API from LAN'
+sudo ufw --force enable
+```
+
+Más alhálózat használatakor a `192.168.10.0/24` értéket módosítani kell.
+Internet felé porttovábbítás nem szükséges és nem ajánlott.
+
+## Ubuntu fejlesztői telepítés
+
+Az `uv` rögzített verziójának telepítése:
+
+```bash
+curl -LsSf https://astral.sh/uv/0.11.25/install.sh | sh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+uv --version
+```
+
+A repository és a környezet létrehozása:
+
+```bash
+mkdir -p ~/projects
+cd ~/projects
+git clone https://github.com/ZoltanKarika/Kelvin-Assistant.git
+cd Kelvin-Assistant
+uv sync --locked
+cp .env.example .env
+```
+
+A helyi hálózati eléréshez a Git által figyelmen kívül hagyott `.env`
+fájlban:
+
+```text
+KELVIN_API_HOST=0.0.0.0
+KELVIN_API_PORT=8000
+```
+
+A `0.0.0.0` figyelési cím csak aktív tűzfal és megbízható helyi hálózat
+mellett használható.
+
+## Ajánlott systemd telepítés
+
+A repositoryban található
+`infrastructure/systemd/kelvin-api.service` a végleges, hordozható
+könyvtárszerkezetet használja:
+
+- kód és virtuális környezet: `/opt/kelvin-assistant`;
+- helyi konfiguráció: `/etc/kelvin-assistant/kelvin.env`;
+- futásidejű adat: `/var/lib/kelvin-assistant`;
+- jogosultság nélküli szolgáltatásfelhasználó: `kelvin`.
+
+A szolgáltatásfelhasználó és a rendszer szintű `uv` parancs létrehozása:
+
+```bash
+sudo useradd --system --create-home \
+  --home-dir /var/lib/kelvin-assistant \
+  --shell /usr/sbin/nologin kelvin
+sudo install -m 0755 "$HOME/.local/bin/uv" /usr/local/bin/uv
+```
+
+A kód telepítése és a futási függőségek létrehozása:
+
+```bash
+sudo install -d -o kelvin -g kelvin -m 0750 /opt/kelvin-assistant
+sudo -u kelvin -H git clone \
+  https://github.com/ZoltanKarika/Kelvin-Assistant.git \
+  /opt/kelvin-assistant
+sudo -u kelvin -H bash -c \
+  'cd /opt/kelvin-assistant && uv sync --locked --no-dev'
+```
+
+A helyi konfiguráció létrehozása:
+
+```bash
+sudo install -d -o root -g kelvin -m 0750 /etc/kelvin-assistant
+sudo install -o root -g kelvin -m 0640 \
+  /opt/kelvin-assistant/.env.example \
+  /etc/kelvin-assistant/kelvin.env
+sudoedit /etc/kelvin-assistant/kelvin.env
+```
+
+A szerveren legalább ezeket az értékeket kell beállítani:
+
+```text
+KELVIN_ENVIRONMENT=production
+KELVIN_LOG_FORMAT=json
+KELVIN_API_HOST=0.0.0.0
+KELVIN_API_PORT=8000
+```
+
+A szolgáltatásegység telepítése és indítása:
+
+```bash
+sudo install -o root -g root -m 0644 \
+  /opt/kelvin-assistant/infrastructure/systemd/kelvin-api.service \
+  /etc/systemd/system/kelvin-api.service
+sudo systemd-analyze verify /etc/systemd/system/kelvin-api.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now kelvin-api
+systemctl status kelvin-api --no-pager
+```
+
+Naplók megtekintése:
+
+```bash
+journalctl -u kelvin-api --no-pager
+```
+
+Külső health ellenőrzés Windows PowerShellből:
+
+```powershell
+Invoke-RestMethod http://<VM_IP>:8000/health
+Invoke-RestMethod http://<VM_IP>:8000/version
+```
+
+A jelenlegi tanulási VM először a `zoltan` felhasználó
+`~/projects/Kelvin-Assistant` könyvtárából lett működésre ellenőrizve. A
+dedikált `kelvin` felhasználóra és `/opt` elrendezésre áttérés a következő
+üzemeltetési lépés.
 
 ## Offline ellátási lánc
 
@@ -150,11 +308,15 @@ Az Ubuntu VM-en a `KELVIN_API_HOST=0.0.0.0` beállítás csak a Hyper-V
 hálózat és az Ubuntu tűzfal külön ellenőrzése után használható. Internet felé
 közvetlen API-kitettség nincs tervezve.
 
-## Még szükséges hardveradatok
+## Hardver és GPU
 
-A modell és a kvantálási szint kiválasztása előtt rögzíteni kell:
+A host 16 GB RAM-mal, 12 logikai processzorral és AMD Radeon RX 6650 XT
+8 GB GPU-val rendelkezik. A Windows 11 Hyper-V nem biztosít ehhez a
+consumer Radeon kártyához támogatott közvetlen VM-hozzárendelést.
 
-- a host és a VM számára elérhető RAM mennyiségét;
-- a processzor típusát és a VM virtuális processzorainak számát;
-- a GPU típusát, VRAM-ját és Hyper-V elérhetőségét;
-- a modellekhez fenntartott lemezterületet.
+Ezért a v0.2 elsődleges terve:
+
+- a FastAPI és az alkalmazásréteg az Ubuntu VM-en fut;
+- az Ollama a Windows hoston próbálja használni a Radeon GPU-t;
+- a VM korlátozott helyi hálózati API-n keresztül éri el az Ollamát;
+- a tényleges GPU-használatot mérés és `ollama ps` igazolja.

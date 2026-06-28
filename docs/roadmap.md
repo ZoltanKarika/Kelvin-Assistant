@@ -28,13 +28,17 @@ Elkészült:
 - `uv` környezet és lockfájl;
 - pytest, Ruff és mypy ellenőrzés;
 - GitHub Actions Ubuntu 24.04 / Python 3.12 alatt;
-- Apache-2.0 projektlicenc és licencleltár.
+- Apache-2.0 projektlicenc és licencleltár;
+- Hyper-V Generation 2 Ubuntu Server 24.04.4 VM;
+- SSH-kulcsos adminisztráció és UFW tűzfal;
+- backend telepítése és quality ellenőrzése a saját Ubuntu VM-en;
+- újraindítás után automatikusan induló `systemd` szolgáltatás;
+- hordozható, korlátozott jogosultságú systemd egység a repositoryban.
 
 Még szükséges:
 
-- Ubuntu VM erőforrás-, hálózati és adattárolási tervének véglegesítése;
-- backend telepítése és ellenőrzése a saját Ubuntu Server VM-en;
-- `systemd` szolgáltatás;
+- a tanulási telepítés migrálása dedikált `kelvin` felhasználóra;
+- a VM DHCP-címének tartós foglalása;
 - offline Python csomag-előkészítés és ellenőrző összegek;
 - mentési és visszaállítási helyek dokumentálása.
 

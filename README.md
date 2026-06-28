@@ -1,15 +1,16 @@
 # Kelvin Assistant
 
 A Kelvin Assistant egy moduláris, elsődlegesen offline működésre tervezett,
-helyi AI-asszisztens. A célállapotban az AI-infrastruktúra egy Ubuntu Server
-24.04 LTS Hyper-V virtuális gépen fog futni, míg a későbbi PowerShell-kliens
-a Windows 11 hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
+helyi AI-asszisztens. Az alkalmazás-infrastruktúra Ubuntu Server 24.04 LTS
+Hyper-V virtuális gépen fut, míg a későbbi PowerShell-kliens a Windows 11
+hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
 A projekt a **v0.1 Foundation** mérföldkőben jár. A FastAPI backend Windowson
-helyileg fut, az automatikus ellenőrzések pedig GitHub Actions alatt Ubuntu
-24.04 és Python 3.12 környezetben is sikeresek.
+fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig automatikusan
+induló `systemd` szolgáltatásként fut. Az ellenőrzések helyileg, a VM-en és
+GitHub Actions alatt Ubuntu 24.04 / Python 3.12 környezetben is sikeresek.
 
 Jelenleg működik:
 
@@ -19,11 +20,14 @@ Jelenleg működik:
 - strukturált JSON- és fejlesztői konzolnaplózás;
 - `/`, `/health` és `/version` végpont;
 - pytest, Ruff és mypy ellenőrzés;
-- GitHub Actions CI.
+- GitHub Actions CI;
+- Hyper-V Generation 2 Ubuntu Server VM;
+- SSH-kulcsos adminisztráció és UFW tűzfal;
+- újraindítás után automatikusan felálló FastAPI szolgáltatás.
 
 Az Ollama, Gemma, chat, RAG, memória és agentfunkciók még nincsenek
-integrálva. Az Ubuntu VM-re történő tényleges telepítés szintén külön,
-következő infrastruktúra-lépés.
+integrálva. Az offline csomag-előkészítés, a mentési eljárás és a végleges
+dedikált szolgáltatásfelhasználós telepítés még a v0.1 hátralévő része.
 
 ## Projektcél
 
@@ -95,6 +99,12 @@ A szerver alapértelmezetten a `http://127.0.0.1:8000` címen indul. Leállítá
 `Ctrl+C` billentyűkombinációval történik.
 
 Részletesen: [docs/installation.md](docs/installation.md).
+
+Az Ubuntu VM-en a backend `systemd` szolgáltatásként fut. Állapota:
+
+```bash
+systemctl status kelvin-api
+```
 
 ## Használat
 
