@@ -33,11 +33,11 @@ Elkészült:
 - SSH-kulcsos adminisztráció és UFW tűzfal;
 - backend telepítése és quality ellenőrzése a saját Ubuntu VM-en;
 - újraindítás után automatikusan induló `systemd` szolgáltatás;
-- hordozható, korlátozott jogosultságú systemd egység a repositoryban.
+- hordozható, korlátozott jogosultságú systemd egység a repositoryban;
+- dedikált `kelvin` felhasználós `/opt` telepítés üzemeltetési ellenőrzése.
 
 Még szükséges:
 
-- a tanulási telepítés migrálása dedikált `kelvin` felhasználóra;
 - a VM DHCP-címének tartós foglalása;
 - offline Python csomag-előkészítés és ellenőrző összegek;
 - mentési és visszaállítási helyek dokumentálása.

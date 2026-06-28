@@ -284,10 +284,11 @@ Invoke-RestMethod http://<VM_IP>:8000/health
 Invoke-RestMethod http://<VM_IP>:8000/version
 ```
 
-A jelenlegi tanulási VM először a `zoltan` felhasználó
-`~/projects/Kelvin-Assistant` könyvtárából lett működésre ellenőrizve. A
-dedikált `kelvin` felhasználóra és `/opt` elrendezésre áttérés a következő
-üzemeltetési lépés.
+A tanulási VM-et először a `zoltan` felhasználó
+`~/projects/Kelvin-Assistant` könyvtárából ellenőriztük. Ezután sikeresen
+átállt a dedikált `kelvin` felhasználóra és az `/opt` elrendezésre. A
+szolgáltatás külső health ellenőrzése és automatikus újraindulása is
+ellenőrzött.
 
 ## Offline ellátási lánc
 

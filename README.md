@@ -26,8 +26,8 @@ Jelenleg működik:
 - újraindítás után automatikusan felálló FastAPI szolgáltatás.
 
 Az Ollama, Gemma, chat, RAG, memória és agentfunkciók még nincsenek
-integrálva. Az offline csomag-előkészítés, a mentési eljárás és a végleges
-dedikált szolgáltatásfelhasználós telepítés még a v0.1 hátralévő része.
+integrálva. Az offline csomag-előkészítés és a mentési eljárás még a v0.1
+hátralévő része.
 
 ## Projektcél
 
