@@ -4,6 +4,7 @@ from typing import cast
 
 from fastapi import Request
 
+from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.ports.llm import LLMProvider
 
@@ -26,3 +27,13 @@ def get_llm_provider(request: Request) -> LLMProvider:
         msg = "Language model provider is not configured."
         raise RuntimeError(msg)
     return cast(LLMProvider, provider)
+
+
+def get_chat_service(request: Request) -> ChatService:
+    """Return the chat application service attached to the app state."""
+
+    service = getattr(request.app.state, "chat_service", None)
+    if not isinstance(service, ChatService):
+        msg = "Chat service is not configured."
+        raise RuntimeError(msg)
+    return service
