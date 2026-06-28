@@ -7,8 +7,8 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 
 | Verzió | Cél | Állapot |
 | --- | --- | --- |
-| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Folyamatban |
-| v0.2 Runtime | FastAPI, Ollama és Gemma | Folyamatban |
+| v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
+| v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
@@ -36,7 +36,7 @@ Elkészült:
 - hordozható, korlátozott jogosultságú systemd egység a repositoryban;
 - dedikált `kelvin` felhasználós `/opt` telepítés üzemeltetési ellenőrzése.
 
-Még szükséges:
+Későbbi üzemeltetési továbbfejlesztések:
 
 - a VM DHCP-címének tartós foglalása;
 - offline Python csomag-előkészítés és ellenőrző összegek;
@@ -55,32 +55,26 @@ Elkészült ezen az ágon:
 - egységes provider-, elérhetőségi és válaszhibák;
 - `/ready` végpont runtime- és modell-ellenőrzéssel;
 - mockolt unit tesztek és opcionális élő integrációs ellenőrzés;
-- helyi Windows → Ollama kapcsolat ellenőrzése.
+- helyi Windows → Ollama kapcsolat ellenőrzése;
+- Ubuntu VM → Windows Ollama end-to-end kapcsolat;
+- Gemma 4 E4B, 8.0B, Q4_K_M modellválasztás;
+- `ollama ps` méréssel igazolt 100% GPU-feldolgozás.
 
-Még szükséges:
-
-- Windows hoston futó Ollama runtime (GPU-gyorsítással);
-- Ubuntu VM-ben futó Kelvin backend, amely HTTP-n keresztül kapcsolódik az
-  Ollamához;
-- hardverhez választott Gemma 4 modell és kvantálás;
-- megszakítás és üzemeltetési mérés.
-
-Ellenőrzött helyi runtime:
+Ellenőrzött end-to-end runtime:
 
 - Windows 11 host;
 - Ollama runtime;
-- Gemma 4 E4B;
-- Kelvin backendből sikeres generálás és readiness ellenőrzés.
+- Gemma 4 E4B, 8.0B, Q4_K_M;
+- Ubuntu VM-en futó Kelvin backend;
+- sikeres generálás és readiness ellenőrzés;
+- AMD Radeon RX 6650 XT, `ollama ps` szerint 100% GPU;
+- 4096 tokenes context length.
 
-A Radeon RX 6650 XT tényleges gyorsítását futó modell mellett az
-`ollama ps` `PROCESSOR` oszlopa igazolja; ezt külön üzemeltetési mérésben
-kell rögzíteni.
+Elfogadási feltételek ellenőrzése:
 
-Elfogadási feltétel:
-
-- a modell konfigurációból cserélhető;
-- a backend eléri a hoston futó Ollama API-t;
-- az API érthető állapotot ad akkor is, ha az Ollama nem érhető el.
+- [x] a modell konfigurációból cserélhető;
+- [x] a backend eléri a hoston futó Ollama API-t;
+- [x] az API érthető állapotot ad akkor is, ha az Ollama nem érhető el.
 
 ## v0.3 Conversation
 
