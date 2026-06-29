@@ -197,9 +197,7 @@ def _split_text(text: str, max_characters: int) -> tuple[str, ...]:
     """Split text by paragraphs without exceeding the character limit."""
 
     paragraphs = [
-        paragraph.strip()
-        for paragraph in text.split("\n\n")
-        if paragraph.strip()
+        paragraph.strip() for paragraph in text.split("\n\n") if paragraph.strip()
     ]
     chunks: list[str] = []
     current = ""

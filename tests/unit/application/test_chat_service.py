@@ -183,8 +183,7 @@ def test_send_message_adds_knowledge_context_without_persisting_it() -> None:
         store = InMemorySessionStore()
         provider = StubLLMProvider(responses=["Az Ollama a Windows hoston fut."])
         knowledge_provider = StubKnowledgeContextProvider(
-            context="[1] source=Kelvin Notes; chunk=2\n"
-            "Ollama a Windows hoston fut."
+            context="[1] source=Kelvin Notes; chunk=2\nOllama a Windows hoston fut."
         )
         service = ChatService(
             provider,
