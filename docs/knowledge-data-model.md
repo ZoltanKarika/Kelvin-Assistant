@@ -134,6 +134,21 @@ Ha később modellt váltunk, tudnunk kell, melyik embedding melyik modellből
 származik. Különböző embedding modellek vektorai nem feltétlenül keverhetők
 biztonságosan.
 
+Első embedding modell:
+
+```text
+nomic-embed-text
+```
+
+A modellt Ollamán keresztül futtatjuk. A 2026-06-29-i helyi mérés alapján egy
+tesztszövegre `768` dimenziós embeddinget adott, ezért kompatibilis az első
+`embedding vector(768)` PostgreSQL sémával.
+
+Későbbi összehasonlításra jelölt modellek:
+
+- `mxbai-embed-large`;
+- `all-minilm`.
+
 ## Első keresési folyamat
 
 ```text
@@ -218,3 +233,6 @@ A séma VM-en validálva lett PostgreSQL 16.14 és pgvector 0.6.0 alatt.
 
 Kézi dummy embeddingekkel a cosine distance alapú keresés is validálva lett:
 a keresés a vektorosan legközelebbi chunkot hozta vissza első találatként.
+
+Az első valódi embedding modellként a `nomic-embed-text` lett kiválasztva, mert
+Ollamával lokálisan futtatható és mért dimenziója `768`.

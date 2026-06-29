@@ -351,6 +351,46 @@ Eredmény:
 
 Ezzel a v0.4 első tényleges adatbázis-sémája készen áll a kézi adatpróbára.
 
+## Embedding modell validáció
+
+Az első RAG embedding modell:
+
+```text
+nomic-embed-text
+```
+
+Ollama API próba:
+
+```powershell
+$body = @{
+  model = "nomic-embed-text"
+  prompt = "Kelvin API production portja 8000."
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:11434/api/embeddings" `
+  -ContentType "application/json" `
+  -Body $body
+
+$response.embedding.Count
+```
+
+Mért eredmény:
+
+```text
+768
+```
+
+Következmény:
+
+- a jelenlegi `knowledge_embeddings.embedding vector(768)` mező illeszkedik az
+  első embedding modellhez;
+- a `manual-dummy-768` kézi tesztmodell után a következő lépés már valódi
+  `nomic-embed-text` embeddingek beszúrása lesz;
+- ha később más embedding modellre váltunk, a dimenziót és a sémát külön
+  validálni kell.
+
 ## Kézi vektoros keresési próba
 
 A VM-en kézi tesztadatokkal ellenőriztük a RAG keresés legalapvetőbb adatbázis

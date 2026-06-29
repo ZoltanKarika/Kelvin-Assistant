@@ -130,6 +130,10 @@ validálva.
 Kézi RAG adatpróba: dummy embeddingekkel a pgvector cosine distance keresés a
 várt chunkot rangsorolta első helyre.
 
+Embedding modell: első jelöltként a `nomic-embed-text` lett kiválasztva;
+Ollama alatt mért embedding dimenziója `768`, ami illeszkedik az aktuális
+pgvector sémához.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;
