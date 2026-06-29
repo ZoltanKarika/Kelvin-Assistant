@@ -140,6 +140,9 @@ cosine keresés a PostgreSQL/pgvector chunkot rangsorolta első helyre.
 Python kapcsolat: `KELVIN_DATABASE_URL` konfiguráció és külön
 `/ready/database` readiness végpont készül PostgreSQL ellenőrzéshez.
 
+Production validáció: a VM-en futó Kelvin API `/ready/database` végpontja
+`{"status":"ready","provider":"postgresql"}` választ adott.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;

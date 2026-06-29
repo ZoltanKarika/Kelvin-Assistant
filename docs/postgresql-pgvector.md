@@ -489,3 +489,33 @@ Következtetés:
 - a kisebb cosine distance valóban relevánsabb chunkot adott;
 - a PostgreSQL + pgvector + Ollama embedding lánc működik;
 - a következő fejlesztési lépés ennek Pythonból történő automatizálása.
+
+## Kelvin API database readiness validáció
+
+A `codex/feat/v0.4-database-connection` ágon a Kelvin API külön adatbázis
+readiness végpontot kapott:
+
+```text
+GET /ready/database
+```
+
+Production VM-en ellenőrzött válasz:
+
+```json
+{"status":"ready","provider":"postgresql"}
+```
+
+Ugyanebben az ellenőrzésben az API folyamat és az Ollama readiness is rendben
+volt:
+
+```json
+{"status":"ok"}
+{"status":"ready","provider":"ollama","model":"gemma4:e4b"}
+```
+
+Következtetés:
+
+- a FastAPI alkalmazás beolvassa a `KELVIN_DATABASE_URL` beállítást;
+- a PostgreSQL driver telepítve van a production virtuális környezetben;
+- a backend `select 1` lekérdezéssel eléri a `kelvin_assistant` adatbázist;
+- az adatbázis állapota külön ellenőrizhető az LLM állapotától.
