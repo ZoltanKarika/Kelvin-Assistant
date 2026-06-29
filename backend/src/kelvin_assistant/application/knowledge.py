@@ -1,8 +1,59 @@
 """Knowledge document chunking use cases."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from kelvin_assistant.domain.knowledge import KnowledgeChunk, KnowledgeDocument
+from kelvin_assistant.ports.documents import DocumentChunker, DocumentLoader
+from kelvin_assistant.ports.knowledge import (
+    KnowledgeRepository,
+    StoredKnowledgeDocument,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class KnowledgeIngestionResult:
+    """Result returned after importing one knowledge document."""
+
+    source_uri: str
+    collection_name: str
+    stored_document: StoredKnowledgeDocument
+
+
+@dataclass(frozen=True, slots=True)
+class KnowledgeIngestionService:
+    """Load, chunk, and store local knowledge documents."""
+
+    loader: DocumentLoader
+    chunker: DocumentChunker
+    repository: KnowledgeRepository
+
+    async def ingest_file(
+        self,
+        path: Path,
+        *,
+        collection_name: str,
+    ) -> KnowledgeIngestionResult:
+        """Import one local document into a knowledge collection."""
+
+        normalized_collection_name = collection_name.strip()
+        if not normalized_collection_name:
+            msg = "Collection name cannot be empty"
+            raise ValueError(msg)
+
+        document = self.loader.load(path)
+        chunks = self.chunker.chunk(document)
+        stored_document = await self.repository.save_document(
+            normalized_collection_name,
+            document,
+            chunks,
+        )
+
+        return KnowledgeIngestionResult(
+            source_uri=document.source_uri,
+            collection_name=normalized_collection_name,
+            stored_document=stored_document,
+        )
 
 
 @dataclass(frozen=True, slots=True)
