@@ -300,3 +300,53 @@ Eredmény:
 ```text
 kelvin_assistant | kelvin
 ```
+
+## Knowledge séma validáció
+
+A `infrastructure/sql/001_create_knowledge_schema.sql` fájl sikeresen lefutott a
+VM-en a `kelvin` adatbázis-userrel.
+
+Futtatott parancs:
+
+```bash
+PGPASSWORD='<password>' psql \
+  --host=127.0.0.1 \
+  --username=kelvin \
+  --dbname=kelvin_assistant \
+  --file=infrastructure/sql/001_create_knowledge_schema.sql
+```
+
+Létrejött táblák:
+
+| Tábla | Cél |
+| --- | --- |
+| `knowledge_collections` | Logikai tudásgyűjtemények |
+| `knowledge_documents` | Eredeti dokumentumok nyilvántartása |
+| `knowledge_chunks` | Kereshető dokumentumrészletek |
+| `knowledge_embeddings` | Chunkok pgvector embeddingjei |
+
+Ellenőrzött indexek:
+
+- `ix_knowledge_chunks_document_id`
+- `ix_knowledge_embeddings_vector_cosine`
+- `ux_knowledge_chunks_document_index`
+- `ux_knowledge_documents_collection_hash`
+- `ux_knowledge_documents_collection_source`
+- `ux_knowledge_embeddings_chunk_model`
+
+Az `ix_knowledge_embeddings_vector_cosine` HNSW index a későbbi cosine distance
+alapú vektoros keresést gyorsítja.
+
+Validált pgvector smoke test:
+
+```sql
+select '[1,2,3]'::vector;
+```
+
+Eredmény:
+
+```text
+[1,2,3]
+```
+
+Ezzel a v0.4 első tényleges adatbázis-sémája készen áll a kézi adatpróbára.

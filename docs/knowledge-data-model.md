@@ -213,3 +213,5 @@ infrastructure/sql/001_create_knowledge_schema.sql
 Szándékosan egyszerű SQL fájlként indulunk. Így látható, hogy pontosan milyen
 táblák, constraint-ek és indexek jönnek létre, mielőtt Alembicet vagy más
 migrációs eszközt vezetnénk be.
+
+A séma VM-en validálva lett PostgreSQL 16.14 és pgvector 0.6.0 alatt.

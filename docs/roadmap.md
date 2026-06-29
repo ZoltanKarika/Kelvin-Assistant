@@ -124,6 +124,9 @@ Infrastruktúra-terv: [PostgreSQL + pgvector telepítési terv](postgresql-pgvec
 VM-validáció: PostgreSQL 16.14 és pgvector 0.6.0 telepítve, lokális
 adatbázis-kapcsolat és Kelvin API újraindítás ellenőrizve.
 
+Knowledge séma: az első `knowledge_*` táblák és a HNSW pgvector index VM-en
+validálva.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;
