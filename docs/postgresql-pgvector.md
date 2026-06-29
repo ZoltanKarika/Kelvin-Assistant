@@ -248,3 +248,55 @@ Ez az infrastruktúra-lépés akkor kész, ha:
 - a `vector` extension aktív;
 - az 5432-es port nincs kinyitva a hálózatra;
 - a döntések és parancsok dokumentálva vannak.
+
+## VM-validáció
+
+A 2026-06-29-i ellenőrzés alapján az Ubuntu VM-en a PostgreSQL + pgvector alap
+működik.
+
+Ellenőrzött állapot:
+
+| Ellenőrzés | Eredmény |
+| --- | --- |
+| Ubuntu verzió | Ubuntu 24.04.4 LTS |
+| PostgreSQL verzió | PostgreSQL 16.14 |
+| pgvector verzió | 0.6.0 |
+| Adatbázis | `kelvin_assistant` |
+| Adatbázis-user | `kelvin` |
+| pgvector extension | `vector` aktív a `public` sémában |
+| PostgreSQL listen address | `127.0.0.1:5432` |
+| UFW 5432 | nincs nyitva |
+| Kelvin env | `KELVIN_DATABASE_URL` beállítva |
+| Kelvin API health | `{"status":"ok"}` |
+| Kelvin API readiness | `{"status":"ready","provider":"ollama","model":"gemma4:e4b"}` |
+
+Fontos következmény:
+
+- az adatbázis kívülről nem érhető el;
+- a Kelvin API továbbra is működik az új env változó mellett;
+- a Python alkalmazás még nem használja az adatbázist, ez a következő v0.4
+  fejlesztési lépések része.
+
+Ellenőrzött pgvector próba:
+
+```sql
+select '[1,2,3]'::vector;
+```
+
+Eredmény:
+
+```text
+[1,2,3]
+```
+
+Ellenőrzött alkalmazás-user kapcsolat:
+
+```sql
+select current_database(), current_user;
+```
+
+Eredmény:
+
+```text
+kelvin_assistant | kelvin
+```

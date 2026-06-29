@@ -121,6 +121,9 @@ Első tervezési dokumentum: [v0.4 Knowledge adatmodell-terv](knowledge-data-mod
 
 Infrastruktúra-terv: [PostgreSQL + pgvector telepítési terv](postgresql-pgvector.md).
 
+VM-validáció: PostgreSQL 16.14 és pgvector 0.6.0 telepítve, lokális
+adatbázis-kapcsolat és Kelvin API újraindítás ellenőrizve.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;
