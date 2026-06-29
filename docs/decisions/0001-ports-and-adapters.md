@@ -12,13 +12,13 @@ megnehezítenék a cserét és a külső szolgáltatás nélküli tesztelést.
 ## Döntés
 
 A domain- és alkalmazási logika portokon keresztül használja a külső
-képességeket. Az Ollama, a ChromaDB és a dokumentumbetöltők adapterként
-valósítják meg ezeket a portokat. A konkrét implementációk bekötése
-dependency injection segítségével történik.
+képességeket. Az Ollama, a vektortár és a dokumentumbetöltők adapterként
+valósítják meg ezeket a portokat. A konkrét implementációk bekötése dependency
+injection segítségével történik.
 
 ## Alternatívák
 
-- Közvetlen FastAPI–Ollama–ChromaDB integráció: kevesebb kezdeti fájl, de
+- Közvetlen FastAPI–Ollama–vektortár integráció: kevesebb kezdeti fájl, de
   szoros függőség és nehezebb tesztelés.
 - Mikroszolgáltatások minden komponenshez: erős izoláció, de indokolatlan
   üzemeltetési összetettség az első verzióban.

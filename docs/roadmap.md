@@ -9,8 +9,8 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | --- | --- | --- |
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
-| v0.3 Conversation | Chat API, streaming és sessionkezelés | Folyamatban |
-| v0.4 Knowledge | RAG és ChromaDB | Tervezett |
+| v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
 | v0.7 Voice | Whisper és Piper | Tervezett |
@@ -81,6 +81,7 @@ Elfogadási feltételek ellenőrzése:
 Elkészült ezen az ágon:
 
 - `POST /api/v1/chat` nem streamelt végpont;
+- `POST /api/v1/chat/stream` SSE streaming végpont;
 - szerver által létrehozott UUID sessionazonosító;
 - cserélhető `SessionStore` port és első memóriabeli adapter;
 - alkalmazási `ChatService`, amely elkülönül a FastAPI route-tól;
@@ -90,26 +91,26 @@ Elkészült ezen az ágon:
 - unit, API-szerződés és élő többfordulós modellteszt;
 - Ubuntu VM-telepítés és end-to-end többfordulós ellenőrzés;
 - elfogadott SSE streaming szerződés;
-- elfogadott minimális frontendarchitektúra.
-
-Következő végrehajtási sorrend:
-
-1. minimális, nem streamelt chat UI a meglévő API fölött;
-2. tokenenkénti válaszstreamelés külön végponton;
-3. stream megszakítása és atomikus sessionkezelése;
-4. a frontend átállítása SSE feldolgozásra;
-5. VM-validáció, v0.3 verzióemelés és mérföldkőlezárás.
+- elfogadott minimális frontendarchitektúra;
+- minimális, framework nélküli chat UI a `/ui` útvonalon;
+- frontend streaming válaszfeldolgozás;
+- konfigurálható asszisztens rendszerprompt;
+- Windows fejlesztői és Ubuntu production validáció.
 
 Elfogadási feltétel: új és meglévő sessionben is folytatható a beszélgetés,
 az ismeretlen session és modellhiba stabil HTTP-választ ad, a streaming
 pedig megszakítható anélkül, hogy félkész fordulót mentene.
+
+Eredmény: a v0.3 elfogadási feltételei teljesültek. A sessiontár még
+folyamatmemóriában él; perzisztens session és hosszú távú memória a v0.5
+része lesz.
 
 ## v0.4 Knowledge
 
 - szöveg- és Markdown-betöltő;
 - darabolási stratégia;
 - embedding-port és adapter;
-- ChromaDB adapter;
+- PostgreSQL + pgvector adapter;
 - forrásmegjelölés;
 - később PDF és DOCX.
 

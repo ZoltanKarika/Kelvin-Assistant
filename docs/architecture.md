@@ -25,7 +25,7 @@ megőriznie:
 
 - Ollama és a telepített helyi modellek;
 - Kelvin FastAPI backend;
-- ChromaDB perzisztens adatai;
+- PostgreSQL + pgvector perzisztens adatai;
 - Open WebUI;
 - naplók és szolgáltatáskonfigurációk.
 
@@ -37,7 +37,7 @@ interfészen történik. A szolgáltatások alapértelmezetten nem publikusak.
 ### Domain
 
 Technológiától független fogalmak és szabályok. Nem importálhat FastAPI-,
-Ollama- vagy ChromaDB-kódot.
+Ollama- vagy PostgreSQL-kódot.
 
 ### Application
 
@@ -57,8 +57,8 @@ Protokollok és interfészek a cserélhető komponensekhez:
 
 ### Adapters
 
-Külső technológiák implementációi, például Ollama és ChromaDB. Az adapterek
-fordítják le a külső formátumokat a belső domain modellekre.
+Külső technológiák implementációi, például Ollama és PostgreSQL + pgvector. Az
+adapterek fordítják le a külső formátumokat a belső domain modellekre.
 
 ### API
 
@@ -112,7 +112,8 @@ kapcsolja a portokhoz.
 
 ## Adatkezelés
 
-- A dokumentumok és a memória külön ChromaDB collectiont kapnak.
+- A dokumentumok, chunkok, embeddingek és későbbi memóriaadatok PostgreSQL
+  táblákban élnek; a vektoros hasonlóságkeresést a pgvector bővítmény adja.
 - A modellfájlok és a vektoradatok nem kerülnek Gitbe.
 - A memória törölhető és később külön megőrzési szabályt kap.
 - A naplók nem tartalmazhatnak titkokat vagy teljes dokumentumtartalmat.

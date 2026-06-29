@@ -7,7 +7,7 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt a **v0.3 Conversation** mérföldkő fejlesztésében jár. A FastAPI
+A projekt a **v0.3 Conversation** mérföldkőnél tart. A FastAPI
 backend Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
 automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések
 helyileg, a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12
@@ -31,12 +31,15 @@ Jelenleg működik:
 - hálózatfüggetlen unit tesztek és opcionális élő Ollama-próba;
 - Ubuntu VM-ből elért Windows Ollama és 100% GPU-n futó Gemma 4 E4B;
 - verziózott `POST /api/v1/chat` végpont;
+- `POST /api/v1/chat/stream` SSE streaming végpont;
+- minimális, framework nélküli webes chatfelület a `/ui` útvonalon;
 - UUID-alapú, többfordulós memóriabeli sessionkezelés;
-- külön chat alkalmazási service és cserélhető sessiontár.
+- külön chat alkalmazási service és cserélhető sessiontár;
+- konfigurálható asszisztens rendszerprompt.
 
-A válaszstreamelés, RAG, hosszú távú memória és agentfunkciók még nincsenek
+A RAG, hosszú távú memória, hangvezérlés és agentfunkciók még nincsenek
 integrálva. A DHCP-foglalás, az offline csomag-előkészítés és a mentési
-eljárás még hátralévő üzemeltetési feladat.
+eljárás továbbra is hátralévő üzemeltetési feladat.
 
 ## Projektcél
 
@@ -47,7 +50,7 @@ A rendszer fokozatosan az alábbi képességeket biztosítja:
 - dokumentumfeldolgozás és RAG;
 - rövid és hosszú távú memória;
 - verziózott FastAPI API;
-- Open WebUI, később opcionális saját webes felület;
+- saját webes felület, később opcionálisan Open WebUI;
 - PowerShell-alapú agentkliens;
 - később Whisper beszédfelismerés és Piper TTS;
 - később szabályozott automatizálási lehetőségek.
@@ -67,7 +70,7 @@ flowchart LR
     LLM["LLM port"]
     VECTOR["Vektortár port"]
     OLLAMA["Ollama / Gemma"]
-    CHROMA["ChromaDB"]
+    PG["PostgreSQL + pgvector"]
     TOOLS["Hostoldali eszközök"]
 
     PS <--> API
@@ -76,14 +79,14 @@ flowchart LR
     APP --> LLM
     APP --> VECTOR
     LLM --> OLLAMA
-    VECTOR --> CHROMA
+    VECTOR --> PG
     PS --> TOOLS
 ```
 
 A diagram a tervezett célállapotot mutatja. A backend később portokon
 keresztül éri el a modelleket, embedding-szolgáltatókat, vektortárakat és
-dokumentumbetöltőket. Az Ollama és a ChromaDB ezek adapterei lesznek, ezért
-más implementációra cserélhetők.
+dokumentumbetöltőket. Az Ollama és a PostgreSQL + pgvector ezek adapterei
+lesznek, ezért más implementációra cserélhetők.
 
 A Windows hoston végzett PowerShell-, Git- és fájlműveleteket a hostoldali
 kliens hajtja végre. A Linux VM nem kap korlátlan távoli hozzáférést a
@@ -142,6 +145,23 @@ A válasz `session_id` mezőjével a következő kérés ugyanabban a
 beszélgetésben folytatható. Részletes példa:
 [docs/installation.md](docs/installation.md).
 
+Webes chatfelület:
+
+- fejlesztői gépen: `http://127.0.0.1:8000/ui`
+- Ubuntu VM-en: `http://<VM_IP>:8000/ui`
+
+Streaming chat ellenőrzése PowerShellből:
+
+```powershell
+$body = @{
+    message = "Please count from 1 to 5, one number per line."
+} | ConvertTo-Json
+
+curl.exe -N -X POST "http://127.0.0.1:8000/api/v1/chat/stream" `
+    -H "Content-Type: application/json" `
+    --data-binary $body
+```
+
 Opcionális élő Ollama-ellenőrzés:
 
 ```powershell
@@ -168,8 +188,8 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | --- | --- | --- |
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
-| v0.3 Conversation | Chat API, streaming és sessionkezelés | Folyamatban |
-| v0.4 Knowledge | RAG és ChromaDB | Tervezett |
+| v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
 | v0.7 Voice | Whisper és Piper | Tervezett |
