@@ -99,6 +99,9 @@ A jelenlegi backend által használt változók:
 | `KELVIN_OLLAMA_TIMEOUT` | `120` | Kérés időkorlátja másodpercben |
 | `KELVIN_DATABASE_URL` | nincs | PostgreSQL kapcsolat a tudástárhoz |
 | `KELVIN_DATABASE_CONNECT_TIMEOUT` | `5` | Adatbázis-kapcsolat időkorlátja másodpercben |
+| `KELVIN_RAG_ENABLED` | `false` | Tudásbázis-kontekstus bekapcsolása a chatben |
+| `KELVIN_RAG_COLLECTION` | `manual` | Chathez használt tudásgyűjtemény |
+| `KELVIN_RAG_RESULT_LIMIT` | `3` | Chathez lekért tudásbázis-részletek száma |
 
 A `.env` fájlban ne tárolj repositoryba kerülő jelszót, tokent vagy más
 titkot. A fájlt soha ne commitold.

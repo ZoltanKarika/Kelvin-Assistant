@@ -5,8 +5,15 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from kelvin_assistant.domain.chat import ChatMessage, ChatRole, ChatSession
+from kelvin_assistant.ports.knowledge import KnowledgeContextProvider
 from kelvin_assistant.ports.llm import LLMProvider
 from kelvin_assistant.ports.sessions import SessionStore
+
+RAG_CONTEXT_TEMPLATE = (
+    "Használd az alábbi helyi tudásbázis-részleteket, ha relevánsak a "
+    "felhasználó kérdéséhez. Ha a részletek nem relevánsak, hagyd figyelmen "
+    "kívül őket. Ne találj ki forrást.\n\n{context}"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +41,7 @@ class ChatService:
         session_store: SessionStore,
         history_turn_limit: int = 10,
         system_prompt: str | None = None,
+        knowledge_context_provider: KnowledgeContextProvider | None = None,
     ) -> None:
         if history_turn_limit <= 0:
             msg = "history_turn_limit must be positive"
@@ -46,6 +54,7 @@ class ChatService:
             if system_prompt is not None
             else None
         )
+        self._knowledge_context_provider = knowledge_context_provider
 
     async def send_message(
         self,
@@ -66,10 +75,9 @@ class ChatService:
             *session.messages[-self._history_message_limit :],
             user_message,
         )
-        context = (
-            (self._system_message, *conversation_context)
-            if self._system_message is not None
-            else conversation_context
+        context = await self._build_context(
+            user_message.content,
+            conversation_context,
         )
         assistant_content = await self._llm_provider.chat(context)
         updated_session = session.append_turn(
@@ -109,10 +117,9 @@ class ChatService:
             *session.messages[-self._history_message_limit :],
             user_message,
         )
-        context = (
-            (self._system_message, *conversation_context)
-            if self._system_message is not None
-            else conversation_context
+        context = await self._build_context(
+            user_message.content,
+            conversation_context,
         )
 
         async def chunks() -> AsyncIterator[str]:
@@ -136,3 +143,29 @@ class ChatService:
                 )
 
         return ChatStreamResult(session_id=session.id, chunks=chunks())
+
+    async def _build_context(
+        self,
+        user_content: str,
+        conversation_context: tuple[ChatMessage, ...],
+    ) -> tuple[ChatMessage, ...]:
+        """Build model context with optional system and knowledge messages."""
+
+        messages: list[ChatMessage] = []
+        if self._system_message is not None:
+            messages.append(self._system_message)
+
+        if self._knowledge_context_provider is not None:
+            knowledge_context = await self._knowledge_context_provider.get_context(
+                user_content
+            )
+            if knowledge_context is not None:
+                messages.append(
+                    ChatMessage(
+                        role=ChatRole.SYSTEM,
+                        content=RAG_CONTEXT_TEMPLATE.format(context=knowledge_context),
+                    )
+                )
+
+        messages.extend(conversation_context)
+        return tuple(messages)

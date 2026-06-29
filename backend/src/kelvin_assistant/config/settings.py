@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     system_prompt: str = Field(default=DEFAULT_SYSTEM_PROMPT, min_length=1)
     database_url: str | None = Field(default=None)
     database_connect_timeout: int = Field(default=5, gt=0)
+    rag_enabled: bool = Field(default=False)
+    rag_collection: str = Field(default="manual")
+    rag_result_limit: int = Field(default=3, gt=0)
 
 
 @lru_cache(maxsize=1)

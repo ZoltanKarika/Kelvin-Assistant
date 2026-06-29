@@ -90,3 +90,24 @@ class KnowledgeRepository(Protocol):
         limit: int,
     ) -> tuple[KnowledgeSearchResult, ...]:
         """Return semantically similar chunks ordered by cosine distance."""
+
+
+class KnowledgeSearchRepository(Protocol):
+    """Interface for semantic knowledge search."""
+
+    async def search_similar_chunks(
+        self,
+        collection_name: str,
+        embedding_model: str,
+        query_embedding: tuple[float, ...],
+        *,
+        limit: int,
+    ) -> tuple[KnowledgeSearchResult, ...]:
+        """Return semantically similar chunks ordered by cosine distance."""
+
+
+class KnowledgeContextProvider(Protocol):
+    """Interface for retrieving formatted knowledge context for chat."""
+
+    async def get_context(self, query: str) -> str | None:
+        """Return formatted context for a user query, or None when unavailable."""
