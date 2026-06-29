@@ -117,6 +117,26 @@ része lesz.
 Elfogadási feltétel: egy indexelt dokumentumból visszakeresett válasz
 ellenőrizhető forráshivatkozást tartalmaz.
 
+Első tervezési dokumentum: [v0.4 Knowledge adatmodell-terv](knowledge-data-model.md).
+
+Infrastruktúra-terv: [PostgreSQL + pgvector telepítési terv](postgresql-pgvector.md).
+
+VM-validáció: PostgreSQL 16.14 és pgvector 0.6.0 telepítve, lokális
+adatbázis-kapcsolat és Kelvin API újraindítás ellenőrizve.
+
+Knowledge séma: az első `knowledge_*` táblák és a HNSW pgvector index VM-en
+validálva.
+
+Kézi RAG adatpróba: dummy embeddingekkel a pgvector cosine distance keresés a
+várt chunkot rangsorolta első helyre.
+
+Embedding modell: első jelöltként a `nomic-embed-text` lett kiválasztva;
+Ollama alatt mért embedding dimenziója `768`, ami illeszkedik az aktuális
+pgvector sémához.
+
+Valódi embeddinges próba: a `nomic-embed-text` query embedding és a pgvector
+cosine keresés a PostgreSQL/pgvector chunkot rangsorolta első helyre.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;

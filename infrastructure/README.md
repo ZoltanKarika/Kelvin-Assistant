@@ -3,6 +3,7 @@
 Helyi telepítési és üzemeltetési konfigurációk:
 
 - `systemd`: natív Ubuntu szolgáltatásegységek;
+- `sql`: kézzel olvasható adatbázis-sémák és kezdeti migrációk;
 - `docker`: későbbi opcionális Docker Compose telepítés;
 - `config`: nem titkos konfigurációs sablonok.
 
