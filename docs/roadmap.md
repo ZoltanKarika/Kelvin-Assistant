@@ -10,7 +10,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
-| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Tervezett |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Validálás alatt |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
 | v0.7 Voice | Whisper és Piper | Tervezett |
@@ -107,12 +107,26 @@ része lesz.
 
 ## v0.4 Knowledge
 
-- szöveg- és Markdown-betöltő;
-- darabolási stratégia;
-- embedding-port és adapter;
-- PostgreSQL + pgvector adapter;
-- forrásmegjelölés;
-- később PDF és DOCX.
+Elkészült ezen az ágon:
+
+- PostgreSQL 16 + pgvector alapú tudástár;
+- kézzel olvasható SQL séma `knowledge_*` táblákkal;
+- `.txt`, `.md` és `.markdown` dokumentumbetöltő;
+- determinisztikus paragraph/Markdown heading alapú chunkolás;
+- `nomic-embed-text` embedding adapter Ollamán keresztül;
+- PostgreSQL repository dokumentumokhoz, chunkokhoz, embeddingekhez és kereséshez;
+- `kelvin-import-document` CLI dokumentumimporthoz;
+- `kelvin-search-knowledge` CLI szemantikus kereséshez;
+- konfigurálható RAG chat-kontekstus;
+- VM-en validált import, embedding, pgvector keresés és chat RAG.
+
+Későbbi bővítések:
+
+- PDF és DOCX feldolgozás;
+- webes dokumentumfeltöltés;
+- dokumentum törlés és újraindexelés;
+- fejlettebb ranking/reranking;
+- források strukturált visszaadása az API-válaszban.
 
 Elfogadási feltétel: egy indexelt dokumentumból visszakeresett válasz
 ellenőrizhető forráshivatkozást tartalmaz.
@@ -140,8 +154,22 @@ cosine keresés a PostgreSQL/pgvector chunkot rangsorolta első helyre.
 Python kapcsolat: `KELVIN_DATABASE_URL` konfiguráció és külön
 `/ready/database` readiness végpont készül PostgreSQL ellenőrzéshez.
 
-Production validáció: a VM-en futó Kelvin API `/ready/database` végpontja
-`{"status":"ready","provider":"postgresql"}` választ adott.
+Production validáció:
+
+- a VM-en futó Kelvin API `/ready/database` végpontja
+  `{"status":"ready","provider":"postgresql"}` választ adott;
+- `kelvin-import-document` sikeresen importált egy Markdown dokumentumot a
+  `manual_test` collectionbe;
+- az import 3 chunkot és 3 darab `nomic-embed-text` embeddinget mentett;
+- mindhárom embedding dimenziója `768`;
+- `kelvin-search-knowledge` a "Hol fut az Ollama?" kérdésre a `Runtime` chunkot
+  rangsorolta első helyre;
+- RAG bekapcsolása után a chat válasz már a tudásbázisban tárolt információt
+  használta: az Ollama a Windows hoston fut.
+
+Megfigyelés: a jelenlegi Gemma modell magyar válaszminősége néha töredezett.
+Ez nem RAG-funkcionális hiba, hanem modell/prompt finomítási feladat, amelyet
+v0.4 után külön érdemes kezelni.
 
 ## v0.5 Memory
 

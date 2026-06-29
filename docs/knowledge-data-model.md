@@ -240,3 +240,32 @@ Ollamával lokálisan futtatható és mért dimenziója `768`.
 Valódi `nomic-embed-text` embeddinggel a PostgreSQL/pgvector chunk jelentősen
 kisebb cosine distance értéket kapott, mint a nem releváns API chunk, ezért az
 első end-to-end embeddinges keresési próba sikeres.
+
+## v0.4 VM validáció
+
+A v0.4 Knowledge lánc Ubuntu VM-en is ellenőrizve lett:
+
+```text
+Markdown dokumentum
+→ chunkolás
+→ Ollama /api/embed
+→ knowledge_embeddings
+→ pgvector cosine search
+→ chat RAG kontextus
+→ Kelvin válasz
+```
+
+Ellenőrzött eredmények:
+
+- a `kelvin-import-document` parancs 3 chunkot mentett;
+- a 3 chunkhoz 3 embedding készült;
+- az embedding modell `nomic-embed-text`;
+- az embedding dimenzió minden rekordnál `768`;
+- a `kelvin-search-knowledge` parancs a "Hol fut az Ollama?" kérdésre a
+  `Runtime` chunkot hozta vissza első találatként;
+- RAG chat bekapcsolás után Kelvin a tudásbázis alapján válaszolta, hogy az
+  Ollama a Windows hoston fut.
+
+Nyitott minőségi észrevétel: a válasz magyar nyelvi stílusa a jelenlegi Gemma
+modellnél még nem mindig természetes. Ez későbbi modellválasztási vagy
+promptfinomítási feladat.
