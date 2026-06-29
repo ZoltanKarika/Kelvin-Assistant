@@ -1,6 +1,6 @@
 """Language model provider port."""
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from typing import Protocol
 
 from kelvin_assistant.domain.chat import ChatMessage
@@ -27,6 +27,10 @@ class LLMProvider(Protocol):
 
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
         """Generate an assistant response for structured chat messages."""
+        ...
+
+    def stream_chat(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
+        """Stream an assistant response for structured chat messages."""
         ...
 
     async def check_readiness(self) -> None:

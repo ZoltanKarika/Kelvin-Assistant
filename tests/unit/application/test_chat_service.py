@@ -1,7 +1,7 @@
 """Unit tests for the non-streaming chat application service."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from uuid import uuid4
 
 import pytest
@@ -43,6 +43,18 @@ class StubLLMProvider:
             msg = "No stub chat response configured"
             raise RuntimeError(msg)
         return self._responses.pop(0)
+
+    async def stream_chat(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
+        """Record chat context and stream the next configured response."""
+
+        self.chat_calls.append(tuple(messages))
+        if self._error is not None:
+            raise self._error
+        if not self._responses:
+            msg = "No stub chat response configured"
+            raise RuntimeError(msg)
+        for chunk in self._responses.pop(0).split("|"):
+            yield chunk
 
     async def check_readiness(self) -> None:
         """Report the stub provider as ready."""
@@ -166,6 +178,48 @@ def test_send_message_does_not_persist_failed_model_turn() -> None:
 
         with pytest.raises(LLMUnavailableError):
             await service.send_message("Szia!", session_id=original.id)
+
+        assert await store.get(original.id) == original
+
+    asyncio.run(scenario())
+
+
+def test_stream_message_persists_complete_streamed_turn() -> None:
+    """A streamed response is persisted only after all chunks finish."""
+
+    async def scenario() -> None:
+        store = InMemorySessionStore()
+        provider = StubLLMProvider(responses=["Szi|a!"])
+        service = ChatService(provider, store)
+
+        result = await service.stream_message("Szia!")
+        chunks = [chunk async for chunk in result.chunks]
+
+        assert chunks == ["Szi", "a!"]
+        stored_session = await store.get(result.session_id)
+        assert stored_session.messages == (
+            ChatMessage(role=ChatRole.USER, content="Szia!"),
+            ChatMessage(role=ChatRole.ASSISTANT, content="Szia!"),
+        )
+
+    asyncio.run(scenario())
+
+
+def test_stream_message_does_not_persist_failed_stream() -> None:
+    """A provider streaming failure leaves the session unchanged."""
+
+    async def scenario() -> None:
+        store = InMemorySessionStore()
+        original = ChatSession.create()
+        await store.add(original)
+        provider = StubLLMProvider(
+            error=LLMUnavailableError("Ollama runtime is unavailable")
+        )
+        service = ChatService(provider, store)
+
+        result = await service.stream_message("Szia!", session_id=original.id)
+        with pytest.raises(LLMUnavailableError):
+            _ = [chunk async for chunk in result.chunks]
 
         assert await store.get(original.id) == original
 
