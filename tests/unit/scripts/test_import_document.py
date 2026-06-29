@@ -7,12 +7,12 @@ from typing import cast
 from uuid import UUID
 
 import pytest
-from scripts import import_document
 
 from kelvin_assistant.application.knowledge import (
     KnowledgeIngestionResult,
     KnowledgeIngestionService,
 )
+from kelvin_assistant.cli import import_document
 from kelvin_assistant.ports.knowledge import StoredKnowledgeDocument
 
 DOCUMENT_ID = UUID("22222222-2222-2222-2222-222222222222")

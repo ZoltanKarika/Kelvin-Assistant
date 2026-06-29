@@ -25,10 +25,19 @@ szkript nem módosít adatot és nem tölt le modellt.
 
 ## Dokumentum importálása a tudásbázisba
 
-Az `import_document.py` egy helyi `.txt`, `.md` vagy `.markdown` fájlt tölt be,
-feldarabolja, majd PostgreSQL-be menti a dokumentumot és a chunkokat.
+A `kelvin-import-document` parancs egy helyi `.txt`, `.md` vagy `.markdown`
+fájlt tölt be, feldarabolja, majd PostgreSQL-be menti a dokumentumot és a
+chunkokat.
 
 Példa:
+
+```powershell
+uv run kelvin-import-document `
+  --collection manual `
+  docs/installation.md
+```
+
+Régi, közvetlen scriptes futtatásra továbbra is van kompatibilitási wrapper:
 
 ```powershell
 uv run python scripts/import_document.py `
