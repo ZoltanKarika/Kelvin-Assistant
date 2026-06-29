@@ -4,13 +4,81 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Kelvin Assistant</title>
+    <meta
+      name="description"
+      content="Kelvin Assistant – helyben futó, offline AI asszisztens."
+    >
     <link rel="stylesheet" href="/static/styles.css">
     <script type="module" src="/static/app.js"></script>
   </head>
   <body>
-    <main>
-      <h1>Kelvin Assistant</h1>
-      <p>A helyi AI asszisztens felülete készül.</p>
-    </main>
+    <div class="app-shell">
+      <header class="app-header">
+        <a class="brand" href="/ui" aria-label="Kelvin Assistant kezdőlap">
+          <span class="brand-mark" aria-hidden="true">K</span>
+          <span>
+            <strong>Kelvin</strong>
+            <small>Local intelligence</small>
+          </span>
+        </a>
+
+        <div class="header-actions">
+          <div class="runtime-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="runtime-status-text">Kapcsolódás…</span>
+          </div>
+          <button id="new-chat-button" class="secondary-button" type="button">
+            Új beszélgetés
+          </button>
+        </div>
+      </header>
+
+      <main class="chat-panel">
+        <section
+          id="messages"
+          class="messages"
+          aria-label="Beszélgetés"
+          aria-live="polite"
+        >
+          <div id="welcome" class="welcome">
+            <div class="welcome-mark" aria-hidden="true">K</div>
+            <p class="eyebrow">Teljesen helyben fut</p>
+            <h1>Miben gondolkodjunk együtt?</h1>
+            <p>
+              A beszélgetés az otthoni infrastruktúrádon marad.
+              Kelvin jelenleg a helyi Gemma modellt használja.
+            </p>
+          </div>
+        </section>
+
+        <div id="error-banner" class="error-banner" role="alert" hidden></div>
+
+        <form id="chat-form" class="composer">
+          <label class="visually-hidden" for="message-input">Üzenet</label>
+          <textarea
+            id="message-input"
+            name="message"
+            rows="1"
+            maxlength="32768"
+            placeholder="Írj egy üzenetet…"
+            autocomplete="off"
+            required
+          ></textarea>
+          <button
+            id="send-button"
+            class="send-button"
+            type="submit"
+            aria-label="Üzenet küldése"
+          >
+            <span>Küldés</span>
+            <span aria-hidden="true">↑</span>
+          </button>
+        </form>
+
+        <p class="composer-hint">
+          Enter: küldés · Shift + Enter: új sor
+        </p>
+      </main>
+    </div>
   </body>
 </html>

@@ -45,6 +45,9 @@ def test_ui_returns_bundled_html() -> None:
     assert "Kelvin Assistant" in response.text
     assert 'href="/static/styles.css"' in response.text
     assert 'src="/static/app.js"' in response.text
+    assert 'id="chat-form"' in response.text
+    assert 'id="message-input"' in response.text
+    assert 'id="new-chat-button"' in response.text
 
 
 def test_static_assets_are_available() -> None:
@@ -58,3 +61,5 @@ def test_static_assets_are_available() -> None:
     assert css_response.headers["content-type"].startswith("text/css")
     assert script_response.status_code == 200
     assert "javascript" in script_response.headers["content-type"]
+    assert 'fetch("/api/v1/chat"' in script_response.text
+    assert "textContent = body.message" in script_response.text
