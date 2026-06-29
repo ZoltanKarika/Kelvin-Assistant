@@ -87,14 +87,15 @@ Elkészült ezen az ágon:
 - többfordulós kontextusablak-kezelés;
 - párhuzamos sessionmódosítás kezelése;
 - stabil 404, 409, 422, 502 és 503 API-válaszok;
-- unit, API-szerződés és élő többfordulós modellteszt.
+- unit, API-szerződés és élő többfordulós modellteszt;
+- Ubuntu VM-telepítés és end-to-end többfordulós ellenőrzés;
+- elfogadott SSE streaming szerződés.
 
 Még szükséges:
 
 - tokenenkénti válaszstreamelés külön végponton;
 - stream megszakítása;
 - megszakított vagy hibás stream atomikus sessionkezelése;
-- VM-telepítés és end-to-end ellenőrzés;
 - v0.3 verzióemelés és mérföldkőlezárás.
 
 Elfogadási feltétel: új és meglévő sessionben is folytatható a beszélgetés,
