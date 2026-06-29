@@ -201,9 +201,9 @@ async function sendMessage(message) {
         ...(sessionId ? { session_id: sessionId } : {}),
       }),
     });
-    const body = await readResponseBody(response);
 
     if (!response.ok) {
+      const body = await readResponseBody(response);
       throw new Error(describeApiError(response.status, body.detail));
     }
 

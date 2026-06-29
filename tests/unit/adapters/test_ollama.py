@@ -216,6 +216,43 @@ def test_stream_chat_sends_structured_messages_and_yields_content() -> None:
     assert result == ["Szi", "a!"]
 
 
+def test_stream_chat_skips_empty_chunks_but_keeps_whitespace() -> None:
+    """The adapter hides empty Ollama chunks without dropping real whitespace."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            content=(
+                b'{"message":{"role":"assistant","content":""},"done":false}\n'
+                b'{"message":{"role":"assistant","content":"1"},"done":false}\n'
+                b'{"message":{"role":"assistant","content":"\\n"},"done":false}\n'
+                b'{"message":{"role":"assistant","content":""},"done":false}\n'
+                b'{"message":{"role":"assistant","content":"2"},"done":false}\n'
+                b'{"done":true}\n'
+            ),
+            request=request,
+        )
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_model="gemma4:test",
+        ollama_timeout=1.0,
+    )
+    provider = OllamaProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+    messages = (ChatMessage(role=ChatRole.USER, content="Szia!"),)
+
+    async def collect_chunks() -> list[str]:
+        return [chunk async for chunk in provider.stream_chat(messages)]
+
+    result = asyncio.run(collect_chunks())
+
+    assert result == ["1", "\n", "2"]
+
+
 def test_stream_chat_rejects_invalid_chunk() -> None:
     """Streaming chat rejects chunks without text content."""
 

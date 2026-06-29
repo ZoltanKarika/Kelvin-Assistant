@@ -116,7 +116,7 @@ class OllamaProvider(LLMProvider):
                         if not line:
                             continue
                         chunk = self._parse_stream_line(line)
-                        if chunk is not None:
+                        if chunk:
                             yield chunk
         except httpx2.RequestError as exc:
             LOGGER.warning("Ollama runtime is unavailable: %s", exc)
