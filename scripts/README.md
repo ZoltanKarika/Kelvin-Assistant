@@ -26,8 +26,8 @@ szkript nem módosít adatot és nem tölt le modellt.
 ## Dokumentum importálása a tudásbázisba
 
 A `kelvin-import-document` parancs egy helyi `.txt`, `.md` vagy `.markdown`
-fájlt tölt be, feldarabolja, majd PostgreSQL-be menti a dokumentumot és a
-chunkokat.
+fájlt tölt be, feldarabolja, PostgreSQL-be menti a dokumentumot és a chunkokat,
+majd Ollama embeddinget készít és eltárolja a `knowledge_embeddings` táblában.
 
 Példa:
 
@@ -48,6 +48,8 @@ uv run python scripts/import_document.py `
 Fontos:
 
 - szükséges hozzá a `KELVIN_DATABASE_URL` beállítás;
+- szükséges hozzá futó Ollama és telepített embedding modell;
+- alapértelmezett embedding modell: `nomic-embed-text`;
 - a PostgreSQL sémának már léteznie kell;
-- ugyanazt a dokumentumot újrafuttatva a chunkok cserélődnek, nem duplikálódnak;
-- embeddinget még nem készít, ez egy későbbi v0.4 lépés.
+- ugyanazt a dokumentumot újrafuttatva a chunkok és embeddingek frissülnek, nem
+  duplikálódnak.

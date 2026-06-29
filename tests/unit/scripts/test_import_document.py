@@ -13,7 +13,10 @@ from kelvin_assistant.application.knowledge import (
     KnowledgeIngestionService,
 )
 from kelvin_assistant.cli import import_document
-from kelvin_assistant.ports.knowledge import StoredKnowledgeDocument
+from kelvin_assistant.ports.knowledge import (
+    StoredKnowledgeDocument,
+    StoredKnowledgeEmbeddings,
+)
 
 DOCUMENT_ID = UUID("22222222-2222-2222-2222-222222222222")
 
@@ -115,5 +118,11 @@ class FakeKnowledgeIngestionService:
                 document_id=DOCUMENT_ID,
                 chunk_count=2,
                 content_hash="a" * 64,
+            ),
+            stored_embeddings=StoredKnowledgeEmbeddings(
+                source_uri="file:///notes.md",
+                embedding_model="nomic-embed-text",
+                embedding_count=2,
+                embedding_dimension=768,
             ),
         )

@@ -5,9 +5,12 @@ from pathlib import Path
 
 from kelvin_assistant.domain.knowledge import KnowledgeChunk, KnowledgeDocument
 from kelvin_assistant.ports.documents import DocumentChunker, DocumentLoader
+from kelvin_assistant.ports.embeddings import EmbeddingProvider
 from kelvin_assistant.ports.knowledge import (
+    ChunkEmbedding,
     KnowledgeRepository,
     StoredKnowledgeDocument,
+    StoredKnowledgeEmbeddings,
 )
 
 
@@ -18,6 +21,7 @@ class KnowledgeIngestionResult:
     source_uri: str
     collection_name: str
     stored_document: StoredKnowledgeDocument
+    stored_embeddings: StoredKnowledgeEmbeddings | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +31,8 @@ class KnowledgeIngestionService:
     loader: DocumentLoader
     chunker: DocumentChunker
     repository: KnowledgeRepository
+    embedding_provider: EmbeddingProvider | None = None
+    embedding_model: str | None = None
 
     async def ingest_file(
         self,
@@ -48,11 +54,47 @@ class KnowledgeIngestionService:
             document,
             chunks,
         )
+        stored_embeddings = await self._store_embeddings(
+            normalized_collection_name,
+            document,
+            chunks,
+        )
 
         return KnowledgeIngestionResult(
             source_uri=document.source_uri,
             collection_name=normalized_collection_name,
             stored_document=stored_document,
+            stored_embeddings=stored_embeddings,
+        )
+
+    async def _store_embeddings(
+        self,
+        collection_name: str,
+        document: KnowledgeDocument,
+        chunks: tuple[KnowledgeChunk, ...],
+    ) -> StoredKnowledgeEmbeddings | None:
+        """Create and store embeddings when an embedding provider is configured."""
+
+        if self.embedding_provider is None:
+            return None
+        if self.embedding_model is None or not self.embedding_model.strip():
+            msg = "Embedding model must be configured when embeddings are enabled"
+            raise ValueError(msg)
+
+        embeddings: list[ChunkEmbedding] = []
+        for chunk in chunks:
+            embeddings.append(
+                ChunkEmbedding(
+                    chunk_index=chunk.chunk_index,
+                    embedding=await self.embedding_provider.embed_text(chunk.content),
+                )
+            )
+
+        return await self.repository.save_embeddings(
+            collection_name,
+            document.source_uri,
+            self.embedding_model.strip(),
+            tuple(embeddings),
         )
 
 

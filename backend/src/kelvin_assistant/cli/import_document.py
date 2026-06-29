@@ -9,14 +9,17 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from kelvin_assistant.adapters.local_documents import LocalTextDocumentLoader
+from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider
 from kelvin_assistant.adapters.postgres_knowledge import PostgresKnowledgeRepository
 from kelvin_assistant.application.knowledge import (
     KnowledgeIngestionResult,
     KnowledgeIngestionService,
     ParagraphChunker,
 )
+from kelvin_assistant.config.settings import get_settings
 from kelvin_assistant.domain.knowledge import KnowledgeDocumentError
 from kelvin_assistant.ports.documents import DocumentLoaderError
+from kelvin_assistant.ports.embeddings import EmbeddingProviderError
 from kelvin_assistant.ports.knowledge import KnowledgeRepositoryError
 
 LOGGER = logging.getLogger(__name__)
@@ -50,10 +53,13 @@ def build_parser() -> argparse.ArgumentParser:
 def build_service(max_characters: int) -> KnowledgeIngestionService:
     """Create the default ingestion service for local document imports."""
 
+    settings = get_settings()
     return KnowledgeIngestionService(
         loader=LocalTextDocumentLoader(),
         chunker=ParagraphChunker(max_characters=max_characters),
         repository=PostgresKnowledgeRepository(),
+        embedding_provider=OllamaEmbeddingProvider(settings=settings),
+        embedding_model=settings.ollama_embedding_model,
     )
 
 
@@ -87,6 +93,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (
         ValueError,
         DocumentLoaderError,
+        EmbeddingProviderError,
         KnowledgeDocumentError,
         KnowledgeRepositoryError,
     ) as exc:
@@ -100,4 +107,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         result.stored_document.document_id,
         result.stored_document.chunk_count,
     )
+    if result.stored_embeddings is not None:
+        LOGGER.info(
+            "Stored %s embeddings with model '%s' and dimension %s",
+            result.stored_embeddings.embedding_count,
+            result.stored_embeddings.embedding_model,
+            result.stored_embeddings.embedding_dimension,
+        )
     return 0
