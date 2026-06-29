@@ -24,6 +24,7 @@ class ChatService:
         llm_provider: LLMProvider,
         session_store: SessionStore,
         history_turn_limit: int = 10,
+        system_prompt: str | None = None,
     ) -> None:
         if history_turn_limit <= 0:
             msg = "history_turn_limit must be positive"
@@ -31,6 +32,11 @@ class ChatService:
         self._llm_provider = llm_provider
         self._session_store = session_store
         self._history_message_limit = history_turn_limit * 2
+        self._system_message = (
+            ChatMessage(role=ChatRole.SYSTEM, content=system_prompt)
+            if system_prompt is not None
+            else None
+        )
 
     async def send_message(
         self,
@@ -47,9 +53,14 @@ class ChatService:
             is_new_session = False
             session = await self._session_store.get(session_id)
 
-        context = (
+        conversation_context = (
             *session.messages[-self._history_message_limit :],
             user_message,
+        )
+        context = (
+            (self._system_message, *conversation_context)
+            if self._system_message is not None
+            else conversation_context
         )
         assistant_content = await self._llm_provider.chat(context)
         updated_session = session.append_turn(

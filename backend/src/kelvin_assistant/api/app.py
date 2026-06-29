@@ -33,6 +33,7 @@ def create_app(
     active_chat_service = ChatService(
         llm_provider=active_llm_provider,
         session_store=active_session_store,
+        system_prompt=active_settings.system_prompt,
     )
     configure_logging(active_settings)
 
