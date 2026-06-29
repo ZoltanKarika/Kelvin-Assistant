@@ -1,5 +1,6 @@
-"""Application service for non-streaming chat turns."""
+"""Application service for chat turns."""
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -14,6 +15,14 @@ class ChatResult:
 
     session_id: UUID
     message: str
+
+
+@dataclass(frozen=True, slots=True)
+class ChatStreamResult:
+    """Result returned before a streaming chat turn starts emitting text."""
+
+    session_id: UUID
+    chunks: AsyncIterator[str]
 
 
 class ChatService:
@@ -80,3 +89,50 @@ class ChatService:
             session_id=updated_session.id,
             message=updated_session.messages[-1].content,
         )
+
+    async def stream_message(
+        self,
+        message: str,
+        session_id: UUID | None = None,
+    ) -> ChatStreamResult:
+        """Stream and persist one complete conversation turn."""
+
+        user_message = ChatMessage(role=ChatRole.USER, content=message)
+        if session_id is None:
+            is_new_session = True
+            session = ChatSession.create()
+        else:
+            is_new_session = False
+            session = await self._session_store.get(session_id)
+
+        conversation_context = (
+            *session.messages[-self._history_message_limit :],
+            user_message,
+        )
+        context = (
+            (self._system_message, *conversation_context)
+            if self._system_message is not None
+            else conversation_context
+        )
+
+        async def chunks() -> AsyncIterator[str]:
+            assistant_chunks: list[str] = []
+            async for chunk in self._llm_provider.stream_chat(context):
+                assistant_chunks.append(chunk)
+                yield chunk
+
+            assistant_content = "".join(assistant_chunks)
+            updated_session = session.append_turn(
+                user_content=user_message.content,
+                assistant_content=assistant_content,
+            )
+
+            if is_new_session:
+                await self._session_store.add(updated_session)
+            else:
+                await self._session_store.update(
+                    updated_session,
+                    expected_version=session.version,
+                )
+
+        return ChatStreamResult(session_id=session.id, chunks=chunks())

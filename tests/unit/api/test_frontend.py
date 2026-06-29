@@ -1,6 +1,6 @@
 """Tests for the bundled browser interface."""
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 
 from fastapi.testclient import TestClient
 
@@ -21,6 +21,11 @@ class StubLLMProvider:
         """Return a deterministic chat response."""
 
         return str(len(messages))
+
+    async def stream_chat(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
+        """Return a deterministic streaming chat response."""
+
+        yield str(len(messages))
 
     async def check_readiness(self) -> None:
         """Report the provider as ready."""
@@ -61,5 +66,5 @@ def test_static_assets_are_available() -> None:
     assert css_response.headers["content-type"].startswith("text/css")
     assert script_response.status_code == 200
     assert "javascript" in script_response.headers["content-type"]
-    assert 'fetch("/api/v1/chat"' in script_response.text
-    assert "textContent = body.message" in script_response.text
+    assert 'fetch("/api/v1/chat/stream"' in script_response.text
+    assert "readStreamingResponse" in script_response.text

@@ -1,7 +1,8 @@
 """Ollama language model adapter."""
 
+import json
 import logging
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 
 import httpx2
 
@@ -88,6 +89,45 @@ class OllamaProvider(LLMProvider):
 
         return result
 
+    async def stream_chat(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
+        """Stream a response from structured conversation messages."""
+
+        payload: dict[str, object] = {
+            "model": self.settings.ollama_model,
+            "messages": [
+                {
+                    "role": message.role.value,
+                    "content": message.content,
+                }
+                for message in messages
+            ],
+            "stream": True,
+        }
+
+        try:
+            async with httpx2.AsyncClient(
+                base_url=self.settings.ollama_base_url,
+                timeout=self.settings.ollama_timeout,
+                transport=self._transport,
+            ) as client:
+                async with client.stream("POST", "/api/chat", json=payload) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        chunk = self._parse_stream_line(line)
+                        if chunk is not None:
+                            yield chunk
+        except httpx2.RequestError as exc:
+            LOGGER.warning("Ollama runtime is unavailable: %s", exc)
+            raise LLMUnavailableError("Ollama runtime is unavailable") from exc
+        except httpx2.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            LOGGER.warning("Ollama returned HTTP status %d", status_code)
+            raise LLMResponseError(
+                f"Ollama returned HTTP status {status_code}"
+            ) from exc
+
     async def check_readiness(self) -> None:
         """Check that Ollama is reachable and the configured model exists."""
 
@@ -154,3 +194,24 @@ class OllamaProvider(LLMProvider):
             ) from exc
 
         return response
+
+    def _parse_stream_line(self, line: str) -> str | None:
+        """Parse one Ollama chat streaming JSON line into optional text."""
+
+        try:
+            data = json.loads(line)
+            if data.get("done") is True:
+                return None
+            message = data["message"]
+            content = message["content"]
+        except (KeyError, TypeError, ValueError) as exc:
+            LOGGER.warning("Ollama returned an invalid streaming chat chunk")
+            raise LLMResponseError(
+                "Ollama returned an invalid streaming chat chunk"
+            ) from exc
+
+        if not isinstance(content, str):
+            LOGGER.warning("Ollama streaming chat chunk is not text")
+            raise LLMResponseError("Ollama returned an invalid streaming chat chunk")
+
+        return content

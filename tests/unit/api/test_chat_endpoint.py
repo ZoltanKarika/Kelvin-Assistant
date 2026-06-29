@@ -1,7 +1,7 @@
 """API contract tests for the non-streaming chat endpoint."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from uuid import UUID, uuid4
 
 import pytest
@@ -43,6 +43,15 @@ class StubLLMProvider:
         if self._error is not None:
             raise self._error
         return self._responses.pop(0)
+
+    async def stream_chat(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
+        """Record context and stream the next configured response."""
+
+        self.chat_calls.append(tuple(messages))
+        if self._error is not None:
+            raise self._error
+        for chunk in self._responses.pop(0).split("|"):
+            yield chunk
 
     async def check_readiness(self) -> None:
         """Report the stub provider as ready."""
@@ -178,3 +187,48 @@ def test_chat_returns_409_for_concurrent_update(settings: Settings) -> None:
     assert response.json() == {
         "detail": f"Chat session changed concurrently: {initial.id}"
     }
+
+
+def test_stream_chat_returns_sse_events(settings: Settings) -> None:
+    """The streaming endpoint emits session, token, and done events."""
+
+    provider = StubLLMProvider(responses=["Szi|a!"])
+    with TestClient(create_app(settings, llm_provider=provider)) as client:
+        response = client.post("/api/v1/chat/stream", json={"message": "Szia!"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    body = response.text
+    assert "event: session" in body
+    assert '"model": "gemma4:test"' in body
+    assert 'event: token\ndata: {"text": "Szi"}' in body
+    assert 'event: token\ndata: {"text": "a!"}' in body
+    assert "event: done" in body
+
+
+def test_stream_chat_returns_404_for_unknown_session(settings: Settings) -> None:
+    """Unknown sessions are rejected before streaming starts."""
+
+    provider = StubLLMProvider(responses=["Nem hasznÃ¡lhatÃ³"])
+    session_id = uuid4()
+    with TestClient(create_app(settings, llm_provider=provider)) as client:
+        response = client.post(
+            "/api/v1/chat/stream",
+            json={"message": "Szia!", "session_id": str(session_id)},
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": f"Chat session not found: {session_id}"}
+
+
+def test_stream_chat_emits_error_event_for_provider_failure(
+    settings: Settings,
+) -> None:
+    """Provider failures during streaming become SSE error events."""
+
+    provider = StubLLMProvider(error=LLMUnavailableError("Ollama nem elÃ©rhetÅ‘"))
+    with TestClient(create_app(settings, llm_provider=provider)) as client:
+        response = client.post("/api/v1/chat/stream", json={"message": "Szia!"})
+
+    assert response.status_code == 200
+    assert 'event: error\ndata: {"detail": "Ollama nem elÃ©rhetÅ‘"' in response.text

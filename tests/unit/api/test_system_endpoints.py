@@ -1,6 +1,6 @@
 """Tests for the public system endpoints."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import AsyncIterator, Iterator, Sequence
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,6 +29,11 @@ class StubLLMProvider:
         """Return a deterministic chat response."""
 
         return f"chat messages: {len(messages)}"
+
+    async def stream_chat(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
+        """Return a deterministic streaming chat response."""
+
+        yield f"chat messages: {len(messages)}"
 
     async def check_readiness(self) -> None:
         """Raise the configured readiness error, if any."""

@@ -1,8 +1,12 @@
-"""Versioned non-streaming chat API routes."""
+"""Versioned chat API routes."""
 
+import json
+from collections.abc import AsyncIterator
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from kelvin_assistant.api.dependencies import (
     get_chat_service,
@@ -74,3 +78,72 @@ async def create_chat_turn(
         message=result.message,
         model=settings.ollama_model,
     )
+
+
+@router.post(
+    "/chat/stream",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {
+            "content": {"text/event-stream": {}},
+            "description": "Server-sent events with streamed assistant text.",
+        },
+        status.HTTP_404_NOT_FOUND: {"description": "Session not found."},
+        422: {"description": "Invalid request."},
+    },
+)
+async def stream_chat_turn(
+    request: ChatRequest,
+    settings: RuntimeSettings,
+    chat_service: RuntimeChatService,
+) -> StreamingResponse:
+    """Stream one conversation turn as server-sent events."""
+
+    try:
+        result = await chat_service.stream_message(
+            message=request.message,
+            session_id=request.session_id,
+        )
+    except SessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return StreamingResponse(
+        _stream_chat_events(result.session_id, result.chunks, settings.ollama_model),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse_event(event: str, data: dict[str, object]) -> str:
+    """Format a JSON server-sent event."""
+
+    payload = json.dumps(data, ensure_ascii=False)
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+async def _stream_chat_events(
+    session_id: UUID,
+    chunks: AsyncIterator[str],
+    model: str,
+) -> AsyncIterator[str]:
+    """Convert streamed model chunks into the public SSE contract."""
+
+    yield _sse_event(
+        "session",
+        {
+            "session_id": str(session_id),
+            "model": model,
+        },
+    )
+    try:
+        async for chunk in chunks:
+            yield _sse_event("token", {"text": chunk})
+    except (SessionConflictError, LLMUnavailableError) as exc:
+        yield _sse_event("error", {"detail": str(exc), "retryable": True})
+    except (LLMResponseError, InvalidChatMessageError) as exc:
+        yield _sse_event("error", {"detail": str(exc), "retryable": False})
+    else:
+        yield _sse_event("done", {})
