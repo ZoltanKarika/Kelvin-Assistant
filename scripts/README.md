@@ -22,3 +22,23 @@ uv run python scripts/check_ollama.py
 Siker esetén naplózza a rövid modellválaszt és nulla kilépési kódot ad.
 Kapcsolati, HTTP- vagy válaszformátum-hibánál nem nulla kóddal áll le. A
 szkript nem módosít adatot és nem tölt le modellt.
+
+## Dokumentum importálása a tudásbázisba
+
+Az `import_document.py` egy helyi `.txt`, `.md` vagy `.markdown` fájlt tölt be,
+feldarabolja, majd PostgreSQL-be menti a dokumentumot és a chunkokat.
+
+Példa:
+
+```powershell
+uv run python scripts/import_document.py `
+  --collection manual `
+  docs/installation.md
+```
+
+Fontos:
+
+- szükséges hozzá a `KELVIN_DATABASE_URL` beállítás;
+- a PostgreSQL sémának már léteznie kell;
+- ugyanazt a dokumentumot újrafuttatva a chunkok cserélődnek, nem duplikálódnak;
+- embeddinget még nem készít, ez egy későbbi v0.4 lépés.
