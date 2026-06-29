@@ -1,10 +1,13 @@
 """FastAPI application factory."""
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
 from kelvin_assistant.adapters.ollama import OllamaProvider
 from kelvin_assistant.api.chat_routes import router as chat_router
+from kelvin_assistant.api.frontend_routes import FRONTEND_DIR
+from kelvin_assistant.api.frontend_routes import router as frontend_router
 from kelvin_assistant.api.routes import router
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings, get_settings
@@ -30,6 +33,7 @@ def create_app(
     active_chat_service = ChatService(
         llm_provider=active_llm_provider,
         session_store=active_session_store,
+        system_prompt=active_settings.system_prompt,
     )
     configure_logging(active_settings)
 
@@ -43,6 +47,12 @@ def create_app(
     app.state.settings = active_settings
     app.state.llm_provider = active_llm_provider
     app.state.chat_service = active_chat_service
+    app.mount(
+        "/static",
+        StaticFiles(directory=FRONTEND_DIR),
+        name="static",
+    )
     app.include_router(router)
     app.include_router(chat_router)
+    app.include_router(frontend_router)
     return app

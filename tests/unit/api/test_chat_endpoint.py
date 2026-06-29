@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
 from kelvin_assistant.api.app import create_app
 from kelvin_assistant.config.settings import Settings
-from kelvin_assistant.domain.chat import ChatMessage, ChatSession
+from kelvin_assistant.domain.chat import ChatMessage, ChatRole, ChatSession
 from kelvin_assistant.ports.llm import (
     LLMProviderError,
     LLMResponseError,
@@ -86,6 +86,7 @@ def test_chat_creates_new_session(settings: Settings) -> None:
     assert UUID(body["session_id"])
     assert body["message"] == "Szia!"
     assert body["model"] == "gemma4:test"
+    assert provider.chat_calls[0][0].role is ChatRole.SYSTEM
 
 
 def test_chat_continues_existing_session(settings: Settings) -> None:
@@ -103,7 +104,7 @@ def test_chat_continues_existing_session(settings: Settings) -> None:
 
     assert second.status_code == 200
     assert second.json()["session_id"] == session_id
-    assert len(provider.chat_calls[1]) == 3
+    assert len(provider.chat_calls[1]) == 4
 
 
 def test_chat_rejects_whitespace_only_message(settings: Settings) -> None:

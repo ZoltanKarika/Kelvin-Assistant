@@ -16,6 +16,7 @@ class InvalidChatMessageError(ValueError):
 class ChatRole(StrEnum):
     """Roles supported by the conversation domain."""
 
+    SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
 

@@ -8,6 +8,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from kelvin_assistant.version import APP_VERSION
 
+DEFAULT_SYSTEM_PROMPT = (
+    "Te Kelvin vagy, egy helyben futó személyes AI-asszisztens. "
+    "Alapértelmezetten természetes, nyelvtanilag helyes magyar nyelven "
+    "válaszolj. Kerüld a szó szerinti angol fordulatokat és a szükségtelen "
+    "idegen szavakat. Légy világos, tényszerű és segítőkész. Ha a felhasználó "
+    "más nyelven kérdez, vagy más nyelvű választ kér, válaszolj azon a nyelven. "
+    "Ne állítsd, hogy elvégeztél olyan műveletet, amelyhez nincs eszközöd."
+)
+
 
 class Settings(BaseSettings):
     """Runtime settings for the Kelvin Assistant API."""
@@ -30,6 +39,7 @@ class Settings(BaseSettings):
     ollama_model: str = Field(default="gemma4:e4b")
     ollama_timeout: float = Field(default=120.0, gt=0)
     llm_provider: Literal["ollama"] = Field(default="ollama")
+    system_prompt: str = Field(default=DEFAULT_SYSTEM_PROMPT, min_length=1)
 
 
 @lru_cache(maxsize=1)

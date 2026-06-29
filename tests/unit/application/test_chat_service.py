@@ -121,6 +121,37 @@ def test_send_message_limits_model_history_without_deleting_session() -> None:
     asyncio.run(scenario())
 
 
+def test_send_message_prepends_system_prompt_without_persisting_it() -> None:
+    """The configured persona reaches the model but not session history."""
+
+    async def scenario() -> None:
+        store = InMemorySessionStore()
+        provider = StubLLMProvider(responses=["Természetesen!"])
+        service = ChatService(
+            provider,
+            store,
+            system_prompt="Mindig természetes magyar nyelven válaszolj.",
+        )
+
+        result = await service.send_message("Itt vagy?")
+
+        assert provider.chat_calls == [
+            (
+                ChatMessage(
+                    role=ChatRole.SYSTEM,
+                    content="Mindig természetes magyar nyelven válaszolj.",
+                ),
+                ChatMessage(role=ChatRole.USER, content="Itt vagy?"),
+            )
+        ]
+        stored_session = await store.get(result.session_id)
+        assert all(
+            message.role is not ChatRole.SYSTEM for message in stored_session.messages
+        )
+
+    asyncio.run(scenario())
+
+
 def test_send_message_does_not_persist_failed_model_turn() -> None:
     """A provider failure leaves existing session state unchanged."""
 
