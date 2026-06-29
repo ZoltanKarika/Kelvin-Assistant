@@ -1,0 +1,71 @@
+"""Application service for non-streaming chat turns."""
+
+from dataclasses import dataclass
+from uuid import UUID
+
+from kelvin_assistant.domain.chat import ChatMessage, ChatRole, ChatSession
+from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.ports.sessions import SessionStore
+
+
+@dataclass(frozen=True, slots=True)
+class ChatResult:
+    """Result returned after a complete chat turn is persisted."""
+
+    session_id: UUID
+    message: str
+
+
+class ChatService:
+    """Coordinate chat context, model invocation, and session persistence."""
+
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        session_store: SessionStore,
+        history_turn_limit: int = 10,
+    ) -> None:
+        if history_turn_limit <= 0:
+            msg = "history_turn_limit must be positive"
+            raise ValueError(msg)
+        self._llm_provider = llm_provider
+        self._session_store = session_store
+        self._history_message_limit = history_turn_limit * 2
+
+    async def send_message(
+        self,
+        message: str,
+        session_id: UUID | None = None,
+    ) -> ChatResult:
+        """Generate and atomically persist one complete conversation turn."""
+
+        user_message = ChatMessage(role=ChatRole.USER, content=message)
+        if session_id is None:
+            is_new_session = True
+            session = ChatSession.create()
+        else:
+            is_new_session = False
+            session = await self._session_store.get(session_id)
+
+        context = (
+            *session.messages[-self._history_message_limit :],
+            user_message,
+        )
+        assistant_content = await self._llm_provider.chat(context)
+        updated_session = session.append_turn(
+            user_content=user_message.content,
+            assistant_content=assistant_content,
+        )
+
+        if is_new_session:
+            await self._session_store.add(updated_session)
+        else:
+            await self._session_store.update(
+                updated_session,
+                expected_version=session.version,
+            )
+
+        return ChatResult(
+            session_id=updated_session.id,
+            message=updated_session.messages[-1].content,
+        )

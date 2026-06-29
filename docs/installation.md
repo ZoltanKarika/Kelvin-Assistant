@@ -11,7 +11,8 @@ A GitHub Actions ugyanezt a projektet Ubuntu 24.04 és Python 3.12 alatt
 ellenőrzi. A Windows hoston futó Ollama adaptere és helyi integrációs
 ellenőrzése működik. A VM és a host közötti, tűzfallal korlátozott Ollama
 kapcsolat, a readiness végpont és a GPU-gyorsított generálás is ellenőrzött.
-Az offline csomagimport még külön üzemeltetési lépés.
+A verziózott, nem streamelt chat API többfordulós memóriabeli sessionöket
+kezel. Az offline csomagimport még külön üzemeltetési lépés.
 
 ## Célkörnyezet
 
@@ -136,6 +137,60 @@ nem állnak rendelkezésre, a végpont HTTP 503 választ ad.
 
 Az interaktív Swagger UI a `http://127.0.0.1:8000/docs` címen érhető el.
 A szerver `Ctrl+C` billentyűkombinációval állítható le.
+
+## Nem streamelt chat API
+
+Az első kérés sessionazonosító nélkül új beszélgetést hoz létre:
+
+```powershell
+$firstBody = @{
+    message = "Jegyezd meg ezt a szót: boróka."
+} | ConvertTo-Json
+
+$first = Invoke-RestMethod `
+    -Method Post `
+    -Uri http://127.0.0.1:8000/api/v1/chat `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([Text.Encoding]::UTF8.GetBytes($firstBody))
+
+$first
+```
+
+A következő kérés visszaküldi a kapott `session_id` értéket:
+
+```powershell
+$secondBody = @{
+    message = "Melyik szót kértem, hogy jegyezd meg?"
+    session_id = $first.session_id
+} | ConvertTo-Json
+
+$second = Invoke-RestMethod `
+    -Method Post `
+    -Uri http://127.0.0.1:8000/api/v1/chat `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([Text.Encoding]::UTF8.GetBytes($secondBody))
+
+$second
+```
+
+A kézi UTF-8 byte-konverzió a Windows PowerShell 5.1 hibás ékezetmegjelenítési
+és request-kódolási eseteit kerüli el. PowerShell 7 alatt általában a JSON
+szöveg közvetlen átadása is megfelelő.
+
+Az endpoint fontosabb válaszai:
+
+| HTTP | Jelentés |
+| --- | --- |
+| `200` | A teljes forduló elkészült és mentésre került |
+| `404` | A megadott session nem létezik |
+| `409` | A sessiont egy másik kérés időközben módosította |
+| `422` | A kérés vagy az üzenet formátuma érvénytelen |
+| `502` | Az LLM használhatatlan választ adott |
+| `503` | Az Ollama runtime nem érhető el |
+
+A sessiontár jelenleg folyamatmemóriában él. Backend- vagy VM-újraindításkor
+a beszélgetések elvesznek; a későbbi perzisztens adapter ezt a `SessionStore`
+port mögött, az API módosítása nélkül válthatja fel.
 
 ## Fejlesztői ellenőrzések
 

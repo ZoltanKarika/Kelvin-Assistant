@@ -8,6 +8,7 @@ import pytest
 
 from kelvin_assistant.adapters.ollama import OllamaProvider
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.domain.chat import ChatMessage, ChatRole
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
 
 
@@ -125,6 +126,85 @@ def test_generate_rejects_invalid_response(payload: dict[str, object]) -> None:
         match="Ollama returned an invalid response",
     ):
         asyncio.run(provider.generate("Működsz?"))
+
+
+def test_chat_sends_structured_messages_and_returns_content() -> None:
+    """The chat operation preserves message roles at the Ollama boundary."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "POST"
+        assert request.url == httpx2.URL("http://ollama.test:11434/api/chat")
+        assert json.loads(request.content) == {
+            "model": "gemma4:test",
+            "messages": [
+                {"role": "user", "content": "Szia!"},
+                {"role": "assistant", "content": "Szia!"},
+                {"role": "user", "content": "Emlékszel rám?"},
+            ],
+            "stream": False,
+        }
+        return httpx2.Response(
+            200,
+            json={
+                "message": {
+                    "role": "assistant",
+                    "content": "Igen.",
+                }
+            },
+            request=request,
+        )
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_model="gemma4:test",
+        ollama_timeout=1.0,
+    )
+    provider = OllamaProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+    messages = (
+        ChatMessage(role=ChatRole.USER, content="Szia!"),
+        ChatMessage(role=ChatRole.ASSISTANT, content="Szia!"),
+        ChatMessage(role=ChatRole.USER, content="Emlékszel rám?"),
+    )
+
+    result = asyncio.run(provider.chat(messages))
+
+    assert result == "Igen."
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"done": True},
+        {"message": {"content": 42}},
+    ],
+)
+def test_chat_rejects_invalid_response(payload: dict[str, object]) -> None:
+    """The chat operation rejects missing or non-text response content."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=payload, request=request)
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_model="gemma4:test",
+        ollama_timeout=1.0,
+    )
+    provider = OllamaProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+    messages = (ChatMessage(role=ChatRole.USER, content="Szia!"),)
+
+    with pytest.raises(
+        LLMResponseError,
+        match="Ollama returned an invalid chat response",
+    ):
+        asyncio.run(provider.chat(messages))
 
 
 def test_readiness_accepts_installed_configured_model() -> None:

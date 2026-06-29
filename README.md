@@ -7,11 +7,11 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt **v0.2 Runtime** mérföldköve elkészült; a következő fejlesztési
-szakasz a v0.3 Conversation. A FastAPI backend Windowson fejlesztői
-folyamatként, a saját Ubuntu Server VM-en pedig automatikusan induló
-`systemd` szolgáltatásként fut. Az ellenőrzések helyileg, a VM-en és GitHub
-Actions alatt Ubuntu 24.04 / Python 3.12 környezetben is sikeresek.
+A projekt a **v0.3 Conversation** mérföldkő fejlesztésében jár. A FastAPI
+backend Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
+automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések
+helyileg, a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12
+környezetben is sikeresek.
 
 Jelenleg működik:
 
@@ -29,9 +29,12 @@ Jelenleg működik:
 - konfigurálható modell, runtime URL és timeout;
 - egységes Ollama hibák és modell-readiness ellenőrzés;
 - hálózatfüggetlen unit tesztek és opcionális élő Ollama-próba;
-- Ubuntu VM-ből elért Windows Ollama és 100% GPU-n futó Gemma 4 E4B.
+- Ubuntu VM-ből elért Windows Ollama és 100% GPU-n futó Gemma 4 E4B;
+- verziózott `POST /api/v1/chat` végpont;
+- UUID-alapú, többfordulós memóriabeli sessionkezelés;
+- külön chat alkalmazási service és cserélhető sessiontár.
 
-A chat API, streaming, RAG, memória és agentfunkciók még nincsenek
+A válaszstreamelés, RAG, hosszú távú memória és agentfunkciók még nincsenek
 integrálva. A DHCP-foglalás, az offline csomag-előkészítés és a mentési
 eljárás még hátralévő üzemeltetési feladat.
 
@@ -123,6 +126,22 @@ Invoke-RestMethod http://127.0.0.1:8000/ready
 Invoke-RestMethod http://127.0.0.1:8000/version
 ```
 
+Új chat session indítása PowerShellből:
+
+```powershell
+$body = @{ message = "Szia!" } | ConvertTo-Json
+$chat = Invoke-RestMethod `
+    -Method Post `
+    -Uri http://127.0.0.1:8000/api/v1/chat `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([Text.Encoding]::UTF8.GetBytes($body))
+$chat
+```
+
+A válasz `session_id` mezőjével a következő kérés ugyanabban a
+beszélgetésben folytatható. Részletes példa:
+[docs/installation.md](docs/installation.md).
+
 Opcionális élő Ollama-ellenőrzés:
 
 ```powershell
@@ -149,7 +168,7 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | --- | --- | --- |
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
-| v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
+| v0.3 Conversation | Chat API, streaming és sessionkezelés | Folyamatban |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |

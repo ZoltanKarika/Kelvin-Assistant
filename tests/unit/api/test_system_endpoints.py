@@ -1,12 +1,13 @@
 """Tests for the public system endpoints."""
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 
 import pytest
 from fastapi.testclient import TestClient
 
 from kelvin_assistant.api.app import create_app
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.domain.chat import ChatMessage
 from kelvin_assistant.ports.llm import (
     LLMProviderError,
     LLMUnavailableError,
@@ -23,6 +24,11 @@ class StubLLMProvider:
         """Return a deterministic generated response."""
 
         return f"generated: {prompt}"
+
+    async def chat(self, messages: Sequence[ChatMessage]) -> str:
+        """Return a deterministic chat response."""
+
+        return f"chat messages: {len(messages)}"
 
     async def check_readiness(self) -> None:
         """Raise the configured readiness error, if any."""

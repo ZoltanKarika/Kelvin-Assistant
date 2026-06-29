@@ -1,10 +1,12 @@
 """Ollama language model adapter."""
 
 import logging
+from collections.abc import Sequence
 
 import httpx2
 
 from kelvin_assistant.config.settings import Settings, get_settings
+from kelvin_assistant.domain.chat import ChatMessage
 from kelvin_assistant.ports.llm import (
     LLMProvider,
     LLMResponseError,
@@ -50,6 +52,39 @@ class OllamaProvider(LLMProvider):
         if not isinstance(result, str):
             LOGGER.warning("Ollama response field is not text")
             raise LLMResponseError("Ollama returned an invalid response")
+
+        return result
+
+    async def chat(self, messages: Sequence[ChatMessage]) -> str:
+        """Generate a response from structured conversation messages."""
+
+        response = await self._request(
+            "POST",
+            "/api/chat",
+            payload={
+                "model": self.settings.ollama_model,
+                "messages": [
+                    {
+                        "role": message.role.value,
+                        "content": message.content,
+                    }
+                    for message in messages
+                ],
+                "stream": False,
+            },
+        )
+
+        try:
+            data = response.json()
+            message = data["message"]
+            result = message["content"]
+        except (KeyError, TypeError, ValueError) as exc:
+            LOGGER.warning("Ollama returned an invalid chat response body")
+            raise LLMResponseError("Ollama returned an invalid chat response") from exc
+
+        if not isinstance(result, str):
+            LOGGER.warning("Ollama chat response field is not text")
+            raise LLMResponseError("Ollama returned an invalid chat response")
 
         return result
 
