@@ -12,6 +12,7 @@ from kelvin_assistant.adapters.postgres_knowledge import PostgresKnowledgeReposi
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.knowledge import KnowledgeChunk, KnowledgeDocument
 from kelvin_assistant.ports.knowledge import (
+    ChunkEmbedding,
     KnowledgeRepositoryConfigurationError,
     KnowledgeRepositoryUnavailableError,
 )
@@ -159,6 +160,126 @@ def test_save_document_upserts_document_and_replaces_chunks(
     )
 
 
+def test_save_embeddings_requires_database_url() -> None:
+    """The repository rejects missing database configuration for embeddings."""
+
+    repository = PostgresKnowledgeRepository(Settings(environment="test"))
+
+    with pytest.raises(KnowledgeRepositoryConfigurationError, match="Database URL"):
+        asyncio.run(
+            repository.save_embeddings(
+                "manual",
+                "manual://kelvin-notes",
+                "nomic-embed-text",
+                (_embedding(),),
+            )
+        )
+
+
+def test_save_embeddings_rejects_invalid_values() -> None:
+    """Embedding storage validates its input before touching PostgreSQL."""
+
+    repository = PostgresKnowledgeRepository(
+        Settings(
+            environment="test",
+            database_url="postgresql://kelvin:secret@127.0.0.1/db",
+        )
+    )
+
+    with pytest.raises(ValueError, match="Embedding dimensions"):
+        asyncio.run(
+            repository.save_embeddings(
+                "manual",
+                "manual://kelvin-notes",
+                "nomic-embed-text",
+                (
+                    ChunkEmbedding(chunk_index=0, embedding=(0.1, 0.2)),
+                    ChunkEmbedding(chunk_index=1, embedding=(0.1,)),
+                ),
+            )
+        )
+
+
+def test_save_embeddings_upserts_chunk_embeddings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The repository stores embeddings against existing chunk indexes."""
+
+    cursor = FakeCursor(rows=[])
+    connection = FakeConnection(cursor)
+    fake_psycopg = SimpleNamespace(
+        AsyncConnection=SimpleNamespace(
+            connect=AsyncConnect(connection),
+        )
+    )
+
+    real_import = builtins.__import__
+
+    def fake_import(
+        name: str,
+        globals_: dict[str, object] | None = None,
+        locals_: dict[str, object] | None = None,
+        fromlist: Sequence[str] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "psycopg":
+            return fake_psycopg
+        return real_import(name, globals_, locals_, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    repository = PostgresKnowledgeRepository(
+        Settings(
+            environment="test",
+            database_url="postgresql://kelvin:secret@127.0.0.1/db",
+            database_connect_timeout=2,
+        )
+    )
+
+    result = asyncio.run(
+        repository.save_embeddings(
+            " manual ",
+            " manual://kelvin-notes ",
+            " nomic-embed-text ",
+            (
+                ChunkEmbedding(chunk_index=0, embedding=(0.1, 0.2, 0.3)),
+                ChunkEmbedding(chunk_index=1, embedding=(0.4, 0.5, 0.6)),
+            ),
+        )
+    )
+
+    assert result.source_uri == "manual://kelvin-notes"
+    assert result.embedding_model == "nomic-embed-text"
+    assert result.embedding_count == 2
+    assert result.embedding_dimension == 3
+    assert fake_psycopg.AsyncConnection.connect.calls == [
+        {
+            "database_url": "postgresql://kelvin:secret@127.0.0.1/db",
+            "connect_timeout": 2,
+        }
+    ]
+    assert len(cursor.executed_many) == 1
+    assert "insert into knowledge_embeddings" in cursor.executed_many[0].sql
+    assert "from knowledge_chunks" in cursor.executed_many[0].sql
+    assert cursor.executed_many[0].params == [
+        (
+            "nomic-embed-text",
+            3,
+            "[0.1,0.2,0.3]",
+            "manual",
+            "manual://kelvin-notes",
+            0,
+        ),
+        (
+            "nomic-embed-text",
+            3,
+            "[0.4,0.5,0.6]",
+            "manual",
+            "manual://kelvin-notes",
+            1,
+        ),
+    ]
+
+
 def _document() -> KnowledgeDocument:
     return KnowledgeDocument(
         source_uri="manual://kelvin-notes",
@@ -176,6 +297,10 @@ def _chunk() -> KnowledgeChunk:
         content="Kelvin API production portja 8000.",
         metadata={"topic": "api"},
     )
+
+
+def _embedding() -> ChunkEmbedding:
+    return ChunkEmbedding(chunk_index=0, embedding=(0.1, 0.2, 0.3))
 
 
 class AsyncConnect:

@@ -9,7 +9,11 @@ import pytest
 
 from kelvin_assistant.application.knowledge import KnowledgeIngestionService
 from kelvin_assistant.domain.knowledge import KnowledgeChunk, KnowledgeDocument
-from kelvin_assistant.ports.knowledge import StoredKnowledgeDocument
+from kelvin_assistant.ports.knowledge import (
+    ChunkEmbedding,
+    StoredKnowledgeDocument,
+    StoredKnowledgeEmbeddings,
+)
 
 COLLECTION_ID = UUID("11111111-1111-1111-1111-111111111111")
 DOCUMENT_ID = UUID("22222222-2222-2222-2222-222222222222")
@@ -127,4 +131,18 @@ class FakeKnowledgeRepository:
             document_id=DOCUMENT_ID,
             chunk_count=len(chunks),
             content_hash="a" * 64,
+        )
+
+    async def save_embeddings(
+        self,
+        collection_name: str,
+        source_uri: str,
+        embedding_model: str,
+        embeddings: tuple[ChunkEmbedding, ...],
+    ) -> StoredKnowledgeEmbeddings:
+        return StoredKnowledgeEmbeddings(
+            source_uri=source_uri,
+            embedding_model=embedding_model,
+            embedding_count=len(embeddings),
+            embedding_dimension=len(embeddings[0].embedding) if embeddings else 0,
         )

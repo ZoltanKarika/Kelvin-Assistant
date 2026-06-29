@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     log_format: Literal["json", "console"] = "json"
     ollama_base_url: str = Field(default="http://localhost:11434")
     ollama_model: str = Field(default="gemma4:e4b")
+    ollama_embedding_model: str = Field(default="nomic-embed-text")
+    embedding_dimension: int = Field(default=768, gt=0)
     ollama_timeout: float = Field(default=120.0, gt=0)
     llm_provider: Literal["ollama"] = Field(default="ollama")
     system_prompt: str = Field(default=DEFAULT_SYSTEM_PROMPT, min_length=1)

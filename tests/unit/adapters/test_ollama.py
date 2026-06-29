@@ -6,9 +6,13 @@ import json
 import httpx2
 import pytest
 
-from kelvin_assistant.adapters.ollama import OllamaProvider
+from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider, OllamaProvider
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.chat import ChatMessage, ChatRole
+from kelvin_assistant.ports.embeddings import (
+    EmbeddingResponseError,
+    EmbeddingUnavailableError,
+)
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
 
 
@@ -376,3 +380,111 @@ def test_readiness_rejects_missing_configured_model() -> None:
         match="Configured Ollama model is not installed: gemma4:test",
     ):
         asyncio.run(provider.check_readiness())
+
+
+def test_embed_text_sends_expected_request_and_returns_embedding() -> None:
+    """The embedding adapter sends text to the configured embedding model."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "POST"
+        assert request.url == httpx2.URL("http://ollama.test:11434/api/embed")
+        assert json.loads(request.content) == {
+            "model": "nomic-embed-text:test",
+            "input": "Kelvin API",
+        }
+        return httpx2.Response(
+            200,
+            json={"embeddings": [[0.1, 0.2, 0.3]]},
+            request=request,
+        )
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_embedding_model="nomic-embed-text:test",
+        embedding_dimension=3,
+        ollama_timeout=1.0,
+    )
+    provider = OllamaEmbeddingProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    result = asyncio.run(provider.embed_text(" Kelvin API "))
+
+    assert result == (0.1, 0.2, 0.3)
+
+
+def test_embed_text_accepts_legacy_embedding_response() -> None:
+    """The embedding adapter accepts the legacy single-vector response shape."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json={"embedding": [0.1, 0.2, 0.3]},
+            request=request,
+        )
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_embedding_model="nomic-embed-text:test",
+        embedding_dimension=3,
+        ollama_timeout=1.0,
+    )
+    provider = OllamaEmbeddingProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    result = asyncio.run(provider.embed_text("Kelvin API"))
+
+    assert result == (0.1, 0.2, 0.3)
+
+
+def test_embed_text_rejects_dimension_mismatch() -> None:
+    """Embedding dimensions must match runtime configuration."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json={"embeddings": [[0.1, 0.2]]},
+            request=request,
+        )
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_embedding_model="nomic-embed-text:test",
+        embedding_dimension=3,
+        ollama_timeout=1.0,
+    )
+    provider = OllamaEmbeddingProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    with pytest.raises(EmbeddingResponseError, match="invalid embedding"):
+        asyncio.run(provider.embed_text("Kelvin API"))
+
+
+def test_embed_text_translates_connection_failure() -> None:
+    """The embedding adapter reports an unreachable Ollama runtime."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        raise httpx2.ConnectError("connection refused", request=request)
+
+    settings = Settings(
+        environment="test",
+        ollama_base_url="http://ollama.test:11434",
+        ollama_embedding_model="nomic-embed-text:test",
+        embedding_dimension=3,
+        ollama_timeout=1.0,
+    )
+    provider = OllamaEmbeddingProvider(
+        settings=settings,
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    with pytest.raises(EmbeddingUnavailableError, match="unavailable"):
+        asyncio.run(provider.embed_text("Kelvin API"))

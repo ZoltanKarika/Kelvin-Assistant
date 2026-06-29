@@ -94,6 +94,8 @@ A jelenlegi backend által használt változók:
 | `KELVIN_LLM_PROVIDER` | `ollama` | Aktív LLM-adapter |
 | `KELVIN_OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API alapcíme |
 | `KELVIN_OLLAMA_MODEL` | `gemma4:e4b` | Telepített modell neve |
+| `KELVIN_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | Dokumentum- és keresési embedding modell |
+| `KELVIN_EMBEDDING_DIMENSION` | `768` | Az embedding vektor elvárt dimenziója |
 | `KELVIN_OLLAMA_TIMEOUT` | `120` | Kérés időkorlátja másodpercben |
 | `KELVIN_DATABASE_URL` | nincs | PostgreSQL kapcsolat a tudástárhoz |
 | `KELVIN_DATABASE_CONNECT_TIMEOUT` | `5` | Adatbázis-kapcsolat időkorlátja másodpercben |

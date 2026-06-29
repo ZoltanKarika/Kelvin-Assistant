@@ -31,6 +31,24 @@ class StoredKnowledgeDocument:
     content_hash: str
 
 
+@dataclass(frozen=True, slots=True)
+class ChunkEmbedding:
+    """Embedding vector for one stored chunk index."""
+
+    chunk_index: int
+    embedding: tuple[float, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class StoredKnowledgeEmbeddings:
+    """Result returned after storing chunk embeddings."""
+
+    source_uri: str
+    embedding_model: str
+    embedding_count: int
+    embedding_dimension: int
+
+
 class KnowledgeRepository(Protocol):
     """Interface for storing knowledge documents."""
 
@@ -41,3 +59,12 @@ class KnowledgeRepository(Protocol):
         chunks: tuple[KnowledgeChunk, ...],
     ) -> StoredKnowledgeDocument:
         """Store a knowledge document and its deterministic chunks."""
+
+    async def save_embeddings(
+        self,
+        collection_name: str,
+        source_uri: str,
+        embedding_model: str,
+        embeddings: tuple[ChunkEmbedding, ...],
+    ) -> StoredKnowledgeEmbeddings:
+        """Store embeddings for deterministic chunk indexes."""

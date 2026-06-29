@@ -12,9 +12,11 @@ from uuid import UUID
 from kelvin_assistant.config.settings import Settings, get_settings
 from kelvin_assistant.domain.knowledge import KnowledgeChunk, KnowledgeDocument
 from kelvin_assistant.ports.knowledge import (
+    ChunkEmbedding,
     KnowledgeRepositoryConfigurationError,
     KnowledgeRepositoryUnavailableError,
     StoredKnowledgeDocument,
+    StoredKnowledgeEmbeddings,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -104,6 +106,73 @@ class PostgresKnowledgeRepository:
             document_id=document_id,
             chunk_count=len(chunks),
             content_hash=content_hash,
+        )
+
+    async def save_embeddings(
+        self,
+        collection_name: str,
+        source_uri: str,
+        embedding_model: str,
+        embeddings: tuple[ChunkEmbedding, ...],
+    ) -> StoredKnowledgeEmbeddings:
+        """Store embeddings for chunk indexes in one document."""
+
+        normalized_collection_name = collection_name.strip()
+        normalized_source_uri = source_uri.strip()
+        normalized_embedding_model = embedding_model.strip()
+        if not normalized_collection_name:
+            msg = "Collection name cannot be empty"
+            raise ValueError(msg)
+        if not normalized_source_uri:
+            msg = "Source URI cannot be empty"
+            raise ValueError(msg)
+        if not normalized_embedding_model:
+            msg = "Embedding model cannot be empty"
+            raise ValueError(msg)
+        if not embeddings:
+            msg = "At least one embedding is required"
+            raise ValueError(msg)
+        if self._settings.database_url is None:
+            msg = "Database URL is not configured"
+            raise KnowledgeRepositoryConfigurationError(msg)
+
+        embedding_dimension = _embedding_dimension(embeddings)
+
+        try:
+            import psycopg
+        except ModuleNotFoundError as exc:
+            LOGGER.warning("PostgreSQL driver is not installed")
+            raise KnowledgeRepositoryUnavailableError(
+                "PostgreSQL driver is not installed"
+            ) from exc
+
+        try:
+            connection = await psycopg.AsyncConnection.connect(
+                self._settings.database_url,
+                connect_timeout=self._settings.database_connect_timeout,
+            )
+            async with connection:
+                async with connection.cursor() as cursor:
+                    typed_cursor = cast(_KnowledgeCursor, cursor)
+                    await _upsert_embeddings(
+                        typed_cursor,
+                        normalized_collection_name,
+                        normalized_source_uri,
+                        normalized_embedding_model,
+                        embedding_dimension,
+                        embeddings,
+                    )
+        except Exception as exc:
+            LOGGER.warning("Failed to store knowledge embeddings: %s", exc)
+            raise KnowledgeRepositoryUnavailableError(
+                "PostgreSQL knowledge repository is unavailable"
+            ) from exc
+
+        return StoredKnowledgeEmbeddings(
+            source_uri=normalized_source_uri,
+            embedding_model=normalized_embedding_model,
+            embedding_count=len(embeddings),
+            embedding_dimension=embedding_dimension,
         )
 
 
@@ -205,6 +274,78 @@ async def _replace_chunks(
             for chunk in chunks
         ],
     )
+
+
+async def _upsert_embeddings(
+    cursor: _KnowledgeCursor,
+    collection_name: str,
+    source_uri: str,
+    embedding_model: str,
+    embedding_dimension: int,
+    embeddings: tuple[ChunkEmbedding, ...],
+) -> None:
+    """Insert or update embeddings for stored chunk indexes."""
+
+    await cursor.executemany(
+        """
+        insert into knowledge_embeddings (
+            chunk_id,
+            embedding_model,
+            embedding_dimension,
+            embedding
+        )
+        select
+            ch.id,
+            %s,
+            %s,
+            %s::vector
+        from knowledge_chunks ch
+        join knowledge_documents d on d.id = ch.document_id
+        join knowledge_collections c on c.id = d.collection_id
+        where c.name = %s
+          and d.source_uri = %s
+          and ch.chunk_index = %s
+        on conflict (chunk_id, embedding_model)
+        do update set
+            embedding_dimension = excluded.embedding_dimension,
+            embedding = excluded.embedding,
+            created_at = now()
+        """,
+        [
+            (
+                embedding_model,
+                embedding_dimension,
+                _to_pgvector(embedding.embedding),
+                collection_name,
+                source_uri,
+                embedding.chunk_index,
+            )
+            for embedding in embeddings
+        ],
+    )
+
+
+def _embedding_dimension(embeddings: tuple[ChunkEmbedding, ...]) -> int:
+    """Validate embedding dimensions and return the shared dimension."""
+
+    first_dimension = len(embeddings[0].embedding)
+    if first_dimension == 0:
+        msg = "Embedding cannot be empty"
+        raise ValueError(msg)
+    for embedding in embeddings:
+        if embedding.chunk_index < 0:
+            msg = "Chunk index cannot be negative"
+            raise ValueError(msg)
+        if len(embedding.embedding) != first_dimension:
+            msg = "Embedding dimensions must match"
+            raise ValueError(msg)
+    return first_dimension
+
+
+def _to_pgvector(embedding: tuple[float, ...]) -> str:
+    """Serialize an embedding tuple into pgvector text format."""
+
+    return "[" + ",".join(str(value) for value in embedding) + "]"
 
 
 def _read_uuid(row: tuple[object, ...] | None, entity_name: str) -> UUID:
