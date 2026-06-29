@@ -168,9 +168,7 @@ def test_database_readiness_reports_unavailable_database(
         health_response = unavailable_client.get("/health")
 
     assert readiness_response.status_code == 503
-    assert readiness_response.json() == {
-        "detail": "PostgreSQL database is unavailable"
-    }
+    assert readiness_response.json() == {"detail": "PostgreSQL database is unavailable"}
     assert health_response.status_code == 200
     assert health_response.json() == {"status": "ok"}
 
