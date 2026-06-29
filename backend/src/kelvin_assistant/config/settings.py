@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     ollama_timeout: float = Field(default=120.0, gt=0)
     llm_provider: Literal["ollama"] = Field(default="ollama")
     system_prompt: str = Field(default=DEFAULT_SYSTEM_PROMPT, min_length=1)
+    database_url: str | None = Field(default=None)
+    database_connect_timeout: int = Field(default=5, gt=0)
 
 
 @lru_cache(maxsize=1)

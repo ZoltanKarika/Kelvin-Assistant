@@ -30,6 +30,13 @@ class ReadinessResponse(BaseModel):
     model: str
 
 
+class DatabaseReadinessResponse(BaseModel):
+    """Readiness payload for the configured database."""
+
+    status: Literal["ready"]
+    provider: Literal["postgresql"]
+
+
 class ChatRequest(BaseModel):
     """Request payload for one non-streaming conversation turn."""
 

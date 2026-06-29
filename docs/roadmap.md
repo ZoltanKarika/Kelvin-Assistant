@@ -137,6 +137,9 @@ pgvector sémához.
 Valódi embeddinges próba: a `nomic-embed-text` query embedding és a pgvector
 cosine keresés a PostgreSQL/pgvector chunkot rangsorolta első helyre.
 
+Python kapcsolat: `KELVIN_DATABASE_URL` konfiguráció és külön
+`/ready/database` readiness végpont készül PostgreSQL ellenőrzéshez.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;

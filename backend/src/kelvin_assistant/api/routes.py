@@ -4,19 +4,26 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from kelvin_assistant.api.dependencies import get_llm_provider, get_runtime_settings
+from kelvin_assistant.api.dependencies import (
+    get_database_client,
+    get_llm_provider,
+    get_runtime_settings,
+)
 from kelvin_assistant.api.schemas import (
+    DatabaseReadinessResponse,
     HealthResponse,
     ReadinessResponse,
     RootResponse,
     VersionResponse,
 )
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.ports.database import DatabaseClient, DatabaseError
 from kelvin_assistant.ports.llm import LLMProvider, LLMProviderError
 
 router = APIRouter()
 RuntimeSettings = Annotated[Settings, Depends(get_runtime_settings)]
 LanguageModelProvider = Annotated[LLMProvider, Depends(get_llm_provider)]
+RuntimeDatabaseClient = Annotated[DatabaseClient, Depends(get_database_client)]
 
 
 @router.get("/", response_model=RootResponse, tags=["system"])
@@ -66,6 +73,32 @@ async def read_readiness(
         provider=settings.llm_provider,
         model=settings.ollama_model,
     )
+
+
+@router.get(
+    "/ready/database",
+    response_model=DatabaseReadinessResponse,
+    tags=["system"],
+    responses={
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "description": "The configured database is not ready.",
+        }
+    },
+)
+async def read_database_readiness(
+    database_client: RuntimeDatabaseClient,
+) -> DatabaseReadinessResponse:
+    """Report whether the configured database can serve requests."""
+
+    try:
+        await database_client.check_readiness()
+    except DatabaseError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return DatabaseReadinessResponse(status="ready", provider="postgresql")
 
 
 @router.get("/version", response_model=VersionResponse, tags=["system"])

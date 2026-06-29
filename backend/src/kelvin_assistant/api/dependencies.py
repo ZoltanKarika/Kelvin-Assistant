@@ -6,6 +6,7 @@ from fastapi import Request
 
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
 
 
@@ -27,6 +28,16 @@ def get_llm_provider(request: Request) -> LLMProvider:
         msg = "Language model provider is not configured."
         raise RuntimeError(msg)
     return cast(LLMProvider, provider)
+
+
+def get_database_client(request: Request) -> DatabaseClient:
+    """Return the database client attached to the app state."""
+
+    client = getattr(request.app.state, "database_client", None)
+    if client is None:
+        msg = "Database client is not configured."
+        raise RuntimeError(msg)
+    return cast(DatabaseClient, client)
 
 
 def get_chat_service(request: Request) -> ChatService:
