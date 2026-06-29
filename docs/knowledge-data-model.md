@@ -201,3 +201,15 @@ Ezek későbbi lépések. Most a cél: `.txt` és `.md` dokumentumokból működ
 - Milyen migrációs eszközt használjunk: Alembic vagy egyszerű SQL fájlok?
 - A v0.4-ben csak nem streamelt RAG-választ adjunk, vagy a streaming válaszba is
   építsük be a forrásokat?
+
+## Első SQL séma
+
+Az első kézzel olvasható SQL séma itt található:
+
+```text
+infrastructure/sql/001_create_knowledge_schema.sql
+```
+
+Szándékosan egyszerű SQL fájlként indulunk. Így látható, hogy pontosan milyen
+táblák, constraint-ek és indexek jönnek létre, mielőtt Alembicet vagy más
+migrációs eszközt vezetnénk be.
