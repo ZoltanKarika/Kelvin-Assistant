@@ -10,7 +10,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
-| v0.4 Knowledge | RAG és ChromaDB | Tervezett |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
 | v0.7 Voice | Whisper és Piper | Tervezett |
@@ -110,7 +110,7 @@ része lesz.
 - szöveg- és Markdown-betöltő;
 - darabolási stratégia;
 - embedding-port és adapter;
-- ChromaDB adapter;
+- PostgreSQL + pgvector adapter;
 - forrásmegjelölés;
 - később PDF és DOCX.
 

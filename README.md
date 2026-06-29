@@ -70,7 +70,7 @@ flowchart LR
     LLM["LLM port"]
     VECTOR["Vektortár port"]
     OLLAMA["Ollama / Gemma"]
-    CHROMA["ChromaDB"]
+    PG["PostgreSQL + pgvector"]
     TOOLS["Hostoldali eszközök"]
 
     PS <--> API
@@ -79,14 +79,14 @@ flowchart LR
     APP --> LLM
     APP --> VECTOR
     LLM --> OLLAMA
-    VECTOR --> CHROMA
+    VECTOR --> PG
     PS --> TOOLS
 ```
 
 A diagram a tervezett célállapotot mutatja. A backend később portokon
 keresztül éri el a modelleket, embedding-szolgáltatókat, vektortárakat és
-dokumentumbetöltőket. Az Ollama és a ChromaDB ezek adapterei lesznek, ezért
-más implementációra cserélhetők.
+dokumentumbetöltőket. Az Ollama és a PostgreSQL + pgvector ezek adapterei
+lesznek, ezért más implementációra cserélhetők.
 
 A Windows hoston végzett PowerShell-, Git- és fájlműveleteket a hostoldali
 kliens hajtja végre. A Linux VM nem kap korlátlan távoli hozzáférést a
@@ -189,7 +189,7 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
-| v0.4 Knowledge | RAG és ChromaDB | Tervezett |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
 | v0.7 Voice | Whisper és Piper | Tervezett |

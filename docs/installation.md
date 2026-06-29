@@ -31,7 +31,7 @@ csomagimport még külön üzemeltetési lépés.
 
 - Ubuntu Server 24.04 LTS;
 - Python 3.12 vagy újabb;
-- később Open WebUI és ChromaDB.
+- később Open WebUI, PostgreSQL és pgvector.
 
 ### Ellenőrzött VM-konfiguráció
 
