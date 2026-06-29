@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from kelvin_assistant.api.app import create_app
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.chat import ChatMessage
+from kelvin_assistant.ports.database import DatabaseError, DatabaseUnavailableError
 from kelvin_assistant.ports.llm import (
     LLMProviderError,
     LLMUnavailableError,
@@ -42,6 +43,19 @@ class StubLLMProvider:
             raise self._readiness_error
 
 
+class StubDatabaseClient:
+    """Deterministic database client for API tests."""
+
+    def __init__(self, readiness_error: DatabaseError | None = None) -> None:
+        self._readiness_error = readiness_error
+
+    async def check_readiness(self) -> None:
+        """Raise the configured readiness error, if any."""
+
+        if self._readiness_error is not None:
+            raise self._readiness_error
+
+
 @pytest.fixture
 def settings() -> Settings:
     """Create deterministic API test settings."""
@@ -60,7 +74,11 @@ def client(settings: Settings) -> Iterator[TestClient]:
     """Create an isolated API client with a ready language model."""
 
     with TestClient(
-        create_app(settings, llm_provider=StubLLMProvider())
+        create_app(
+            settings,
+            llm_provider=StubLLMProvider(),
+            database_client=StubDatabaseClient(),
+        )
     ) as test_client:
         yield test_client
 
@@ -106,12 +124,51 @@ def test_readiness_reports_unavailable_provider(settings: Settings) -> None:
     provider = StubLLMProvider(
         readiness_error=LLMUnavailableError("Ollama runtime is unavailable")
     )
-    with TestClient(create_app(settings, llm_provider=provider)) as unavailable_client:
+    with TestClient(
+        create_app(
+            settings,
+            llm_provider=provider,
+            database_client=StubDatabaseClient(),
+        )
+    ) as unavailable_client:
         readiness_response = unavailable_client.get("/ready")
         health_response = unavailable_client.get("/health")
 
     assert readiness_response.status_code == 503
     assert readiness_response.json() == {"detail": "Ollama runtime is unavailable"}
+    assert health_response.status_code == 200
+    assert health_response.json() == {"status": "ok"}
+
+
+def test_database_readiness_reports_ready(client: TestClient) -> None:
+    """The database readiness endpoint reports the configured database."""
+
+    response = client.get("/ready/database")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "provider": "postgresql"}
+
+
+def test_database_readiness_reports_unavailable_database(
+    settings: Settings,
+) -> None:
+    """Database readiness failures return 503 while health stays OK."""
+
+    database_client = StubDatabaseClient(
+        readiness_error=DatabaseUnavailableError("PostgreSQL database is unavailable")
+    )
+    with TestClient(
+        create_app(
+            settings,
+            llm_provider=StubLLMProvider(),
+            database_client=database_client,
+        )
+    ) as unavailable_client:
+        readiness_response = unavailable_client.get("/ready/database")
+        health_response = unavailable_client.get("/health")
+
+    assert readiness_response.status_code == 503
+    assert readiness_response.json() == {"detail": "PostgreSQL database is unavailable"}
     assert health_response.status_code == 200
     assert health_response.json() == {"status": "ok"}
 

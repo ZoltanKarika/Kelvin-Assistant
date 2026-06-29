@@ -95,6 +95,8 @@ A jelenlegi backend által használt változók:
 | `KELVIN_OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API alapcíme |
 | `KELVIN_OLLAMA_MODEL` | `gemma4:e4b` | Telepített modell neve |
 | `KELVIN_OLLAMA_TIMEOUT` | `120` | Kérés időkorlátja másodpercben |
+| `KELVIN_DATABASE_URL` | nincs | PostgreSQL kapcsolat a tudástárhoz |
+| `KELVIN_DATABASE_CONNECT_TIMEOUT` | `5` | Adatbázis-kapcsolat időkorlátja másodpercben |
 
 A `.env` fájlban ne tárolj repositoryba kerülő jelszót, tokent vagy más
 titkot. A fájlt soha ne commitold.
@@ -130,12 +132,18 @@ Ellenőrzés egy másik PowerShell-ablakból:
 Invoke-RestMethod http://127.0.0.1:8000/
 Invoke-RestMethod http://127.0.0.1:8000/health
 Invoke-RestMethod http://127.0.0.1:8000/ready
+Invoke-RestMethod http://127.0.0.1:8000/ready/database
 Invoke-RestMethod http://127.0.0.1:8000/version
 ```
 
 Az `/health` csak a FastAPI folyamat állapotát jelzi. A `/ready` az Ollama
 elérhetőségét és a konfigurált modell telepítettségét is ellenőrzi. Ha ezek
 nem állnak rendelkezésre, a végpont HTTP 503 választ ad.
+
+Az `/ready/database` a PostgreSQL kapcsolatot ellenőrzi egy egyszerű `select 1`
+lekérdezéssel. Ha a `KELVIN_DATABASE_URL` nincs beállítva, vagy az adatbázis nem
+érhető el, HTTP 503 választ ad. Ez külön végpont, hogy az LLM és az adatbázis
+állapota ne keveredjen.
 
 Az interaktív Swagger UI a `http://127.0.0.1:8000/docs` címen érhető el.
 A szerver `Ctrl+C` billentyűkombinációval állítható le.
@@ -316,6 +324,8 @@ KELVIN_LLM_PROVIDER=ollama
 KELVIN_OLLAMA_BASE_URL=http://<WINDOWS_HOST_IP>:11434
 KELVIN_OLLAMA_MODEL=gemma4:e4b
 KELVIN_OLLAMA_TIMEOUT=120
+KELVIN_DATABASE_URL=postgresql://kelvin:<password>@127.0.0.1:5432/kelvin_assistant
+KELVIN_DATABASE_CONNECT_TIMEOUT=5
 ```
 
 Kapcsolat ellenőrzése a VM-ről:
@@ -478,6 +488,7 @@ Külső health ellenőrzés Windows PowerShellből:
 ```powershell
 Invoke-RestMethod http://<VM_IP>:8000/health
 Invoke-RestMethod http://<VM_IP>:8000/ready
+Invoke-RestMethod http://<VM_IP>:8000/ready/database
 Invoke-RestMethod http://<VM_IP>:8000/version
 ```
 

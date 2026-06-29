@@ -20,6 +20,7 @@ Jelenleg működik:
 - Pydantic Settings konfiguráció;
 - strukturált JSON- és fejlesztői konzolnaplózás;
 - `/`, `/health`, `/ready` és `/version` végpont;
+- `/ready/database` PostgreSQL readiness végpont;
 - pytest, Ruff és mypy ellenőrzés;
 - GitHub Actions CI;
 - Hyper-V Generation 2 Ubuntu Server VM;
@@ -126,6 +127,7 @@ Az API ellenőrzése PowerShellből:
 Invoke-RestMethod http://127.0.0.1:8000/
 Invoke-RestMethod http://127.0.0.1:8000/health
 Invoke-RestMethod http://127.0.0.1:8000/ready
+Invoke-RestMethod http://127.0.0.1:8000/ready/database
 Invoke-RestMethod http://127.0.0.1:8000/version
 ```
 
