@@ -350,3 +350,58 @@ Eredmény:
 ```
 
 Ezzel a v0.4 első tényleges adatbázis-sémája készen áll a kézi adatpróbára.
+
+## Kézi vektoros keresési próba
+
+A VM-en kézi tesztadatokkal ellenőriztük a RAG keresés legalapvetőbb adatbázis
+oldali működését.
+
+Létrehozott próbaadatok:
+
+| Szint | Érték |
+| --- | --- |
+| Collection | `manual_test` |
+| Dokumentum | `manual://kelvin-notes` |
+| Embedding modell | `manual-dummy-768` |
+
+Beszúrt chunkok:
+
+| Chunk index | Szöveg | Dummy vektor logika |
+| --- | --- | --- |
+| `0` | `Kelvin API production portja 8000.` | 1. dimenzió = 1 |
+| `1` | `PostgreSQL es pgvector a VM-en fut lokalisan.` | 2. dimenzió = 1 |
+
+A keresővektor a 2. dimenzióban kapott `1` értéket, ezért a PostgreSQL/pgvector
+chunknak kellett elsőként visszajönnie.
+
+Futtatott keresés lényege:
+
+```sql
+SELECT
+    chunks.chunk_index,
+    chunks.content,
+    embeddings.embedding <=> query.embedding AS cosine_distance
+FROM knowledge_embeddings AS embeddings
+JOIN knowledge_chunks AS chunks
+    ON chunks.id = embeddings.chunk_id
+ORDER BY cosine_distance
+LIMIT 2;
+```
+
+Eredmény:
+
+```text
+ chunk_index |                    content                    | cosine_distance
+-------------+-----------------------------------------------+-----------------
+           1 | PostgreSQL es pgvector a VM-en fut lokalisan. |               0
+           0 | Kelvin API production portja 8000.            |               1
+```
+
+Következtetés:
+
+- a `vector(768)` embedding mező működik;
+- a cosine distance operátor (`<=>`) működik;
+- a legkisebb távolságú chunk kerül előre;
+- a RAG keresés adatbázis oldali alapja validált;
+- a következő lépés az embedding előállításának és a Python adapternek a
+  megtervezése.

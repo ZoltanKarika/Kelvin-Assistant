@@ -215,3 +215,6 @@ táblák, constraint-ek és indexek jönnek létre, mielőtt Alembicet vagy más
 migrációs eszközt vezetnénk be.
 
 A séma VM-en validálva lett PostgreSQL 16.14 és pgvector 0.6.0 alatt.
+
+Kézi dummy embeddingekkel a cosine distance alapú keresés is validálva lett:
+a keresés a vektorosan legközelebbi chunkot hozta vissza első találatként.

@@ -127,6 +127,9 @@ adatbázis-kapcsolat és Kelvin API újraindítás ellenőrizve.
 Knowledge séma: az első `knowledge_*` táblák és a HNSW pgvector index VM-en
 validálva.
 
+Kézi RAG adatpróba: dummy embeddingekkel a pgvector cosine distance keresés a
+várt chunkot rangsorolta első helyre.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;
