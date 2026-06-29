@@ -11,6 +11,7 @@ from kelvin_assistant.application.knowledge import KnowledgeIngestionService
 from kelvin_assistant.domain.knowledge import KnowledgeChunk, KnowledgeDocument
 from kelvin_assistant.ports.knowledge import (
     ChunkEmbedding,
+    KnowledgeSearchResult,
     StoredKnowledgeDocument,
     StoredKnowledgeEmbeddings,
 )
@@ -264,3 +265,13 @@ class FakeKnowledgeRepository:
             embedding_count=len(embeddings),
             embedding_dimension=len(embeddings[0].embedding) if embeddings else 0,
         )
+
+    async def search_similar_chunks(
+        self,
+        collection_name: str,
+        embedding_model: str,
+        query_embedding: tuple[float, ...],
+        *,
+        limit: int,
+    ) -> tuple[KnowledgeSearchResult, ...]:
+        return ()

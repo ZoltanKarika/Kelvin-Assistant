@@ -15,6 +15,7 @@ from kelvin_assistant.ports.knowledge import (
     ChunkEmbedding,
     KnowledgeRepositoryConfigurationError,
     KnowledgeRepositoryUnavailableError,
+    KnowledgeSearchResult,
     StoredKnowledgeDocument,
     StoredKnowledgeEmbeddings,
 )
@@ -37,6 +38,9 @@ class _KnowledgeCursor(Protocol):
 
     async def fetchone(self) -> tuple[object, ...] | None:
         """Fetch one row from the previous statement."""
+
+    async def fetchall(self) -> Sequence[tuple[object, ...]]:
+        """Fetch all rows from the previous statement."""
 
 
 class PostgresKnowledgeRepository:
@@ -174,6 +178,63 @@ class PostgresKnowledgeRepository:
             embedding_count=len(embeddings),
             embedding_dimension=embedding_dimension,
         )
+
+    async def search_similar_chunks(
+        self,
+        collection_name: str,
+        embedding_model: str,
+        query_embedding: tuple[float, ...],
+        *,
+        limit: int,
+    ) -> tuple[KnowledgeSearchResult, ...]:
+        """Return semantically similar chunks ordered by cosine distance."""
+
+        normalized_collection_name = collection_name.strip()
+        normalized_embedding_model = embedding_model.strip()
+        if not normalized_collection_name:
+            msg = "Collection name cannot be empty"
+            raise ValueError(msg)
+        if not normalized_embedding_model:
+            msg = "Embedding model cannot be empty"
+            raise ValueError(msg)
+        if not query_embedding:
+            msg = "Query embedding cannot be empty"
+            raise ValueError(msg)
+        if limit <= 0:
+            msg = "Search limit must be positive"
+            raise ValueError(msg)
+        if self._settings.database_url is None:
+            msg = "Database URL is not configured"
+            raise KnowledgeRepositoryConfigurationError(msg)
+
+        try:
+            import psycopg
+        except ModuleNotFoundError as exc:
+            LOGGER.warning("PostgreSQL driver is not installed")
+            raise KnowledgeRepositoryUnavailableError(
+                "PostgreSQL driver is not installed"
+            ) from exc
+
+        try:
+            connection = await psycopg.AsyncConnection.connect(
+                self._settings.database_url,
+                connect_timeout=self._settings.database_connect_timeout,
+            )
+            async with connection:
+                async with connection.cursor() as cursor:
+                    typed_cursor = cast(_KnowledgeCursor, cursor)
+                    return await _search_similar_chunks(
+                        typed_cursor,
+                        normalized_collection_name,
+                        normalized_embedding_model,
+                        query_embedding,
+                        limit,
+                    )
+        except Exception as exc:
+            LOGGER.warning("Failed to search knowledge embeddings: %s", exc)
+            raise KnowledgeRepositoryUnavailableError(
+                "PostgreSQL knowledge repository is unavailable"
+            ) from exc
 
 
 def _content_hash(document: KnowledgeDocument) -> str:
@@ -322,6 +383,68 @@ async def _upsert_embeddings(
             )
             for embedding in embeddings
         ],
+    )
+
+
+async def _search_similar_chunks(
+    cursor: _KnowledgeCursor,
+    collection_name: str,
+    embedding_model: str,
+    query_embedding: tuple[float, ...],
+    limit: int,
+) -> tuple[KnowledgeSearchResult, ...]:
+    """Search stored embeddings by cosine distance."""
+
+    await cursor.execute(
+        """
+        select
+            d.source_uri,
+            d.title,
+            ch.chunk_index,
+            ch.content,
+            ch.metadata,
+            e.embedding <=> %s::vector as distance
+        from knowledge_embeddings e
+        join knowledge_chunks ch on ch.id = e.chunk_id
+        join knowledge_documents d on d.id = ch.document_id
+        join knowledge_collections c on c.id = d.collection_id
+        where c.name = %s
+          and e.embedding_model = %s
+        order by e.embedding <=> %s::vector
+        limit %s
+        """,
+        (
+            _to_pgvector(query_embedding),
+            collection_name,
+            embedding_model,
+            _to_pgvector(query_embedding),
+            limit,
+        ),
+    )
+    rows = await cursor.fetchall()
+    return tuple(_read_search_result(row) for row in rows)
+
+
+def _read_search_result(row: tuple[object, ...]) -> KnowledgeSearchResult:
+    """Read one search result row from PostgreSQL."""
+
+    metadata = row[4]
+    if not isinstance(metadata, dict):
+        metadata = {}
+    chunk_index = row[2]
+    distance = row[5]
+    if not isinstance(chunk_index, int):
+        chunk_index = int(str(chunk_index))
+    if isinstance(distance, bool) or not isinstance(distance, int | float):
+        distance = float(str(distance))
+
+    return KnowledgeSearchResult(
+        source_uri=str(row[0]),
+        title=str(row[1]) if row[1] is not None else None,
+        chunk_index=chunk_index,
+        content=str(row[3]),
+        metadata={str(key): str(value) for key, value in metadata.items()},
+        distance=float(distance),
     )
 
 

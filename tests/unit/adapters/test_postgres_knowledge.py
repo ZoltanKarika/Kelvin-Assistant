@@ -280,6 +280,129 @@ def test_save_embeddings_upserts_chunk_embeddings(
     ]
 
 
+def test_search_similar_chunks_requires_database_url() -> None:
+    """The repository rejects missing database configuration for search."""
+
+    repository = PostgresKnowledgeRepository(Settings(environment="test"))
+
+    with pytest.raises(KnowledgeRepositoryConfigurationError, match="Database URL"):
+        asyncio.run(
+            repository.search_similar_chunks(
+                "manual",
+                "nomic-embed-text",
+                (0.1, 0.2, 0.3),
+                limit=3,
+            )
+        )
+
+
+def test_search_similar_chunks_rejects_invalid_values() -> None:
+    """Semantic search validates collection, model, vector, and limit."""
+
+    repository = PostgresKnowledgeRepository(
+        Settings(
+            environment="test",
+            database_url="postgresql://kelvin:secret@127.0.0.1/db",
+        )
+    )
+
+    with pytest.raises(ValueError, match="Search limit"):
+        asyncio.run(
+            repository.search_similar_chunks(
+                "manual",
+                "nomic-embed-text",
+                (0.1, 0.2, 0.3),
+                limit=0,
+            )
+        )
+
+
+def test_search_similar_chunks_returns_ordered_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The repository searches pgvector embeddings with cosine distance."""
+
+    cursor = FakeCursor(
+        rows=[],
+        all_rows=[
+            (
+                "manual://kelvin-notes",
+                "Kelvin Notes",
+                1,
+                "PostgreSQL es pgvector lokalisan fut.",
+                {"heading": "Database"},
+                0.08,
+            ),
+            (
+                "manual://kelvin-notes",
+                "Kelvin Notes",
+                0,
+                "Kelvin API production portja 8000.",
+                {"heading": "API"},
+                0.62,
+            ),
+        ],
+    )
+    connection = FakeConnection(cursor)
+    fake_psycopg = SimpleNamespace(
+        AsyncConnection=SimpleNamespace(
+            connect=AsyncConnect(connection),
+        )
+    )
+
+    real_import = builtins.__import__
+
+    def fake_import(
+        name: str,
+        globals_: dict[str, object] | None = None,
+        locals_: dict[str, object] | None = None,
+        fromlist: Sequence[str] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "psycopg":
+            return fake_psycopg
+        return real_import(name, globals_, locals_, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    repository = PostgresKnowledgeRepository(
+        Settings(
+            environment="test",
+            database_url="postgresql://kelvin:secret@127.0.0.1/db",
+            database_connect_timeout=2,
+        )
+    )
+
+    results = asyncio.run(
+        repository.search_similar_chunks(
+            " manual ",
+            " nomic-embed-text ",
+            (0.1, 0.2, 0.3),
+            limit=2,
+        )
+    )
+
+    assert fake_psycopg.AsyncConnection.connect.calls == [
+        {
+            "database_url": "postgresql://kelvin:secret@127.0.0.1/db",
+            "connect_timeout": 2,
+        }
+    ]
+    assert len(cursor.executed) == 1
+    assert "e.embedding <=>" in cursor.executed[0].sql
+    assert "order by e.embedding <=>" in cursor.executed[0].sql
+    assert cursor.executed[0].params == (
+        "[0.1,0.2,0.3]",
+        "manual",
+        "nomic-embed-text",
+        "[0.1,0.2,0.3]",
+        2,
+    )
+    assert [result.chunk_index for result in results] == [1, 0]
+    assert results[0].content == "PostgreSQL es pgvector lokalisan fut."
+    assert results[0].metadata == {"heading": "Database"}
+    assert results[0].distance == 0.08
+
+
 def _document() -> KnowledgeDocument:
     return KnowledgeDocument(
         source_uri="manual://kelvin-notes",
@@ -349,8 +472,13 @@ class FakeConnection:
 class FakeCursor:
     """Fake async cursor recording SQL calls."""
 
-    def __init__(self, rows: list[tuple[UUID]]) -> None:
+    def __init__(
+        self,
+        rows: list[tuple[UUID]],
+        all_rows: list[tuple[object, ...]] | None = None,
+    ) -> None:
         self._rows = rows
+        self._all_rows = all_rows or []
         self.executed: list[SqlCall] = []
         self.executed_many: list[SqlManyCall] = []
 
@@ -379,6 +507,9 @@ class FakeCursor:
 
     async def fetchone(self) -> tuple[UUID]:
         return self._rows.pop(0)
+
+    async def fetchall(self) -> list[tuple[object, ...]]:
+        return self._all_rows
 
 
 class SqlCall(SimpleNamespace):

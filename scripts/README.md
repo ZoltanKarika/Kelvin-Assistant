@@ -53,3 +53,20 @@ Fontos:
 - a PostgreSQL sémának már léteznie kell;
 - ugyanazt a dokumentumot újrafuttatva a chunkok és embeddingek frissülnek, nem
   duplikálódnak.
+
+## Tudásbázis keresése
+
+A `kelvin-search-knowledge` parancs a kérdést embeddinggé alakítja, majd
+pgvector cosine distance alapján visszaadja a legközelebbi chunkokat.
+
+Példa:
+
+```powershell
+uv run kelvin-search-knowledge `
+  --collection manual `
+  --limit 3 `
+  "Hol fut az Ollama?"
+```
+
+Ez még diagnosztikai/admin parancs. A következő lépésben ugyanez a keresés kerül
+majd be a chat/RAG folyamatba.

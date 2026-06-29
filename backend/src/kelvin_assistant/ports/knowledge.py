@@ -49,6 +49,18 @@ class StoredKnowledgeEmbeddings:
     embedding_dimension: int
 
 
+@dataclass(frozen=True, slots=True)
+class KnowledgeSearchResult:
+    """One semantically similar knowledge chunk."""
+
+    source_uri: str
+    title: str | None
+    chunk_index: int
+    content: str
+    metadata: dict[str, str]
+    distance: float
+
+
 class KnowledgeRepository(Protocol):
     """Interface for storing knowledge documents."""
 
@@ -68,3 +80,13 @@ class KnowledgeRepository(Protocol):
         embeddings: tuple[ChunkEmbedding, ...],
     ) -> StoredKnowledgeEmbeddings:
         """Store embeddings for deterministic chunk indexes."""
+
+    async def search_similar_chunks(
+        self,
+        collection_name: str,
+        embedding_model: str,
+        query_embedding: tuple[float, ...],
+        *,
+        limit: int,
+    ) -> tuple[KnowledgeSearchResult, ...]:
+        """Return semantically similar chunks ordered by cosine distance."""
