@@ -11,8 +11,10 @@ A GitHub Actions ugyanezt a projektet Ubuntu 24.04 és Python 3.12 alatt
 ellenőrzi. A Windows hoston futó Ollama adaptere és helyi integrációs
 ellenőrzése működik. A VM és a host közötti, tűzfallal korlátozott Ollama
 kapcsolat, a readiness végpont és a GPU-gyorsított generálás is ellenőrzött.
-A verziózott, nem streamelt chat API többfordulós memóriabeli sessionöket
-kezel. Az offline csomagimport még külön üzemeltetési lépés.
+A verziózott chat API többfordulós memóriabeli sessionöket kezel, a streaming
+végpont pedig Server-Sent Events formátumban küldi a modell válaszát. A
+minimális webes chatfelület a `/ui` útvonalon érhető el. Az offline
+csomagimport még külön üzemeltetési lépés.
 
 ## Célkörnyezet
 
@@ -191,6 +193,63 @@ Az endpoint fontosabb válaszai:
 A sessiontár jelenleg folyamatmemóriában él. Backend- vagy VM-újraindításkor
 a beszélgetések elvesznek; a későbbi perzisztens adapter ezt a `SessionStore`
 port mögött, az API módosítása nélkül válthatja fel.
+
+## Streaming chat API
+
+A streaming végpont ugyanazt a request body-t használja, mint a nem streamelt
+chat, de `text/event-stream` választ ad:
+
+```text
+POST /api/v1/chat/stream
+```
+
+PowerShellből:
+
+```powershell
+$body = @{
+    message = "Please count from 1 to 5, one number per line."
+} | ConvertTo-Json
+
+curl.exe -N -i -X POST "http://127.0.0.1:8000/api/v1/chat/stream" `
+    -H "Content-Type: application/json" `
+    --data-binary $body
+```
+
+A sikeres válasz eseményei:
+
+```text
+event: session
+data: {"session_id": "...", "model": "..."}
+
+event: token
+data: {"text": "..."}
+
+event: done
+data: {}
+```
+
+Az asszisztens válasza csak a teljes stream sikeres befejezése után kerül a
+sessionbe. Így megszakadt kapcsolat vagy modellhiba esetén nem marad félkész
+asszisztens-forduló a beszélgetésben.
+
+## Webes chatfelület
+
+A beépített, minimális chatfelület:
+
+```text
+http://127.0.0.1:8000/ui
+```
+
+Ubuntu VM-en a helyi hálózatról:
+
+```text
+http://<VM_IP>:8000/ui
+```
+
+A felület ugyanazt a FastAPI alkalmazást használja, mint az API, ezért nincs
+külön Node.js build, CORS-beállítás vagy internetfüggőség. A válaszokat
+streamelve jeleníti meg, és a sessionazonosítót csak a böngésző memóriájában
+tartja.
 
 ## Fejlesztői ellenőrzések
 
