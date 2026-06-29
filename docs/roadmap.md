@@ -9,7 +9,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | --- | --- | --- |
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
-| v0.3 Conversation | Chat API, streaming és sessionkezelés | Tervezett |
+| v0.3 Conversation | Chat API, streaming és sessionkezelés | Folyamatban |
 | v0.4 Knowledge | RAG és ChromaDB | Tervezett |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
@@ -78,14 +78,24 @@ Elfogadási feltételek ellenőrzése:
 
 ## v0.3 Conversation
 
+Elkészült ezen az ágon:
+
 - `POST /api/v1/chat` nem streamelt végpont;
 - szerver által létrehozott UUID sessionazonosító;
 - cserélhető `SessionStore` port és első memóriabeli adapter;
 - alkalmazási `ChatService`, amely elkülönül a FastAPI route-tól;
 - többfordulós kontextusablak-kezelés;
 - párhuzamos sessionmódosítás kezelése;
+- stabil 404, 409, 422, 502 és 503 API-válaszok;
+- unit, API-szerződés és élő többfordulós modellteszt.
+
+Még szükséges:
+
 - tokenenkénti válaszstreamelés külön végponton;
-- megszakítás és API-szerződés tesztelése.
+- stream megszakítása;
+- megszakított vagy hibás stream atomikus sessionkezelése;
+- VM-telepítés és end-to-end ellenőrzés;
+- v0.3 verzióemelés és mérföldkőlezárás.
 
 Elfogadási feltétel: új és meglévő sessionben is folytatható a beszélgetés,
 az ismeretlen session és modellhiba stabil HTTP-választ ad, a streaming
