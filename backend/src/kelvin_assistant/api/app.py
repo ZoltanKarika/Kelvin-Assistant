@@ -4,13 +4,15 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
-from kelvin_assistant.adapters.ollama import OllamaProvider
+from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider, OllamaProvider
 from kelvin_assistant.adapters.postgres import PostgresDatabaseClient
+from kelvin_assistant.adapters.postgres_knowledge import PostgresKnowledgeRepository
 from kelvin_assistant.api.chat_routes import router as chat_router
 from kelvin_assistant.api.frontend_routes import FRONTEND_DIR
 from kelvin_assistant.api.frontend_routes import router as frontend_router
 from kelvin_assistant.api.routes import router
 from kelvin_assistant.application.chat import ChatService
+from kelvin_assistant.application.knowledge_search import KnowledgeSearchService
 from kelvin_assistant.config.settings import Settings, get_settings
 from kelvin_assistant.observability.logging import configure_logging
 from kelvin_assistant.ports.database import DatabaseClient
@@ -38,10 +40,22 @@ def create_app(
         if database_client is not None
         else PostgresDatabaseClient(active_settings)
     )
+    knowledge_context_provider = (
+        KnowledgeSearchService(
+            embedding_provider=OllamaEmbeddingProvider(active_settings),
+            repository=PostgresKnowledgeRepository(active_settings),
+            collection_name=active_settings.rag_collection,
+            embedding_model=active_settings.ollama_embedding_model,
+            result_limit=active_settings.rag_result_limit,
+        )
+        if active_settings.rag_enabled
+        else None
+    )
     active_chat_service = ChatService(
         llm_provider=active_llm_provider,
         session_store=active_session_store,
         system_prompt=active_settings.system_prompt,
+        knowledge_context_provider=knowledge_context_provider,
     )
     configure_logging(active_settings)
 

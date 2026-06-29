@@ -60,6 +60,18 @@ class StubLLMProvider:
         """Report the stub provider as ready."""
 
 
+class StubKnowledgeContextProvider:
+    """Configurable knowledge context provider for chat tests."""
+
+    def __init__(self, context: str | None) -> None:
+        self._context = context
+        self.queries: list[str] = []
+
+    async def get_context(self, query: str) -> str | None:
+        self.queries.append(query)
+        return self._context
+
+
 def test_send_message_creates_and_persists_new_session() -> None:
     """A successful first turn creates a session containing both messages."""
 
@@ -159,6 +171,54 @@ def test_send_message_prepends_system_prompt_without_persisting_it() -> None:
         stored_session = await store.get(result.session_id)
         assert all(
             message.role is not ChatRole.SYSTEM for message in stored_session.messages
+        )
+
+    asyncio.run(scenario())
+
+
+def test_send_message_adds_knowledge_context_without_persisting_it() -> None:
+    """RAG context reaches the model but is not stored as chat history."""
+
+    async def scenario() -> None:
+        store = InMemorySessionStore()
+        provider = StubLLMProvider(responses=["Az Ollama a Windows hoston fut."])
+        knowledge_provider = StubKnowledgeContextProvider(
+            context="[1] source=Kelvin Notes; chunk=2\nOllama a Windows hoston fut."
+        )
+        service = ChatService(
+            provider,
+            store,
+            system_prompt="Te Kelvin vagy.",
+            knowledge_context_provider=knowledge_provider,
+        )
+
+        result = await service.send_message("Hol fut az Ollama?")
+
+        assert knowledge_provider.queries == ["Hol fut az Ollama?"]
+        assert provider.chat_calls == [
+            (
+                ChatMessage(role=ChatRole.SYSTEM, content="Te Kelvin vagy."),
+                ChatMessage(
+                    role=ChatRole.SYSTEM,
+                    content=(
+                        "Használd az alábbi helyi tudásbázis-részleteket, "
+                        "ha relevánsak a felhasználó kérdéséhez. Ha a "
+                        "részletek nem relevánsak, hagyd figyelmen kívül "
+                        "őket. Ne találj ki forrást.\n\n"
+                        "[1] source=Kelvin Notes; chunk=2\n"
+                        "Ollama a Windows hoston fut."
+                    ),
+                ),
+                ChatMessage(role=ChatRole.USER, content="Hol fut az Ollama?"),
+            )
+        ]
+        stored_session = await store.get(result.session_id)
+        assert stored_session.messages == (
+            ChatMessage(role=ChatRole.USER, content="Hol fut az Ollama?"),
+            ChatMessage(
+                role=ChatRole.ASSISTANT,
+                content="Az Ollama a Windows hoston fut.",
+            ),
         )
 
     asyncio.run(scenario())

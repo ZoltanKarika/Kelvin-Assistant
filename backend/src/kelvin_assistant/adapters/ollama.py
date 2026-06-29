@@ -8,6 +8,11 @@ import httpx2
 
 from kelvin_assistant.config.settings import Settings, get_settings
 from kelvin_assistant.domain.chat import ChatMessage
+from kelvin_assistant.ports.embeddings import (
+    EmbeddingProvider,
+    EmbeddingResponseError,
+    EmbeddingUnavailableError,
+)
 from kelvin_assistant.ports.llm import (
     LLMProvider,
     LLMResponseError,
@@ -15,6 +20,78 @@ from kelvin_assistant.ports.llm import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+class OllamaEmbeddingProvider(EmbeddingProvider):
+    """Embedding provider backed by Ollama."""
+
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        transport: httpx2.AsyncBaseTransport | None = None,
+    ) -> None:
+        """Initialize the adapter with injectable runtime dependencies."""
+
+        self.settings = settings or get_settings()
+        self._transport = transport
+
+    async def embed_text(self, text: str) -> tuple[float, ...]:
+        """Create one embedding vector using the configured Ollama model."""
+
+        normalized_text = text.strip()
+        if not normalized_text:
+            msg = "Text to embed cannot be empty"
+            raise ValueError(msg)
+
+        response = await self._request(
+            "POST",
+            "/api/embed",
+            payload={
+                "model": self.settings.ollama_embedding_model,
+                "input": normalized_text,
+            },
+        )
+
+        embedding = _parse_embedding_response(response)
+        if len(embedding) != self.settings.embedding_dimension:
+            LOGGER.warning(
+                "Ollama embedding dimension mismatch: expected %s, got %s",
+                self.settings.embedding_dimension,
+                len(embedding),
+            )
+            raise EmbeddingResponseError("Ollama returned an invalid embedding")
+
+        return embedding
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        payload: dict[str, object],
+    ) -> httpx2.Response:
+        """Send an embedding request and translate Ollama errors."""
+
+        try:
+            async with httpx2.AsyncClient(
+                base_url=self.settings.ollama_base_url,
+                timeout=self.settings.ollama_timeout,
+                transport=self._transport,
+            ) as client:
+                response = await client.request(method, path, json=payload)
+            response.raise_for_status()
+        except httpx2.RequestError as exc:
+            LOGGER.warning("Ollama embedding runtime is unavailable: %s", exc)
+            raise EmbeddingUnavailableError(
+                "Ollama embedding runtime is unavailable"
+            ) from exc
+        except httpx2.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            LOGGER.warning("Ollama embedding returned HTTP status %d", status_code)
+            raise EmbeddingResponseError(
+                f"Ollama embedding returned HTTP status {status_code}"
+            ) from exc
+
+        return response
 
 
 class OllamaProvider(LLMProvider):
@@ -215,3 +292,51 @@ class OllamaProvider(LLMProvider):
             raise LLMResponseError("Ollama returned an invalid streaming chat chunk")
 
         return content
+
+
+def _parse_embedding_response(response: httpx2.Response) -> tuple[float, ...]:
+    """Parse one Ollama embedding response."""
+
+    try:
+        data = response.json()
+        raw_embedding = _extract_raw_embedding(data)
+        embedding = _parse_float_sequence(raw_embedding)
+    except (KeyError, TypeError, ValueError) as exc:
+        LOGGER.warning("Ollama returned an invalid embedding response body")
+        raise EmbeddingResponseError("Ollama returned an invalid embedding") from exc
+
+    if not embedding:
+        LOGGER.warning("Ollama returned an empty embedding")
+        raise EmbeddingResponseError("Ollama returned an invalid embedding")
+
+    return embedding
+
+
+def _extract_raw_embedding(data: object) -> Sequence[object]:
+    """Extract embedding data from current or legacy Ollama responses."""
+
+    if not isinstance(data, dict):
+        raise TypeError
+
+    embeddings = data.get("embeddings")
+    if isinstance(embeddings, list) and embeddings:
+        first_embedding = embeddings[0]
+        if not isinstance(first_embedding, list):
+            raise TypeError
+        return first_embedding
+
+    embedding = data["embedding"]
+    if not isinstance(embedding, list):
+        raise TypeError
+    return embedding
+
+
+def _parse_float_sequence(values: Sequence[object]) -> tuple[float, ...]:
+    """Parse JSON values into an embedding vector."""
+
+    embedding: list[float] = []
+    for value in values:
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            raise TypeError
+        embedding.append(float(value))
+    return tuple(embedding)
