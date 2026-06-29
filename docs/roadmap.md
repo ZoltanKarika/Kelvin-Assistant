@@ -117,6 +117,8 @@ része lesz.
 Elfogadási feltétel: egy indexelt dokumentumból visszakeresett válasz
 ellenőrizhető forráshivatkozást tartalmaz.
 
+Első tervezési dokumentum: [v0.4 Knowledge adatmodell-terv](knowledge-data-model.md).
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;

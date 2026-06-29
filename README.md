@@ -197,6 +197,9 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 
 Részletesen: [docs/roadmap.md](docs/roadmap.md).
 
+A következő mérföldkő első terve:
+[v0.4 Knowledge adatmodell-terv](docs/knowledge-data-model.md).
+
 ## Fejlesztési elvek
 
 - egy logikai változtatás feature vagy karbantartási ágon;
