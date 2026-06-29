@@ -119,6 +119,8 @@ ellenőrizhető forráshivatkozást tartalmaz.
 
 Első tervezési dokumentum: [v0.4 Knowledge adatmodell-terv](knowledge-data-model.md).
 
+Infrastruktúra-terv: [PostgreSQL + pgvector telepítési terv](postgresql-pgvector.md).
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;

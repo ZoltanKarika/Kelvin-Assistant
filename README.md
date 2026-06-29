@@ -200,6 +200,9 @@ Részletesen: [docs/roadmap.md](docs/roadmap.md).
 A következő mérföldkő első terve:
 [v0.4 Knowledge adatmodell-terv](docs/knowledge-data-model.md).
 
+PostgreSQL/pgvector infrastruktúra:
+[docs/postgresql-pgvector.md](docs/postgresql-pgvector.md).
+
 ## Fejlesztési elvek
 
 - egy logikai változtatás feature vagy karbantartási ágon;
