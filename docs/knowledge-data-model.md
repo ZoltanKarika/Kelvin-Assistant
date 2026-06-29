@@ -236,3 +236,7 @@ a keresés a vektorosan legközelebbi chunkot hozta vissza első találatként.
 
 Az első valódi embedding modellként a `nomic-embed-text` lett kiválasztva, mert
 Ollamával lokálisan futtatható és mért dimenziója `768`.
+
+Valódi `nomic-embed-text` embeddinggel a PostgreSQL/pgvector chunk jelentősen
+kisebb cosine distance értéket kapott, mint a nem releváns API chunk, ezért az
+első end-to-end embeddinges keresési próba sikeres.

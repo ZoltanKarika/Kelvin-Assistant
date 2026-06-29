@@ -445,3 +445,47 @@ Következtetés:
 - a RAG keresés adatbázis oldali alapja validált;
 - a következő lépés az embedding előállításának és a Python adapternek a
   megtervezése.
+
+## Valódi embeddinges keresési próba
+
+A dummy vektoros próba után a `nomic-embed-text` modell valódi embeddingjeivel
+is validáltuk a keresést.
+
+Tesztelt chunkok:
+
+```text
+Kelvin API production portja 8000.
+PostgreSQL es pgvector a VM-en fut lokalisan.
+```
+
+Tesztkérdés:
+
+```text
+Hol fut a PostgreSQL es pgvector?
+```
+
+Folyamat:
+
+```text
+kérdés
+→ Ollama / nomic-embed-text embedding
+→ 768 dimenziós query vektor
+→ PostgreSQL pgvector cosine distance keresés
+→ chunkok rendezése távolság szerint
+```
+
+Eredmény:
+
+```text
+ chunk_index |                    content                    |  cosine_distance
+-------------+-----------------------------------------------+--------------------
+           1 | PostgreSQL es pgvector a VM-en fut lokalisan. | 0.0830726724090951
+           0 | Kelvin API production portja 8000.            | 0.6269331331037568
+```
+
+Következtetés:
+
+- a `nomic-embed-text` valódi embeddingje kompatibilis a `vector(768)` mezővel;
+- a kisebb cosine distance valóban relevánsabb chunkot adott;
+- a PostgreSQL + pgvector + Ollama embedding lánc működik;
+- a következő fejlesztési lépés ennek Pythonból történő automatizálása.

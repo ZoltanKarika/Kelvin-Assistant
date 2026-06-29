@@ -134,6 +134,9 @@ Embedding modell: első jelöltként a `nomic-embed-text` lett kiválasztva;
 Ollama alatt mért embedding dimenziója `768`, ami illeszkedik az aktuális
 pgvector sémához.
 
+Valódi embeddinges próba: a `nomic-embed-text` query embedding és a pgvector
+cosine keresés a PostgreSQL/pgvector chunkot rangsorolta első helyre.
+
 ## v0.5 Memory
 
 - elkülönített rövid és hosszú távú memóriatár;
