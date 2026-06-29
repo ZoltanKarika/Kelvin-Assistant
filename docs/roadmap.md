@@ -89,14 +89,16 @@ Elkészült ezen az ágon:
 - stabil 404, 409, 422, 502 és 503 API-válaszok;
 - unit, API-szerződés és élő többfordulós modellteszt;
 - Ubuntu VM-telepítés és end-to-end többfordulós ellenőrzés;
-- elfogadott SSE streaming szerződés.
+- elfogadott SSE streaming szerződés;
+- elfogadott minimális frontendarchitektúra.
 
-Még szükséges:
+Következő végrehajtási sorrend:
 
-- tokenenkénti válaszstreamelés külön végponton;
-- stream megszakítása;
-- megszakított vagy hibás stream atomikus sessionkezelése;
-- v0.3 verzióemelés és mérföldkőlezárás.
+1. minimális, nem streamelt chat UI a meglévő API fölött;
+2. tokenenkénti válaszstreamelés külön végponton;
+3. stream megszakítása és atomikus sessionkezelése;
+4. a frontend átállítása SSE feldolgozásra;
+5. VM-validáció, v0.3 verzióemelés és mérföldkőlezárás.
 
 Elfogadási feltétel: új és meglévő sessionben is folytatható a beszélgetés,
 az ismeretlen session és modellhiba stabil HTTP-választ ad, a streaming
