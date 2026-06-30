@@ -10,12 +10,14 @@ from kelvin_assistant.domain.agent import (
     AgentRun,
     AgentStatus,
     ToolCall,
+    ToolExecutionResult,
     ToolPolicyDecision,
     ToolPolicyResult,
     ToolProposal,
     ToolRisk,
 )
 from kelvin_assistant.ports.agent_runs import (
+    AgentProposalNotFoundError,
     AgentRunConflictError,
     AgentRunNotFoundError,
 )
@@ -169,5 +171,56 @@ def test_update_proposal_atomically_persists_run_and_tool_call() -> None:
 
         assert await store.get(original.id) == awaiting
         assert await store.get_proposal(original.id) == proposal
+
+    asyncio.run(scenario())
+
+
+def test_complete_proposal_atomically_stores_result_and_closes_call() -> None:
+    """Completing a proposal updates run, stores result, and removes active call."""
+
+    async def scenario() -> None:
+        store = InMemoryAgentRunStore()
+        planning = AgentRun.create("Inspect the project").transition_to(
+            AgentStatus.PLANNING
+        )
+        executing = planning.transition_to(AgentStatus.EXECUTING)
+        call = ToolCall(
+            name="git.status",
+            arguments={},
+            reason="Inspect repository state.",
+            expected_effect="No state change.",
+            risk=ToolRisk.READ,
+        )
+        proposal = ToolProposal(
+            run=executing,
+            call=call,
+            policy_result=ToolPolicyResult(
+                decision=ToolPolicyDecision.ALLOW,
+                reason="Read-only tool is allowed.",
+            ),
+        )
+        observed = executing.transition_to(AgentStatus.OBSERVING)
+        result = ToolExecutionResult(
+            tool_call_id=call.id,
+            tool_name=call.name,
+            succeeded=True,
+            output="## main",
+        )
+        await store.add(planning)
+        await store.update_proposal(
+            proposal,
+            expected_version=planning.version,
+        )
+
+        await store.complete_proposal(
+            observed,
+            result,
+            expected_version=executing.version,
+        )
+
+        assert await store.get(planning.id) == observed
+        assert await store.get_result(planning.id) == result
+        with pytest.raises(AgentProposalNotFoundError):
+            await store.get_proposal(planning.id)
 
     asyncio.run(scenario())

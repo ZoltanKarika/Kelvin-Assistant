@@ -3,9 +3,14 @@
 import asyncio
 from uuid import UUID
 
-from kelvin_assistant.domain.agent import AgentRun, ToolProposal
+from kelvin_assistant.domain.agent import (
+    AgentRun,
+    ToolExecutionResult,
+    ToolProposal,
+)
 from kelvin_assistant.ports.agent_runs import (
     AgentProposalNotFoundError,
+    AgentResultNotFoundError,
     AgentRunConflictError,
     AgentRunNotFoundError,
     AgentRunStore,
@@ -18,6 +23,7 @@ class InMemoryAgentRunStore(AgentRunStore):
     def __init__(self) -> None:
         self._runs: dict[UUID, AgentRun] = {}
         self._proposals: dict[UUID, ToolProposal] = {}
+        self._results: dict[UUID, ToolExecutionResult] = {}
         self._lock = asyncio.Lock()
 
     async def add(self, run: AgentRun) -> None:
@@ -86,3 +92,41 @@ class InMemoryAgentRunStore(AgentRunStore):
             if proposal is None:
                 raise AgentProposalNotFoundError(run_id)
             return proposal
+
+    async def complete_proposal(
+        self,
+        run: AgentRun,
+        result: ToolExecutionResult,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Atomically finish the active proposal and store its result."""
+
+        async with self._lock:
+            stored_run = self._runs.get(run.id)
+            if stored_run is None:
+                raise AgentRunNotFoundError(run.id)
+            proposal = self._proposals.get(run.id)
+            if proposal is None:
+                raise AgentProposalNotFoundError(run.id)
+            if proposal.call.id != result.tool_call_id:
+                raise AgentRunConflictError(run.id)
+            if (
+                stored_run.version != expected_version
+                or run.version != expected_version + 1
+            ):
+                raise AgentRunConflictError(run.id)
+            self._runs[run.id] = run
+            self._results[run.id] = result
+            del self._proposals[run.id]
+
+    async def get_result(self, run_id: UUID) -> ToolExecutionResult:
+        """Return the latest stored tool execution result."""
+
+        async with self._lock:
+            if run_id not in self._runs:
+                raise AgentRunNotFoundError(run_id)
+            result = self._results.get(run_id)
+            if result is None:
+                raise AgentResultNotFoundError(run_id)
+            return result

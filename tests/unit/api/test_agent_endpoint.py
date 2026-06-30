@@ -299,6 +299,144 @@ def test_tool_cannot_target_a_different_workspace() -> None:
     assert "different workspace" in response.json()["policy_reason"]
 
 
+def test_get_active_tool_returns_server_managed_arguments() -> None:
+    """The local client can fetch the exact active proposal to execute."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        active = client.get(f"/api/v1/agent/runs/{run_id}/tools/active")
+
+    assert active.status_code == 200
+    assert active.json() == proposed.json()
+    assert active.json()["arguments"] == {"workspace": "kelvin-assistant"}
+    assert active.json()["risk"] == "read"
+
+
+def test_submit_successful_tool_result_moves_run_to_observing() -> None:
+    """A matching successful result closes the proposal and is persisted."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/result",
+            json={
+                "tool_call_id": proposed.json()["tool_call_id"],
+                "succeeded": True,
+                "output": "## main",
+                "truncated": False,
+                "duration_ms": 8,
+            },
+        )
+        no_longer_active = client.get(f"/api/v1/agent/runs/{run_id}/tools/active")
+
+    assert response.status_code == 200
+    assert response.json()["succeeded"] is True
+    assert response.json()["output"] == "## main"
+    assert response.json()["run"]["status"] == "observing"
+    assert response.json()["run"]["version"] == 3
+    assert no_longer_active.status_code == 404
+
+
+def test_submit_failed_tool_result_moves_run_to_failed() -> None:
+    """A matching failed result terminates the run with an error."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/result",
+            json={
+                "tool_call_id": proposed.json()["tool_call_id"],
+                "succeeded": False,
+                "error": "Git is unavailable",
+                "duration_ms": 2,
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["succeeded"] is False
+    assert response.json()["error"] == "Git is unavailable"
+    assert response.json()["run"]["status"] == "failed"
+
+
+def test_submit_tool_result_rejects_mismatched_call_id() -> None:
+    """A client cannot submit a result for another tool call."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/result",
+            json={
+                "tool_call_id": str(uuid4()),
+                "succeeded": True,
+                "output": "invented",
+            },
+        )
+
+    assert response.status_code == 409
+    assert "does not match" in response.json()["detail"]
+
+
+def test_submit_tool_result_rejects_inconsistent_failure() -> None:
+    """A failed result must contain an error explanation."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/result",
+            json={
+                "tool_call_id": proposed.json()["tool_call_id"],
+                "succeeded": False,
+            },
+        )
+
+    assert response.status_code == 422
+    assert "requires an error" in response.json()["detail"]
+
+
+def test_submit_tool_result_cannot_complete_twice() -> None:
+    """Closing a proposal prevents duplicate result submission."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        payload = {
+            "tool_call_id": proposed.json()["tool_call_id"],
+            "succeeded": True,
+            "output": "## main",
+        }
+        first = client.post(f"/api/v1/agent/runs/{run_id}/result", json=payload)
+        repeated = client.post(
+            f"/api/v1/agent/runs/{run_id}/result",
+            json=payload,
+        )
+
+    assert first.status_code == 200
+    assert repeated.status_code == 404
+
+
 def _app(
     *,
     agent_run_store: InMemoryAgentRunStore | None = None,

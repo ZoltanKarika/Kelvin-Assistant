@@ -17,6 +17,8 @@ from kelvin_assistant.api.schemas import (
     AgentToolApprovalRequest,
     AgentToolCallRequest,
     AgentToolProposalResponse,
+    AgentToolResultRequest,
+    AgentToolResultResponse,
 )
 from kelvin_assistant.application.agent import AgentService, AgentServiceError
 from kelvin_assistant.application.tool_policy import ToolPolicyContext
@@ -25,6 +27,7 @@ from kelvin_assistant.domain.agent import (
     AgentRun,
     ApprovalDecision,
     ToolCall,
+    ToolExecutionResult,
     ToolPolicyDecision,
     ToolProposal,
 )
@@ -256,6 +259,95 @@ async def resolve_agent_tool_approval(
     return _tool_proposal_response(resolved)
 
 
+@router.get(
+    "/runs/{run_id}/tools/active",
+    response_model=AgentToolProposalResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Agent run or active proposal not found.",
+        },
+    },
+)
+async def get_active_agent_tool(
+    run_id: UUID,
+    store: RuntimeAgentRunStore,
+) -> AgentToolProposalResponse:
+    """Return the active server-managed tool proposal for a client."""
+
+    try:
+        proposal = await store.get_proposal(run_id)
+    except (AgentRunNotFoundError, AgentProposalNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return _tool_proposal_response(proposal)
+
+
+@router.post(
+    "/runs/{run_id}/result",
+    response_model=AgentToolResultResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Agent run or active proposal not found.",
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Result does not match active execution.",
+        },
+        UNPROCESSABLE_CONTENT: {"description": "Invalid tool result."},
+    },
+)
+async def submit_agent_tool_result(
+    run_id: UUID,
+    request: AgentToolResultRequest,
+    service: RuntimeAgentService,
+    store: RuntimeAgentRunStore,
+) -> AgentToolResultResponse:
+    """Store one matching local tool result and advance the agent run."""
+
+    try:
+        proposal = await store.get_proposal(run_id)
+        if proposal.call.id != request.tool_call_id:
+            raise AgentServiceError("Result does not match the active tool call")
+        result = ToolExecutionResult(
+            tool_call_id=request.tool_call_id,
+            tool_name=proposal.call.name,
+            succeeded=request.succeeded,
+            output=request.output,
+            error=request.error,
+            truncated=request.truncated,
+            duration_ms=request.duration_ms,
+        )
+        updated_run = service.record_execution_result(
+            proposal.run,
+            succeeded=result.succeeded,
+        )
+        await store.complete_proposal(
+            updated_run,
+            result,
+            expected_version=proposal.run.version,
+        )
+    except (AgentRunNotFoundError, AgentProposalNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except AgentDomainError as exc:
+        raise HTTPException(
+            status_code=UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except (AgentServiceError, AgentRunConflictError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    return _tool_result_response(updated_run, result)
+
+
 def _agent_run_response(run: AgentRun) -> AgentRunResponse:
     """Convert an agent domain object into the public API schema."""
 
@@ -279,9 +371,31 @@ def _tool_proposal_response(
         run=_agent_run_response(proposal.run),
         tool_call_id=proposal.call.id,
         tool_name=proposal.call.name,
+        arguments=dict(proposal.call.arguments),
+        reason=proposal.call.reason,
+        expected_effect=proposal.call.expected_effect,
+        risk=proposal.call.risk,
         policy_decision=proposal.policy_result.decision,
         policy_reason=proposal.policy_result.reason,
         approval_status=(
             proposal.approval.decision if proposal.approval is not None else None
         ),
+    )
+
+
+def _tool_result_response(
+    run: AgentRun,
+    result: ToolExecutionResult,
+) -> AgentToolResultResponse:
+    """Convert a stored execution result into the public API schema."""
+
+    return AgentToolResultResponse(
+        run=_agent_run_response(run),
+        tool_call_id=result.tool_call_id,
+        tool_name=result.tool_name,
+        succeeded=result.succeeded,
+        output=result.output,
+        error=result.error,
+        truncated=result.truncated,
+        duration_ms=result.duration_ms,
     )

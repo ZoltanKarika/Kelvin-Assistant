@@ -10,6 +10,7 @@ from kelvin_assistant.domain.agent import (
     DEFAULT_MAX_AGENT_STEPS,
     MAX_AGENT_GOAL_LENGTH,
     MAX_AGENT_STEPS,
+    MAX_TOOL_OUTPUT_LENGTH,
     AgentStatus,
     ApprovalDecision,
     ToolPolicyDecision,
@@ -142,9 +143,37 @@ class AgentToolProposalResponse(BaseModel):
     run: AgentRunResponse
     tool_call_id: UUID
     tool_name: str
+    arguments: dict[str, object]
+    reason: str
+    expected_effect: str
+    risk: ToolRisk
     policy_decision: ToolPolicyDecision
     policy_reason: str
     approval_status: ApprovalDecision | None
+
+
+class AgentToolResultRequest(BaseModel):
+    """Request payload for one completed local tool execution."""
+
+    tool_call_id: UUID
+    succeeded: bool
+    output: str = Field(default="", max_length=MAX_TOOL_OUTPUT_LENGTH)
+    error: str | None = Field(default=None, max_length=MAX_TOOL_OUTPUT_LENGTH)
+    truncated: bool = False
+    duration_ms: int = Field(default=0, ge=0)
+
+
+class AgentToolResultResponse(BaseModel):
+    """Public result of one completed agent tool execution."""
+
+    run: AgentRunResponse
+    tool_call_id: UUID
+    tool_name: str
+    succeeded: bool
+    output: str
+    error: str | None
+    truncated: bool
+    duration_ms: int
 
 
 class MemoryCreateRequest(BaseModel):
