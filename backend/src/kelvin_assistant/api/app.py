@@ -7,12 +7,15 @@ from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
 from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider, OllamaProvider
 from kelvin_assistant.adapters.postgres import PostgresDatabaseClient
 from kelvin_assistant.adapters.postgres_knowledge import PostgresKnowledgeRepository
+from kelvin_assistant.adapters.postgres_memory import PostgresMemoryRepository
 from kelvin_assistant.api.chat_routes import router as chat_router
 from kelvin_assistant.api.frontend_routes import FRONTEND_DIR
 from kelvin_assistant.api.frontend_routes import router as frontend_router
+from kelvin_assistant.api.memory_routes import router as memory_router
 from kelvin_assistant.api.routes import router
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.application.knowledge_search import KnowledgeSearchService
+from kelvin_assistant.application.memory import MemoryService
 from kelvin_assistant.config.settings import Settings, get_settings
 from kelvin_assistant.observability.logging import configure_logging
 from kelvin_assistant.ports.database import DatabaseClient
@@ -25,6 +28,7 @@ def create_app(
     llm_provider: LLMProvider | None = None,
     session_store: SessionStore | None = None,
     database_client: DatabaseClient | None = None,
+    memory_service: MemoryService | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application."""
 
@@ -57,6 +61,11 @@ def create_app(
         system_prompt=active_settings.system_prompt,
         knowledge_context_provider=knowledge_context_provider,
     )
+    active_memory_service = (
+        memory_service
+        if memory_service is not None
+        else MemoryService(PostgresMemoryRepository(active_settings))
+    )
     configure_logging(active_settings)
 
     app = FastAPI(
@@ -70,6 +79,7 @@ def create_app(
     app.state.llm_provider = active_llm_provider
     app.state.database_client = active_database_client
     app.state.chat_service = active_chat_service
+    app.state.memory_service = active_memory_service
     app.mount(
         "/static",
         StaticFiles(directory=FRONTEND_DIR),
@@ -77,5 +87,6 @@ def create_app(
     )
     app.include_router(router)
     app.include_router(chat_router)
+    app.include_router(memory_router)
     app.include_router(frontend_router)
     return app

@@ -14,6 +14,7 @@ from kelvin_assistant.domain.memory import MemoryItem, MemoryKind, MemoryScope
 from kelvin_assistant.ports.memory import (
     MemoryRepositoryConfigurationError,
     MemoryRepositoryUnavailableError,
+    MemorySearchResult,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -143,6 +144,19 @@ class PostgresMemoryRepository:
             raise MemoryRepositoryUnavailableError(
                 "PostgreSQL memory repository is unavailable"
             ) from exc
+
+    async def search(
+        self,
+        query_embedding: tuple[float, ...],
+        *,
+        embedding_model: str,
+        limit: int = 5,
+    ) -> tuple[MemorySearchResult, ...]:
+        """Search active memory items by embedding similarity."""
+
+        _ = (query_embedding, embedding_model, limit)
+        msg = "Semantic memory search is not implemented yet"
+        raise NotImplementedError(msg)
 
 
 async def _insert_memory(cursor: _MemoryCursor, memory: MemoryItem) -> MemoryItem:
