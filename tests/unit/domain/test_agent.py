@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 
 from kelvin_assistant.domain.agent import (
+    MAX_AGENT_GOAL_LENGTH,
     AgentDomainError,
     AgentRun,
     AgentStatus,
@@ -37,6 +38,7 @@ def test_agent_run_create_normalizes_goal() -> None:
     ("goal", "max_steps"),
     [
         ("", 12),
+        ("x" * (MAX_AGENT_GOAL_LENGTH + 1), 12),
         ("Inspect the repository", 0),
         ("Inspect the repository", 101),
     ],

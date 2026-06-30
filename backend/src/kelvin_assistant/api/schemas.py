@@ -6,6 +6,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from kelvin_assistant.domain.agent import (
+    DEFAULT_MAX_AGENT_STEPS,
+    MAX_AGENT_GOAL_LENGTH,
+    MAX_AGENT_STEPS,
+    AgentStatus,
+)
 from kelvin_assistant.domain.chat import MAX_MESSAGE_LENGTH
 from kelvin_assistant.domain.memory import MemoryKind, MemoryScope
 
@@ -62,6 +68,38 @@ class ChatResponse(BaseModel):
     session_id: UUID
     message: str
     model: str
+
+
+class AgentRunCreateRequest(BaseModel):
+    """Request payload for starting one agent run."""
+
+    goal: str = Field(min_length=1, max_length=MAX_AGENT_GOAL_LENGTH)
+    max_steps: int = Field(
+        default=DEFAULT_MAX_AGENT_STEPS,
+        ge=1,
+        le=MAX_AGENT_STEPS,
+    )
+
+    @field_validator("goal")
+    @classmethod
+    def normalize_goal(cls, value: str) -> str:
+        """Trim goal boundaries and reject whitespace-only content."""
+
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("Agent goal cannot be empty")
+        return normalized_value
+
+
+class AgentRunResponse(BaseModel):
+    """Public state of one server-managed agent run."""
+
+    id: UUID
+    goal: str
+    status: AgentStatus
+    step_count: int
+    max_steps: int
+    version: int
 
 
 class MemoryCreateRequest(BaseModel):
