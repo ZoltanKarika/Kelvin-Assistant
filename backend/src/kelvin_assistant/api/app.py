@@ -30,6 +30,7 @@ from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
 from kelvin_assistant.ports.sessions import SessionStore
 from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
+from kelvin_assistant.tools.read_definitions import read_tool_definitions
 from kelvin_assistant.tools.registry import StaticToolRegistry
 from kelvin_assistant.tools.workspaces import StaticWorkspaceAuthorizer
 
@@ -77,7 +78,9 @@ def create_app(
     active_agent_service = (
         agent_service
         if agent_service is not None
-        else AgentService(DefaultToolPolicy(StaticToolRegistry()))
+        else AgentService(
+            DefaultToolPolicy(StaticToolRegistry(read_tool_definitions()))
+        )
     )
     active_agent_run_store = (
         agent_run_store if agent_run_store is not None else InMemoryAgentRunStore()

@@ -21,6 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
+kelvin = "kelvin_assistant.cli.agent:main"
 kelvin-api = "kelvin_assistant.main:main"
 kelvin-import-document = "kelvin_assistant.cli.import_document:main"
 kelvin-search-knowledge = "kelvin_assistant.cli.search_knowledge:main"
