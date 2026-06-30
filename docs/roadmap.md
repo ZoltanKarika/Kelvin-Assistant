@@ -10,8 +10,8 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
-| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Validálás alatt |
-| v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
+| v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
 | v0.7 Workflow UI | n8n-szerű vizuális folyamatépítő | Tervezett |
 | v0.8 Automation Runtime | Workflow futtatás, naplózás és jóváhagyások | Tervezett |
@@ -174,23 +174,29 @@ v0.4 után külön érdemes kezelni.
 
 ## v0.5 Memory
 
-- típusos memória modell:
-  - session history;
-  - short-term memory;
-  - long-term memory;
-  - knowledge/RAG elkülönítés;
+Elkészült:
+
+- típusos memória domain modell;
 - PostgreSQL alapú `memory_items` és `memory_embeddings` séma;
-- kézi memória hozzáadás, listázás és törlés;
-- memória embedding és szemantikus keresés;
-- opcionális memória-kontekstus a chat válaszok előtt;
-- megőrzési, lejárati és törlési szabályok dokumentálása.
+- PostgreSQL memory repository;
+- alkalmazási `MemoryService`;
+- `POST /api/v1/memory` kézi memória létrehozásához;
+- `GET /api/v1/memory` aktív memóriák listázásához;
+- `DELETE /api/v1/memory/{memory_id}` soft delete művelethez;
+- aktív `user` memóriák chat kontextusba illesztése;
+- nyelvsemleges chat context promptok;
+- unit és API contract tesztek;
+- Ubuntu VM production validáció.
 
 Elfogadási feltétel: Kelvin képes legalább egy kézzel felvett memóriát
-eltárolni, listázni, törölni, szemantikusan visszakeresni, majd releváns
-chat-kontekstusként használni úgy, hogy a felhasználó számára dokumentált, mit
-tárol és hogyan törölhető.
+eltárolni, listázni, törölni, majd releváns chat-kontekstusként használni úgy,
+hogy a felhasználó számára dokumentált, mit tárol és hogyan törölhető.
 
-Első terv: [v0.5 Memory terv](memory-design.md).
+Eredmény: a v0.5 első használható memory loopja elkészült és VM-en validált.
+Az embedding alapú memory search, a frontend memory panel és az automatikus
+memória-jelölt készítés későbbi bővítés.
+
+Részletesen: [v0.5 Memory](memory-design.md).
 
 ## v0.6 Agent
 
