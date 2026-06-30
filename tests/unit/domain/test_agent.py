@@ -17,6 +17,7 @@ from kelvin_assistant.domain.agent import (
     InvalidAgentTransitionError,
     ToolApproval,
     ToolCall,
+    ToolExecutionResult,
     ToolRisk,
 )
 
@@ -226,4 +227,16 @@ def test_tool_approval_validates_decision_metadata() -> None:
         ToolApproval(
             tool_call_id=call_id,
             decision=ApprovalDecision.REJECTED,
+        )
+
+
+def test_tool_execution_result_rejects_inconsistent_success() -> None:
+    """A successful result cannot simultaneously contain an error."""
+
+    with pytest.raises(AgentDomainError, match="Successful"):
+        ToolExecutionResult(
+            tool_call_id=uuid4(),
+            tool_name="git.status",
+            succeeded=True,
+            error="unexpected",
         )

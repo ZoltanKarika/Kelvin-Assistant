@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 DEFAULT_MAX_AGENT_STEPS = 12
 MAX_AGENT_STEPS = 100
 MAX_AGENT_GOAL_LENGTH = 8_192
+MAX_TOOL_OUTPUT_LENGTH = 32_768
 _TOOL_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 _WORKSPACE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
@@ -320,6 +321,36 @@ class ToolProposal:
     call: ToolCall
     policy_result: ToolPolicyResult
     approval: ToolApproval | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ToolExecutionResult:
+    """Bounded result returned by one local tool executor."""
+
+    tool_call_id: UUID
+    tool_name: str
+    succeeded: bool
+    output: str = ""
+    error: str | None = None
+    truncated: bool = False
+    duration_ms: int = 0
+
+    def __post_init__(self) -> None:
+        """Validate result identity, output bounds, and timing."""
+
+        object.__setattr__(self, "tool_name", _normalize_tool_name(self.tool_name))
+        if len(self.output) > MAX_TOOL_OUTPUT_LENGTH:
+            raise AgentDomainError(
+                f"Tool output cannot exceed {MAX_TOOL_OUTPUT_LENGTH} characters"
+            )
+        if self.error is not None and len(self.error) > MAX_TOOL_OUTPUT_LENGTH:
+            raise AgentDomainError(
+                f"Tool error cannot exceed {MAX_TOOL_OUTPUT_LENGTH} characters"
+            )
+        if self.duration_ms < 0:
+            raise AgentDomainError("Tool duration cannot be negative")
+        if self.succeeded and self.error is not None:
+            raise AgentDomainError("Successful tool result cannot contain an error")
 
 
 @dataclass(frozen=True, slots=True)
