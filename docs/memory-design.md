@@ -1,39 +1,63 @@
-# v0.5 Memory terv
+# v0.5 Memory
 
 ## Cél
 
-A v0.5 célja, hogy Kelvin ne csak az aktuális beszélgetésben tudjon kontextust
-kezelni, hanem szabályozott, törölhető és auditálható memóriát is kapjon.
+A v0.5 célja az volt, hogy Kelvin szabályozott, törölhető és auditálható
+hosszú távú memóriát kapjon.
 
 Ez nem ugyanaz, mint a v0.4 RAG:
 
 - a RAG dokumentumokból és jegyzetekből keres vissza;
-- a memória Kelvin működése közben keletkező, felhasználóhoz és projekthez
+- a memória Kelvin működése közben keletkező, felhasználóhoz vagy projekthez
   kapcsolódó tényeket, preferenciákat és összefoglalókat tárol.
+
+## Megvalósult állapot
+
+Elkészült:
+
+- típusos memória domain modell;
+- PostgreSQL + pgvector alapú `memory_items` és `memory_embeddings` séma;
+- PostgreSQL memory repository;
+- alkalmazási `MemoryService`;
+- `POST /api/v1/memory` memória létrehozásához;
+- `GET /api/v1/memory` aktív memóriák listázásához;
+- `DELETE /api/v1/memory/{memory_id}` soft delete művelethez;
+- aktív `user` memóriák chat kontextusba illesztése;
+- nyelvsemleges chat context promptok;
+- unit és API contract tesztek;
+- Ubuntu VM production validáció.
+
+Tudatosan későbbre maradt:
+
+- automatikus memória-kivonás beszélgetésekből;
+- embedding alapú memory search;
+- memória szerkesztése API-n keresztül;
+- frontend memory panel;
+- perzisztens chat session store;
+- többfelhasználós jogosultsági modell.
 
 ## Alapelvek
 
-1. **A memória legyen explicit és törölhető.**
+1. **A memória explicit és törölhető.**
    Kelvin ne gyűjtsön kontroll nélkül személyes adatokat.
 
-2. **A memória ne legyen rejtett igazságforrás.**
-   Ha egy válasz memóriára támaszkodik, később legyen visszakövethető, miből.
+2. **A memória nem rejtett igazságforrás.**
+   A memória API-n keresztül listázható, így visszanézhető, mit tárol Kelvin.
 
-3. **A memória legyen típusos.**
-   Egy preferencia, egy projektbeállítás és egy ideiglenes beszélgetési tény nem
-   ugyanaz.
+3. **A memória típusos.**
+   Egy preferencia, egy projektbeállítás és egy feladatállapot nem ugyanaz.
 
-4. **A memória legyen cserélhető adapter mögött.**
-   Az alkalmazási logika portokon keresztül használja, ne közvetlen SQL-en.
+4. **A memória adapter mögött él.**
+   Az alkalmazási logika portokon keresztül használja, nem közvetlen SQL-en.
 
 5. **A biztonság fontosabb, mint az automatikus okosság.**
-   Az első verzió inkább legyen óvatos, mint túlzottan “mindent megjegyző”.
+   Az első verzió kézi és kontrollálható memóriaírást támogat.
 
-## Memóriafajták
+## Memória típusok
 
 ### Session history
 
-Már létezik v0.3 óta memóriabeli session formában.
+Már v0.3 óta létezik folyamatmemóriában.
 
 Feladata:
 
@@ -47,42 +71,22 @@ Korlát:
 - újraindítás után elveszik;
 - nem hosszú távú memória.
 
-v0.5-ben eldöntendő, hogy a sessionök PostgreSQL-be kerüljenek-e, vagy külön
-maradjanak a hosszú távú memóriától.
-
-### Short-term memory
-
-Rövid életű, beszélgetéshez vagy feladathoz kötött emlék.
-
-Példák:
-
-- “Ebben a beszélgetésben a v0.5 Memory terven dolgozunk.”
-- “A felhasználó most angol tesztkérdéseket szeretne Kelvinhez.”
-- “A jelenlegi branch: `codex/docs/v0.5-memory-plan`.”
-
-Jellemzők:
-
-- automatikusan létrejöhet;
-- lejárati ideje van;
-- felülírható vagy törölhető;
-- nem feltétlenül kerül embeddingbe.
-
 ### Long-term memory
 
 Tartós, felhasználó vagy projekt szintű memória.
 
 Példák:
 
-- “A felhasználó neve Zoltán.”
-- “A felhasználó lépésről lépésre szeret tanulni.”
-- “Kelvin Ubuntu VM-en fut, az Ollama Windows hoston.”
-- “A projekt Apache-2.0 licencet használ.”
+- `The user prefers step-by-step explanations.`
+- `Kelvin runs on the Ubuntu VM.`
+- `Ollama runs on the Windows host.`
+- `The project uses Apache-2.0.`
 
 Jellemzők:
 
-- csak jóváhagyott szabályok szerint jöhet létre;
+- API-n keresztül létrehozható;
 - listázható;
-- törölhető;
+- soft delete-elhető;
 - forrása és létrehozási ideje tárolt;
 - később embeddinggel is kereshető.
 
@@ -92,7 +96,7 @@ Nem memória, hanem dokumentumtár.
 
 Példák:
 
-- `docs/installation.md`
+- `docs/installation.md`;
 - projekt döntési dokumentumok;
 - kézzel importált Markdown jegyzetek.
 
@@ -100,12 +104,12 @@ Miért külön:
 
 - dokumentumforrása van;
 - chunkokra és embeddingekre bomlik;
-- nem személyes preferencia;
-- újraépíthető az eredeti dokumentumokból.
+- újraépíthető az eredeti dokumentumokból;
+- nem személyes preferencia.
 
-## Első adatmodell-javaslat
+## Adatmodell
 
-Az első SQL séma:
+Az SQL séma:
 
 ```text
 infrastructure/sql/002_create_memory_schema.sql
@@ -129,8 +133,8 @@ infrastructure/sql/002_create_memory_schema.sql
 
 Miért soft delete?
 
-Az első verzióban hasznos lehet audit és hibakeresés miatt. Később kellhet
-végleges törlés is, főleg személyes adatoknál.
+Az első verzióban hasznos audit és hibakeresés miatt. Később kellhet végleges
+törlés is, főleg személyes adatoknál.
 
 ### `memory_embeddings`
 
@@ -143,75 +147,103 @@ végleges törlés is, főleg személyes adatoknál.
 | `embedding` | vector(768) | pgvector embedding |
 | `created_at` | timestamptz | Létrehozás ideje |
 
-Ez hasonló a `knowledge_embeddings` táblához, de szándékosan külön van.
+Az embedding tábla elkészült, de a v0.5-ben a chat még egyszerű, legfrissebb
+aktív memóriákon alapuló kontextust használ. Az embedding alapú memory search
+későbbi bővítés.
 
-## Első API / CLI ötletek
+## API
 
-v0.5 első körben lehet admin CLI fókuszú:
+### Memória létrehozása
 
 ```bash
-kelvin-memory-add --kind preference "The user prefers step-by-step explanations."
-kelvin-memory-list
-kelvin-memory-delete <memory-id>
-kelvin-memory-search "How should I explain things?"
+curl -s -X POST http://127.0.0.1:8000/api/v1/memory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "user",
+    "kind": "preference",
+    "content": "The user prefers step-by-step explanations.",
+    "source": "manual-test",
+    "confidence": 1.0,
+    "metadata": {
+      "topic": "communication"
+    }
+  }'
 ```
 
-Később API:
+### Aktív memóriák listázása
 
-- `GET /api/v1/memory`
-- `POST /api/v1/memory`
-- `DELETE /api/v1/memory/{id}`
-- `POST /api/v1/memory/search`
+```bash
+curl -s "http://127.0.0.1:8000/api/v1/memory?scope=user&kind=preference&limit=5"
+```
+
+### Memória törlése
+
+```bash
+curl -i -X DELETE "http://127.0.0.1:8000/api/v1/memory/<memory-id>"
+```
+
+Sikeres törlés esetén az API `204 No Content` választ ad. A rekord soft delete
+állapotba kerül, ezért a későbbi aktív listázásban már nem jelenik meg.
 
 ## Chat integráció
 
-Első chat integráció:
+Az első chat integráció egyszerű és kontrollált:
 
 ```text
 felhasználói üzenet
-→ releváns long-term memory keresés
-→ releváns RAG knowledge keresés
-→ system kontextus összeállítása
+→ aktív user memóriák lekérése
+→ RAG context lekérése, ha engedélyezett
+→ system context összeállítása
 → LLM válasz
 ```
 
-Fontos: a memória és a RAG kontextus külön blokk legyen a promptban.
+A memória system üzenetként jut el a modellhez, de nem kerül bele a chat
+session historyba.
 
-Példa:
+Első körben Kelvin:
 
-```text
-Relevant user memory:
-- The user prefers step-by-step explanations.
+- csak aktív `user` memóriákat használ;
+- alapértelmezetten maximum 5 memóriát ad a promptba;
+- nem végez embedding alapú memory searchöt;
+- nem ment automatikusan új memóriát beszélgetésekből.
 
-Relevant project knowledge:
-- Ollama runs on the Windows host.
-```
+## Production validáció
 
-## Mit nem csinálunk v0.5 első körben?
+Ubuntu VM-en ellenőrizve:
 
-- nincs automatikus személyes adatgyűjtés kontroll nélkül;
-- nincs többfelhasználós jogosultsági rendszer;
-- nincs bonyolult memory consolidation pipeline;
-- nincs automatikus “mindent jegyezz meg” mód;
-- nincs végleges agent-autonóm memóriaírás jóváhagyás nélkül.
+- a `memory_items` és `memory_embeddings` táblák létrejöttek;
+- kézi memória beszúrható volt SQL-ből;
+- `POST /api/v1/memory` sikeresen létrehozott memóriát;
+- `GET /api/v1/memory` visszaadta az aktív memóriákat;
+- `DELETE /api/v1/memory/{id}` `204 No Content` választ adott;
+- törlés után az adott memória már nem jelent meg az aktív listában;
+- a chat válaszban érződött a `step-by-step` felhasználói preferencia;
+- nyelvsemleges prompt javítás után az angol kérdés angol, a magyar kérdés
+  magyar választ kapott.
 
 ## Elfogadási feltételek
 
-v0.5 akkor tekinthető késznek, ha:
+- [x] dokumentált memória-adatmodell;
+- [x] PostgreSQL `memory_*` táblák;
+- [x] memóriaelem kézzel létrehozható;
+- [x] memóriaelem listázható;
+- [x] memóriaelem soft delete-elhető;
+- [x] chat válasz előtt Kelvin képes aktív memóriát kontextusként használni;
+- [x] a felhasználó számára dokumentált, mit tárolhat Kelvin és hogyan
+  törölhető;
+- [ ] memóriaelem embeddinggel kereshető.
 
-- van dokumentált memória-adatmodell;
-- PostgreSQL-ben létrejönnek az első `memory_*` táblák;
-- memóriaelem kézzel létrehozható;
-- memóriaelem listázható;
-- memóriaelem törölhető vagy soft-delete-elhető;
-- memóriaelem embeddinggel kereshető;
-- chat válasz előtt Kelvin képes releváns memóriát kontextusként használni;
-- a felhasználó számára dokumentált, mit tárolhat Kelvin és hogyan törölhető.
+Az embedding alapú memory search a v0.5 utáni bővítések közé került, mert az
+első használható memory loophoz elegendő volt a kézi memória és a legfrissebb
+aktív user memóriák promptba illesztése.
 
-## Nyitott kérdések
+## Következő bővítések
 
-- Legyen-e már v0.5-ben perzisztens session store?
-- A long-term memory létrehozása első körben legyen csak kézi?
-- Kell-e külön `project` memória és `user` memória?
-- Mikor törlődjön automatikusan a short-term memory?
-- Mely memóriafajták kapjanak embeddinget?
+- konfigurálható `KELVIN_MEMORY_CONTEXT_LIMIT`;
+- `POST /api/v1/memory/search`;
+- memory embedding mentése;
+- frontend memory panel;
+- memória szerkesztése;
+- automatikus memória-jelölt készítés LLM-mel;
+- felhasználói jóváhagyás memória mentése előtt;
+- clarification policy az agent mérföldkő részeként.

@@ -7,7 +7,7 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt a **v0.3 Conversation** mérföldkőnél tart. A FastAPI
+A projekt a **v0.5 Memory** mérföldkőnél tart. A FastAPI
 backend Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
 automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések
 helyileg, a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12
@@ -36,10 +36,18 @@ Jelenleg működik:
 - minimális, framework nélküli webes chatfelület a `/ui` útvonalon;
 - UUID-alapú, többfordulós memóriabeli sessionkezelés;
 - külön chat alkalmazási service és cserélhető sessiontár;
-- konfigurálható asszisztens rendszerprompt.
+- konfigurálható asszisztens rendszerprompt;
+- PostgreSQL + pgvector alapú RAG tudástár;
+- Markdown/text dokumentumimport és szemantikus keresés;
+- RAG context bekötése a chat válaszok elé;
+- PostgreSQL alapú hosszú távú memória;
+- `POST /api/v1/memory`, `GET /api/v1/memory` és
+  `DELETE /api/v1/memory/{memory_id}`;
+- aktív user memóriák chat contextbe illesztése;
+- nyelvsemleges chat context promptok.
 
-A RAG, hosszú távú memória, hangvezérlés és agentfunkciók még nincsenek
-integrálva. A DHCP-foglalás, az offline csomag-előkészítés és a mentési
+Az agentfunkciók, workflow UI, automatizálás és opcionális hangvezérlés még
+nincsenek integrálva. A DHCP-foglalás, az offline csomag-előkészítés és a mentési
 eljárás továbbra is hátralévő üzemeltetési feladat.
 
 ## Projektcél
@@ -191,16 +199,17 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.1 Foundation | Repository, CI, dokumentáció, Hyper-V, Ubuntu | Kész |
 | v0.2 Runtime | FastAPI, Ollama és Gemma | Kész |
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
-| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Tervezett |
-| v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
+| v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
+| v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
-| v0.7 Voice | Whisper és Piper | Tervezett |
+| v0.7 Workflow UI | n8n-szerű vizuális folyamatépítő | Tervezett |
+| v0.8 Automation Runtime | Workflow futtatás és jóváhagyások | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 Részletesen: [docs/roadmap.md](docs/roadmap.md).
 
-A következő mérföldkő első terve:
-[v0.4 Knowledge adatmodell-terv](docs/knowledge-data-model.md).
+A memória részletes dokumentációja:
+[v0.5 Memory](docs/memory-design.md).
 
 PostgreSQL/pgvector infrastruktúra:
 [docs/postgresql-pgvector.md](docs/postgresql-pgvector.md).
