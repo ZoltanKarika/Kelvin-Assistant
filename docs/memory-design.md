@@ -105,6 +105,12 @@ Miért külön:
 
 ## Első adatmodell-javaslat
 
+Az első SQL séma:
+
+```text
+infrastructure/sql/002_create_memory_schema.sql
+```
+
 ### `memory_items`
 
 | Mező | Típus | Jelentés |
