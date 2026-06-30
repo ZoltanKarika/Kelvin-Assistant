@@ -240,3 +240,10 @@ def test_tool_execution_result_rejects_inconsistent_success() -> None:
             succeeded=True,
             error="unexpected",
         )
+
+    with pytest.raises(AgentDomainError, match="requires an error"):
+        ToolExecutionResult(
+            tool_call_id=uuid4(),
+            tool_name="git.status",
+            succeeded=False,
+        )

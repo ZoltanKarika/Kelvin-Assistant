@@ -3,7 +3,11 @@
 from typing import Protocol
 from uuid import UUID
 
-from kelvin_assistant.domain.agent import AgentRun, ToolProposal
+from kelvin_assistant.domain.agent import (
+    AgentRun,
+    ToolExecutionResult,
+    ToolProposal,
+)
 
 
 class AgentRunStoreError(RuntimeError):
@@ -31,6 +35,14 @@ class AgentProposalNotFoundError(AgentRunStoreError):
 
     def __init__(self, run_id: UUID) -> None:
         super().__init__(f"Agent tool proposal not found: {run_id}")
+        self.run_id = run_id
+
+
+class AgentResultNotFoundError(AgentRunStoreError):
+    """Raised when a run has no stored tool execution result."""
+
+    def __init__(self, run_id: UUID) -> None:
+        super().__init__(f"Agent tool result not found: {run_id}")
         self.run_id = run_id
 
 
@@ -65,4 +77,18 @@ class AgentRunStore(Protocol):
 
     async def get_proposal(self, run_id: UUID) -> ToolProposal:
         """Return the active proposal for a run or raise not-found."""
+        ...
+
+    async def complete_proposal(
+        self,
+        run: AgentRun,
+        result: ToolExecutionResult,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Atomically store a result, update the run, and close the proposal."""
+        ...
+
+    async def get_result(self, run_id: UUID) -> ToolExecutionResult:
+        """Return the latest stored tool result or raise not-found."""
         ...

@@ -351,6 +351,8 @@ class ToolExecutionResult:
             raise AgentDomainError("Tool duration cannot be negative")
         if self.succeeded and self.error is not None:
             raise AgentDomainError("Successful tool result cannot contain an error")
+        if not self.succeeded and not self.error:
+            raise AgentDomainError("Failed tool result requires an error")
 
 
 @dataclass(frozen=True, slots=True)
