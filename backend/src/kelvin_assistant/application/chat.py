@@ -7,12 +7,17 @@ from uuid import UUID
 from kelvin_assistant.domain.chat import ChatMessage, ChatRole, ChatSession
 from kelvin_assistant.ports.knowledge import KnowledgeContextProvider
 from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.ports.memory import MemoryContextProvider
 from kelvin_assistant.ports.sessions import SessionStore
 
 RAG_CONTEXT_TEMPLATE = (
     "Használd az alábbi helyi tudásbázis-részleteket, ha relevánsak a "
     "felhasználó kérdéséhez. Ha a részletek nem relevánsak, hagyd figyelmen "
     "kívül őket. Ne találj ki forrást.\n\n{context}"
+)
+MEMORY_CONTEXT_TEMPLATE = (
+    "Használd az alábbi hosszú távú memóriákat a válasz személyre szabásához, "
+    "ha relevánsak. Ne állítsd, hogy ezek biztosan teljes körűek.\n\n{context}"
 )
 
 
@@ -42,6 +47,7 @@ class ChatService:
         history_turn_limit: int = 10,
         system_prompt: str | None = None,
         knowledge_context_provider: KnowledgeContextProvider | None = None,
+        memory_context_provider: MemoryContextProvider | None = None,
     ) -> None:
         if history_turn_limit <= 0:
             msg = "history_turn_limit must be positive"
@@ -55,6 +61,7 @@ class ChatService:
             else None
         )
         self._knowledge_context_provider = knowledge_context_provider
+        self._memory_context_provider = memory_context_provider
 
     async def send_message(
         self,
@@ -164,6 +171,18 @@ class ChatService:
                     ChatMessage(
                         role=ChatRole.SYSTEM,
                         content=RAG_CONTEXT_TEMPLATE.format(context=knowledge_context),
+                    )
+                )
+
+        if self._memory_context_provider is not None:
+            memory_context = await self._memory_context_provider.get_context(
+                user_content
+            )
+            if memory_context is not None:
+                messages.append(
+                    ChatMessage(
+                        role=ChatRole.SYSTEM,
+                        content=MEMORY_CONTEXT_TEMPLATE.format(context=memory_context),
                     )
                 )
 

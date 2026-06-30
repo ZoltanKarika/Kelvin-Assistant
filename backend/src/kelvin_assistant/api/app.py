@@ -15,7 +15,10 @@ from kelvin_assistant.api.memory_routes import router as memory_router
 from kelvin_assistant.api.routes import router
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.application.knowledge_search import KnowledgeSearchService
-from kelvin_assistant.application.memory import MemoryService
+from kelvin_assistant.application.memory import (
+    MemoryService,
+    RecentMemoryContextProvider,
+)
 from kelvin_assistant.config.settings import Settings, get_settings
 from kelvin_assistant.observability.logging import configure_logging
 from kelvin_assistant.ports.database import DatabaseClient
@@ -55,16 +58,21 @@ def create_app(
         if active_settings.rag_enabled
         else None
     )
+    active_memory_service = (
+        memory_service
+        if memory_service is not None
+        else MemoryService(PostgresMemoryRepository(active_settings))
+    )
     active_chat_service = ChatService(
         llm_provider=active_llm_provider,
         session_store=active_session_store,
         system_prompt=active_settings.system_prompt,
         knowledge_context_provider=knowledge_context_provider,
-    )
-    active_memory_service = (
-        memory_service
-        if memory_service is not None
-        else MemoryService(PostgresMemoryRepository(active_settings))
+        memory_context_provider=(
+            RecentMemoryContextProvider(active_memory_service)
+            if active_settings.database_url is not None
+            else None
+        ),
     )
     configure_logging(active_settings)
 

@@ -6,7 +6,10 @@ from uuid import UUID
 
 import pytest
 
-from kelvin_assistant.application.memory import MemoryService
+from kelvin_assistant.application.memory import (
+    MemoryService,
+    RecentMemoryContextProvider,
+)
 from kelvin_assistant.domain.memory import MemoryItem, MemoryKind, MemoryScope
 from kelvin_assistant.ports.memory import MemorySearchResult
 
@@ -113,6 +116,57 @@ def test_forget_delegates_soft_delete_to_repository() -> None:
         assert repository.deleted == [MEMORY_ID]
 
     asyncio.run(scenario())
+
+
+def test_recent_memory_context_provider_formats_user_memories() -> None:
+    """Recent user memories are formatted for chat context."""
+
+    async def scenario() -> None:
+        stored = (
+            _stored_memory(
+                id=MEMORY_ID,
+                content="The user prefers step-by-step explanations.",
+            ),
+        )
+        repository = FakeMemoryRepository(active_memories=stored)
+        service = MemoryService(repository)
+        provider = RecentMemoryContextProvider(service, limit=3)
+
+        context = await provider.get_context("How should you explain this?")
+
+        assert context == (
+            "[1] scope=user; kind=preference; confidence=0.90\n"
+            "The user prefers step-by-step explanations."
+        )
+        assert repository.list_calls == [
+            {
+                "scope": MemoryScope.USER,
+                "kind": None,
+                "limit": 3,
+            }
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_recent_memory_context_provider_returns_none_without_memories() -> None:
+    """Empty memory results do not add prompt context."""
+
+    async def scenario() -> None:
+        repository = FakeMemoryRepository()
+        service = MemoryService(repository)
+        provider = RecentMemoryContextProvider(service)
+
+        assert await provider.get_context("Szia!") is None
+
+    asyncio.run(scenario())
+
+
+def test_recent_memory_context_provider_rejects_non_positive_limit() -> None:
+    """The context provider must have a positive limit."""
+
+    with pytest.raises(ValueError, match="limit"):
+        RecentMemoryContextProvider(MemoryService(FakeMemoryRepository()), limit=0)
 
 
 def _stored_memory(
