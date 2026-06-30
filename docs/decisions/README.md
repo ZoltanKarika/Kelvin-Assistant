@@ -19,3 +19,4 @@ Aktuális döntések:
 - [ADR-0005: SSE-alapú chat streaming](0005-sse-chat-streaming.md)
 - [ADR-0006: Minimális, framework nélküli chat frontend](0006-minimal-chat-frontend.md)
 - [ADR-0007: PostgreSQL + pgvector a tudástárhoz](0007-postgresql-pgvector-for-knowledge-store.md)
+- [ADR-0008: Workflow UI előnyben a Voice mérföldkővel szemben](0008-workflow-ui-over-voice.md)

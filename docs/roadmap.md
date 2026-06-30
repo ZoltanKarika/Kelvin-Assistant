@@ -13,7 +13,8 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Validálás alatt |
 | v0.5 Memory | Rövid és hosszú távú memória | Tervezett |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
-| v0.7 Voice | Whisper és Piper | Tervezett |
+| v0.7 Workflow UI | n8n-szerű vizuális folyamatépítő | Tervezett |
+| v0.8 Automation Runtime | Workflow futtatás, naplózás és jóváhagyások | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 ## v0.1 Foundation
@@ -191,12 +192,46 @@ v0.4 után külön érdemes kezelni.
 Elfogadási feltétel: az agent csak a megadott munkakönyvtárban és a
 jóváhagyott jogosultságokkal tud állapotot változtatni.
 
-## v0.7 Voice
+## v0.7 Workflow UI
+
+- n8n-szerű, de Kelvin-specifikus vizuális folyamatépítő;
+- workflow definíciók mentése JSON vagy YAML formában;
+- alap node-ok:
+  - prompt / chat;
+  - RAG keresés;
+  - fájl beolvasás;
+  - HTTP kérés;
+  - shell / PowerShell előkészítés jóváhagyási ponttal;
+- manuális workflow futtatás;
+- egyszerű futási eredmény és hibanapló megjelenítése.
+
+Elfogadási feltétel: a felhasználó webes felületen össze tud rakni egy egyszerű
+workflow-t, amely legalább egy prompt/RAG lépést és egy fájl- vagy HTTP-lépést
+tartalmaz, majd kézzel el tudja indítani.
+
+## v0.8 Automation Runtime
+
+- workflow futtatómotor;
+- node input/output adatátadás;
+- futási naplók és hibák tárolása;
+- biztonságos jóváhagyási pontok veszélyes műveletek előtt;
+- alap retry és megszakítás;
+- későbbi ütemezés előkészítése.
+
+Elfogadási feltétel: egy mentett workflow újrafuttatható, a futás eredménye
+visszanézhető, és a potenciálisan veszélyes műveletek nem futnak le jóváhagyás
+nélkül.
+
+## Post-1.0 opcionális Voice
 
 - Whisper beszédfelismerő adapter;
 - Piper TTS adapter;
 - hangfolyam és megszakítás;
 - eszközválasztás és késleltetési mérés.
+
+A hangvezérlés kikerült az 1.0 előtti fő útvonalból, mert jelenleg nincs
+mikrofon a fejlesztői gépen, és a projekt számára értékesebb irány a vizuális
+automatizáció.
 
 ## v1.0 Stable
 
