@@ -21,3 +21,4 @@ Aktuális döntések:
 - [ADR-0007: PostgreSQL + pgvector a tudástárhoz](0007-postgresql-pgvector-for-knowledge-store.md)
 - [ADR-0008: Workflow UI előnyben a Voice mérföldkővel szemben](0008-workflow-ui-over-voice.md)
 - [ADR-0009: Típusos, törölhető memória modell](0009-memory-model.md)
+- [ADR-0010: Kliens által közvetített strukturált agentciklus](0010-client-mediated-agent-loop.md)
