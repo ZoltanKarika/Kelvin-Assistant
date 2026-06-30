@@ -61,3 +61,46 @@ class MemoryService:
         """Soft-delete one memory item."""
 
         await self._repository.delete(memory_id)
+
+
+class RecentMemoryContextProvider:
+    """Build chat context from recent active user memories."""
+
+    def __init__(
+        self,
+        memory_service: MemoryService,
+        *,
+        limit: int = 5,
+    ) -> None:
+        """Initialize the provider with a memory service and item limit."""
+
+        if limit <= 0:
+            msg = "memory context limit must be positive"
+            raise ValueError(msg)
+        self._memory_service = memory_service
+        self._limit = limit
+
+    async def get_context(self, query: str) -> str | None:
+        """Return recent active user memories for a chat turn."""
+
+        _ = query
+        memories = await self._memory_service.list_active(
+            scope=MemoryScope.USER,
+            limit=self._limit,
+        )
+        if not memories:
+            return None
+        return "\n".join(
+            _format_memory(index, memory) for index, memory in enumerate(memories, 1)
+        )
+
+
+def _format_memory(index: int, memory: MemoryItem) -> str:
+    """Format one memory item for model context."""
+
+    return (
+        f"[{index}] scope={memory.scope.value}; "
+        f"kind={memory.kind.value}; "
+        f"confidence={memory.confidence:.2f}\n"
+        f"{memory.content}"
+    )

@@ -55,3 +55,10 @@ class MemoryRepository(Protocol):
         limit: int = 5,
     ) -> tuple[MemorySearchResult, ...]:
         """Search active memory items by embedding similarity."""
+
+
+class MemoryContextProvider(Protocol):
+    """Interface for building memory context for chat prompts."""
+
+    async def get_context(self, query: str) -> str | None:
+        """Return memory context relevant to a user query."""

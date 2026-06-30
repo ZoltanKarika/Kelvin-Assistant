@@ -72,6 +72,18 @@ class StubKnowledgeContextProvider:
         return self._context
 
 
+class StubMemoryContextProvider:
+    """Configurable memory context provider for chat tests."""
+
+    def __init__(self, context: str | None) -> None:
+        self._context = context
+        self.queries: list[str] = []
+
+    async def get_context(self, query: str) -> str | None:
+        self.queries.append(query)
+        return self._context
+
+
 def test_send_message_creates_and_persists_new_session() -> None:
     """A successful first turn creates a session containing both messages."""
 
@@ -218,6 +230,56 @@ def test_send_message_adds_knowledge_context_without_persisting_it() -> None:
             ChatMessage(
                 role=ChatRole.ASSISTANT,
                 content="Az Ollama a Windows hoston fut.",
+            ),
+        )
+
+    asyncio.run(scenario())
+
+
+def test_send_message_adds_memory_context_without_persisting_it() -> None:
+    """Long-term memory context reaches the model but not session history."""
+
+    async def scenario() -> None:
+        store = InMemorySessionStore()
+        provider = StubLLMProvider(responses=["Lépésenként magyarázok."])
+        memory_provider = StubMemoryContextProvider(
+            context=(
+                "[1] scope=user; kind=preference; confidence=0.90\n"
+                "The user prefers step-by-step explanations."
+            )
+        )
+        service = ChatService(
+            provider,
+            store,
+            system_prompt="Te Kelvin vagy.",
+            memory_context_provider=memory_provider,
+        )
+
+        result = await service.send_message("Magyarázd el a FastAPI-t.")
+
+        assert memory_provider.queries == ["Magyarázd el a FastAPI-t."]
+        assert provider.chat_calls == [
+            (
+                ChatMessage(role=ChatRole.SYSTEM, content="Te Kelvin vagy."),
+                ChatMessage(
+                    role=ChatRole.SYSTEM,
+                    content=(
+                        "Használd az alábbi hosszú távú memóriákat a válasz "
+                        "személyre szabásához, ha relevánsak. Ne állítsd, hogy "
+                        "ezek biztosan teljes körűek.\n\n"
+                        "[1] scope=user; kind=preference; confidence=0.90\n"
+                        "The user prefers step-by-step explanations."
+                    ),
+                ),
+                ChatMessage(role=ChatRole.USER, content="Magyarázd el a FastAPI-t."),
+            )
+        ]
+        stored_session = await store.get(result.session_id)
+        assert stored_session.messages == (
+            ChatMessage(role=ChatRole.USER, content="Magyarázd el a FastAPI-t."),
+            ChatMessage(
+                role=ChatRole.ASSISTANT,
+                content="Lépésenként magyarázok.",
             ),
         )
 
