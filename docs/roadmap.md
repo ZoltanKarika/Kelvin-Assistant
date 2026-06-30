@@ -174,11 +174,23 @@ v0.4 után külön érdemes kezelni.
 
 ## v0.5 Memory
 
-- elkülönített rövid és hosszú távú memóriatár;
-- mentési és visszakeresési szabályok;
-- deduplikáció;
-- felhasználói listázás és törlés;
-- összefoglalás és elévülés.
+- típusos memória modell:
+  - session history;
+  - short-term memory;
+  - long-term memory;
+  - knowledge/RAG elkülönítés;
+- PostgreSQL alapú `memory_items` és `memory_embeddings` séma;
+- kézi memória hozzáadás, listázás és törlés;
+- memória embedding és szemantikus keresés;
+- opcionális memória-kontekstus a chat válaszok előtt;
+- megőrzési, lejárati és törlési szabályok dokumentálása.
+
+Elfogadási feltétel: Kelvin képes legalább egy kézzel felvett memóriát
+eltárolni, listázni, törölni, szemantikusan visszakeresni, majd releváns
+chat-kontekstusként használni úgy, hogy a felhasználó számára dokumentált, mit
+tárol és hogyan törölhető.
+
+Első terv: [v0.5 Memory terv](memory-design.md).
 
 ## v0.6 Agent
 
