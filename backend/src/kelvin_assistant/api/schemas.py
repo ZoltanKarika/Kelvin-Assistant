@@ -1,11 +1,13 @@
 """Pydantic response models for public endpoints."""
 
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
 from kelvin_assistant.domain.chat import MAX_MESSAGE_LENGTH
+from kelvin_assistant.domain.memory import MemoryKind, MemoryScope
 
 
 class RootResponse(BaseModel):
@@ -60,6 +62,48 @@ class ChatResponse(BaseModel):
     session_id: UUID
     message: str
     model: str
+
+
+class MemoryCreateRequest(BaseModel):
+    """Request payload for storing one memory item."""
+
+    scope: MemoryScope
+    kind: MemoryKind
+    content: str = Field(min_length=1)
+    source: str = Field(min_length=1)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    metadata: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("content", "source")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        """Trim text boundaries and reject whitespace-only values."""
+
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("Value cannot be empty")
+        return normalized_value
+
+
+class MemoryResponse(BaseModel):
+    """Response payload for one memory item."""
+
+    id: UUID | None
+    scope: MemoryScope
+    kind: MemoryKind
+    content: str
+    source: str
+    confidence: float
+    metadata: dict[str, str]
+    created_at: datetime | None
+    updated_at: datetime | None
+    expires_at: datetime | None
+
+
+class MemoryListResponse(BaseModel):
+    """Response payload for active memory listing."""
+
+    memories: list[MemoryResponse]
 
 
 class VersionResponse(BaseModel):

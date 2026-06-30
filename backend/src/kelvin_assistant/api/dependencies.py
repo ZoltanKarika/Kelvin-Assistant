@@ -5,6 +5,7 @@ from typing import cast
 from fastapi import Request
 
 from kelvin_assistant.application.chat import ChatService
+from kelvin_assistant.application.memory import MemoryService
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
@@ -46,5 +47,15 @@ def get_chat_service(request: Request) -> ChatService:
     service = getattr(request.app.state, "chat_service", None)
     if not isinstance(service, ChatService):
         msg = "Chat service is not configured."
+        raise RuntimeError(msg)
+    return service
+
+
+def get_memory_service(request: Request) -> MemoryService:
+    """Return the memory application service attached to the app state."""
+
+    service = getattr(request.app.state, "memory_service", None)
+    if not isinstance(service, MemoryService):
+        msg = "Memory service is not configured."
         raise RuntimeError(msg)
     return service
