@@ -34,6 +34,20 @@ def test_agent_run_create_normalizes_goal() -> None:
     assert run.status.is_terminal is False
 
 
+def test_agent_run_normalizes_workspace_identifier() -> None:
+    """A run stores an opaque normalized workspace ID, never a host path."""
+
+    run = AgentRun.create(
+        "Inspect the project",
+        workspace_id=" kelvin-assistant ",
+    )
+
+    assert run.workspace_id == "kelvin-assistant"
+
+    with pytest.raises(AgentDomainError, match="Workspace ID"):
+        AgentRun.create("Inspect the project", workspace_id="Kelvin Project")
+
+
 @pytest.mark.parametrize(
     ("goal", "max_steps"),
     [

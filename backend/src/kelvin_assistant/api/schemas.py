@@ -11,6 +11,9 @@ from kelvin_assistant.domain.agent import (
     MAX_AGENT_GOAL_LENGTH,
     MAX_AGENT_STEPS,
     AgentStatus,
+    ApprovalDecision,
+    ToolPolicyDecision,
+    ToolRisk,
 )
 from kelvin_assistant.domain.chat import MAX_MESSAGE_LENGTH
 from kelvin_assistant.domain.memory import MemoryKind, MemoryScope
@@ -79,15 +82,18 @@ class AgentRunCreateRequest(BaseModel):
         ge=1,
         le=MAX_AGENT_STEPS,
     )
+    workspace_id: str | None = Field(default=None, min_length=1, max_length=64)
 
-    @field_validator("goal")
+    @field_validator("goal", "workspace_id")
     @classmethod
-    def normalize_goal(cls, value: str) -> str:
-        """Trim goal boundaries and reject whitespace-only content."""
+    def normalize_agent_text(cls, value: str | None) -> str | None:
+        """Trim agent text fields and reject whitespace-only values."""
 
+        if value is None:
+            return None
         normalized_value = value.strip()
         if not normalized_value:
-            raise ValueError("Agent goal cannot be empty")
+            raise ValueError("Agent text cannot be empty")
         return normalized_value
 
 
@@ -100,6 +106,45 @@ class AgentRunResponse(BaseModel):
     step_count: int
     max_steps: int
     version: int
+    workspace_id: str | None
+
+
+class AgentToolCallRequest(BaseModel):
+    """Request payload for proposing one structured agent tool call."""
+
+    name: str = Field(min_length=3, max_length=128)
+    arguments: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    reason: str = Field(min_length=1, max_length=2_048)
+    expected_effect: str = Field(min_length=1, max_length=2_048)
+    risk: ToolRisk
+
+    @field_validator("name", "reason", "expected_effect")
+    @classmethod
+    def normalize_tool_text(cls, value: str) -> str:
+        """Trim tool text fields and reject whitespace-only values."""
+
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("Tool call text cannot be empty")
+        return normalized_value
+
+
+class AgentToolApprovalRequest(BaseModel):
+    """Request payload for resolving one pending tool approval."""
+
+    tool_call_id: UUID
+    decision: Literal["approved", "rejected"]
+
+
+class AgentToolProposalResponse(BaseModel):
+    """Public state of one server-managed tool proposal."""
+
+    run: AgentRunResponse
+    tool_call_id: UUID
+    tool_name: str
+    policy_decision: ToolPolicyDecision
+    policy_reason: str
+    approval_status: ApprovalDecision | None
 
 
 class MemoryCreateRequest(BaseModel):

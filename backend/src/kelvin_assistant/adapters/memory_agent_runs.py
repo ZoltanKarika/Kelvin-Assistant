@@ -3,8 +3,9 @@
 import asyncio
 from uuid import UUID
 
-from kelvin_assistant.domain.agent import AgentRun
+from kelvin_assistant.domain.agent import AgentRun, ToolProposal
 from kelvin_assistant.ports.agent_runs import (
+    AgentProposalNotFoundError,
     AgentRunConflictError,
     AgentRunNotFoundError,
     AgentRunStore,
@@ -16,6 +17,7 @@ class InMemoryAgentRunStore(AgentRunStore):
 
     def __init__(self) -> None:
         self._runs: dict[UUID, AgentRun] = {}
+        self._proposals: dict[UUID, ToolProposal] = {}
         self._lock = asyncio.Lock()
 
     async def add(self, run: AgentRun) -> None:
@@ -53,3 +55,34 @@ class InMemoryAgentRunStore(AgentRunStore):
             ):
                 raise AgentRunConflictError(run.id)
             self._runs[run.id] = run
+
+    async def update_proposal(
+        self,
+        proposal: ToolProposal,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Atomically store a proposal and its updated agent run."""
+
+        async with self._lock:
+            stored_run = self._runs.get(proposal.run.id)
+            if stored_run is None:
+                raise AgentRunNotFoundError(proposal.run.id)
+            if (
+                stored_run.version != expected_version
+                or proposal.run.version != expected_version + 1
+            ):
+                raise AgentRunConflictError(proposal.run.id)
+            self._runs[proposal.run.id] = proposal.run
+            self._proposals[proposal.run.id] = proposal
+
+    async def get_proposal(self, run_id: UUID) -> ToolProposal:
+        """Return the active server-managed proposal for a run."""
+
+        async with self._lock:
+            if run_id not in self._runs:
+                raise AgentRunNotFoundError(run_id)
+            proposal = self._proposals.get(run_id)
+            if proposal is None:
+                raise AgentProposalNotFoundError(run_id)
+            return proposal

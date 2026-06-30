@@ -14,6 +14,7 @@ DEFAULT_MAX_AGENT_STEPS = 12
 MAX_AGENT_STEPS = 100
 MAX_AGENT_GOAL_LENGTH = 8_192
 _TOOL_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
+_WORKSPACE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | tuple[JsonValue, ...] | Mapping[str, JsonValue]
@@ -75,6 +76,31 @@ class ToolExecutionTarget(StrEnum):
 
     WINDOWS_CLIENT = "windows_client"
     BACKEND = "backend"
+
+
+class ToolPolicyDecision(StrEnum):
+    """Deterministic authorization result for one proposed tool call."""
+
+    ALLOW = "allow"
+    REQUIRE_APPROVAL = "require_approval"
+    DENY = "deny"
+
+
+@dataclass(frozen=True, slots=True)
+class ToolPolicyResult:
+    """A policy decision with a user-readable reason."""
+
+    decision: ToolPolicyDecision
+    reason: str
+
+    def __post_init__(self) -> None:
+        """Normalize and validate the policy explanation."""
+
+        object.__setattr__(
+            self,
+            "reason",
+            _normalize_required_text(self.reason, "Tool policy reason"),
+        )
 
 
 class ApprovalDecision(StrEnum):
@@ -287,6 +313,16 @@ class ToolApproval:
 
 
 @dataclass(frozen=True, slots=True)
+class ToolProposal:
+    """A server-managed tool proposal bound to one agent run state."""
+
+    run: AgentRun
+    call: ToolCall
+    policy_result: ToolPolicyResult
+    approval: ToolApproval | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class AgentRun:
     """An immutable agent execution with guarded state transitions."""
 
@@ -296,6 +332,7 @@ class AgentRun:
     step_count: int = 0
     max_steps: int = DEFAULT_MAX_AGENT_STEPS
     version: int = 0
+    workspace_id: str | None = None
 
     def __post_init__(self) -> None:
         """Normalize and validate run invariants."""
@@ -317,6 +354,11 @@ class AgentRun:
             raise AgentDomainError("Agent step count is outside the allowed range")
         if self.version < 0:
             raise AgentDomainError("Agent version cannot be negative")
+        if self.workspace_id is not None:
+            workspace_id = self.workspace_id.strip()
+            if not _WORKSPACE_ID_PATTERN.fullmatch(workspace_id):
+                raise AgentDomainError("Workspace ID must be a lowercase identifier")
+            object.__setattr__(self, "workspace_id", workspace_id)
 
     @classmethod
     def create(
@@ -324,10 +366,16 @@ class AgentRun:
         goal: str,
         *,
         max_steps: int = DEFAULT_MAX_AGENT_STEPS,
+        workspace_id: str | None = None,
     ) -> AgentRun:
         """Create a new run in the received state."""
 
-        return cls(id=uuid4(), goal=goal, max_steps=max_steps)
+        return cls(
+            id=uuid4(),
+            goal=goal,
+            max_steps=max_steps,
+            workspace_id=workspace_id,
+        )
 
     def transition_to(self, next_status: AgentStatus) -> AgentRun:
         """Return a new run after one valid lifecycle transition."""

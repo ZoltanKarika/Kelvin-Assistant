@@ -8,11 +8,19 @@ from fastapi.testclient import TestClient
 
 from kelvin_assistant.adapters.memory_agent_runs import InMemoryAgentRunStore
 from kelvin_assistant.api.app import create_app
+from kelvin_assistant.application.agent import AgentService
+from kelvin_assistant.application.tool_policy import DefaultToolPolicy
 from kelvin_assistant.config.settings import Settings
-from kelvin_assistant.domain.agent import AgentRun
+from kelvin_assistant.domain.agent import (
+    AgentRun,
+    ToolDefinition,
+    ToolExecutionTarget,
+    ToolRisk,
+)
 from kelvin_assistant.domain.chat import ChatMessage
 from kelvin_assistant.ports.agent_runs import AgentRunConflictError
 from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.tools.registry import StaticToolRegistry
 
 
 def test_create_agent_run_persists_server_managed_state() -> None:
@@ -37,6 +45,7 @@ def test_create_agent_run_persists_server_managed_state() -> None:
         "step_count": 0,
         "max_steps": 5,
         "version": 0,
+        "workspace_id": None,
     }
     assert UUID(response.json()["id"])
 
@@ -130,9 +139,170 @@ def test_begin_planning_translates_concurrent_update_to_409() -> None:
     assert "changed concurrently" in response.json()["detail"]
 
 
+def test_propose_read_tool_enters_execution_without_approval() -> None:
+    """An allowed read proposal is persisted in executing state."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        stored = client.get(f"/api/v1/agent/runs/{run_id}")
+
+    assert response.status_code == 200
+    assert response.json()["policy_decision"] == "allow"
+    assert response.json()["approval_status"] is None
+    assert response.json()["run"]["status"] == "executing"
+    assert response.json()["run"]["version"] == 2
+    assert stored.json() == response.json()["run"]
+
+
+def test_propose_write_tool_waits_for_approval() -> None:
+    """A write proposal is persisted with pending approval."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("file.patch", "write"),
+        )
+
+    assert response.status_code == 200
+    assert response.json()["policy_decision"] == "require_approval"
+    assert response.json()["approval_status"] == "pending"
+    assert response.json()["run"]["status"] == "awaiting_approval"
+    assert response.json()["run"]["version"] == 2
+
+
+def test_approve_write_tool_enters_execution() -> None:
+    """Approval is bound to the stored tool call before execution."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("file.patch", "write"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/approval",
+            json={
+                "tool_call_id": proposed.json()["tool_call_id"],
+                "decision": "approved",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["approval_status"] == "approved"
+    assert response.json()["run"]["status"] == "executing"
+    assert response.json()["run"]["version"] == 3
+
+
+def test_reject_write_tool_cancels_run() -> None:
+    """Rejecting a pending write prevents execution."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("file.patch", "write"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/approval",
+            json={
+                "tool_call_id": proposed.json()["tool_call_id"],
+                "decision": "rejected",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["approval_status"] == "rejected"
+    assert response.json()["run"]["status"] == "cancelled"
+    assert response.json()["run"]["step_count"] == 0
+
+
+def test_approval_rejects_mismatched_tool_call_id() -> None:
+    """A client cannot approve a different or invented tool call."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("file.patch", "write"),
+        )
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/approval",
+            json={
+                "tool_call_id": str(uuid4()),
+                "decision": "approved",
+            },
+        )
+
+    assert response.status_code == 409
+    assert "does not match" in response.json()["detail"]
+
+
+def test_unknown_tool_is_denied_without_changing_run() -> None:
+    """An invented tool remains denied even in an allowed workspace."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("system.unknown", "read"),
+        )
+
+    assert response.status_code == 200
+    assert response.json()["policy_decision"] == "deny"
+    assert response.json()["run"]["status"] == "planning"
+    assert response.json()["run"]["version"] == 1
+
+
+def test_unconfigured_workspace_is_denied() -> None:
+    """A client cannot self-authorize an unknown workspace ID."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        created = client.post(
+            "/api/v1/agent/runs",
+            json={
+                "goal": "Inspect another project",
+                "workspace_id": "unknown-project",
+            },
+        )
+        run_id = created.json()["id"]
+        client.post(f"/api/v1/agent/runs/{run_id}/plan")
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+
+    assert response.status_code == 200
+    assert response.json()["policy_decision"] == "deny"
+    assert "workspace" in response.json()["policy_reason"]
+
+
+def test_tool_cannot_target_a_different_workspace() -> None:
+    """Tool arguments cannot escape the workspace bound to the run."""
+
+    request = _tool_request("git.status", "read")
+    request["arguments"] = {"workspace": "another-project"}
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=request,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["policy_decision"] == "deny"
+    assert "different workspace" in response.json()["policy_reason"]
+
+
 def _app(
     *,
     agent_run_store: InMemoryAgentRunStore | None = None,
+    agent_service: AgentService | None = None,
 ) -> FastAPI:
     return create_app(
         Settings(
@@ -140,10 +310,56 @@ def _app(
             app_version="0.6.0-test",
             environment="test",
             log_format="console",
+            agent_workspace_ids=("kelvin-assistant",),
         ),
         llm_provider=StubLLMProvider(),
         agent_run_store=agent_run_store,
+        agent_service=agent_service,
     )
+
+
+def _create_planned_run(client: TestClient) -> str:
+    created = client.post(
+        "/api/v1/agent/runs",
+        json={
+            "goal": "Inspect the repository",
+            "workspace_id": "kelvin-assistant",
+        },
+    )
+    run_id: str = created.json()["id"]
+    planned = client.post(f"/api/v1/agent/runs/{run_id}/plan")
+    assert planned.status_code == 200
+    return run_id
+
+
+def _tool_request(name: str, risk: str) -> dict[str, object]:
+    return {
+        "name": name,
+        "arguments": {"workspace": "kelvin-assistant"},
+        "reason": "Complete the requested task.",
+        "expected_effect": "Apply the registered operation.",
+        "risk": risk,
+    }
+
+
+def _tool_service() -> AgentService:
+    definitions = (
+        ToolDefinition(
+            name="git.status",
+            description="Show repository state.",
+            input_schema={"type": "object"},
+            risk=ToolRisk.READ,
+            execution_target=ToolExecutionTarget.WINDOWS_CLIENT,
+        ),
+        ToolDefinition(
+            name="file.patch",
+            description="Apply a file patch.",
+            input_schema={"type": "object"},
+            risk=ToolRisk.WRITE,
+            execution_target=ToolExecutionTarget.WINDOWS_CLIENT,
+        ),
+    )
+    return AgentService(DefaultToolPolicy(StaticToolRegistry(definitions)))
 
 
 class StubLLMProvider(LLMProvider):
