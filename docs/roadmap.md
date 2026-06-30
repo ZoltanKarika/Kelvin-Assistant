@@ -12,9 +12,10 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
-| v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
+| v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezés alatt |
 | v0.7 Workflow UI | n8n-szerű vizuális folyamatépítő | Tervezett |
 | v0.8 Automation Runtime | Workflow futtatás, naplózás és jóváhagyások | Tervezett |
+| v0.9 Messaging | Kétirányú Slack és helyi chat integráció | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 ## v0.1 Foundation
@@ -200,15 +201,24 @@ Részletesen: [v0.5 Memory](memory-design.md).
 
 ## v0.6 Agent
 
-- agentciklus és eszközregiszter;
-- `kelvin` PowerShell-parancs;
+- agent domain modellek és explicit állapotgép;
+- célzott visszakérdezés hiányos vagy kockázatos kéréseknél;
+- strukturált eszközregiszter és determinisztikus policy engine;
+- `kelvin` PowerShell-kliens a Windows hoston;
 - fájl-, keresési és Git-eszközök;
-- szabályozott PowerShell-végrehajtó;
-- jóváhagyási módok és auditnapló;
-- diffalapú változásellenőrzés.
+- szabályozott, hostoldali PowerShell-végrehajtás;
+- read, write, destructive és privileged kockázati szintek;
+- felhasználói jóváhagyás állapotváltoztató műveletek előtt;
+- munkakönyvtár-korlátozás;
+- diffalapú változásellenőrzés;
+- megszakítás, lépésszámkorlát és auditnapló.
 
 Elfogadási feltétel: az agent csak a megadott munkakönyvtárban és a
-jóváhagyott jogosultságokkal tud állapotot változtatni.
+jóváhagyott jogosultságokkal tud állapotot változtatni. Egyértelmű olvasási
+feladatnál nem kérdez vissza feleslegesen, kétértelmű vagy kockázatos kérésnél
+viszont pontosítást kér.
+
+Részletes terv: [v0.6 Agent architektúra](agent-architecture.md).
 
 ## v0.7 Workflow UI
 
@@ -219,6 +229,7 @@ jóváhagyott jogosultságokkal tud állapotot változtatni.
   - RAG keresés;
   - fájl beolvasás;
   - HTTP kérés;
+  - értesítés szolgáltatófüggetlen adapteren keresztül;
   - shell / PowerShell előkészítés jóváhagyási ponttal;
 - manuális workflow futtatás;
 - egyszerű futási eredmény és hibanapló megjelenítése.
@@ -234,11 +245,43 @@ tartalmaz, majd kézzel el tudja indítani.
 - futási naplók és hibák tárolása;
 - biztonságos jóváhagyási pontok veszélyes műveletek előtt;
 - alap retry és megszakítás;
+- értesítési események sikeres, hibás és jóváhagyásra váró futásokhoz;
+- cserélhető notification port;
+- első helyi értesítési adapter, például self-hosted Gotify vagy Matrix;
+- opcionális Google Chat webhook adapter internetkapcsolattal és megfelelő
+  Google Workspace-hozzáféréssel;
+- értesítési titkok kizárólag lokális környezeti konfigurációban;
+- eseménykimenet a későbbi kétirányú messaging adapterekhez;
 - későbbi ütemezés előkészítése.
 
 Elfogadási feltétel: egy mentett workflow újrafuttatható, a futás eredménye
 visszanézhető, és a potenciálisan veszélyes műveletek nem futnak le jóváhagyás
-nélkül.
+nélkül. Egy konfigurált helyi adapter értesítést tud küldeni a futás
+eredményéről, miközben az internetes adapterek hiánya nem akadályozza Kelvin
+offline működését.
+
+## v0.9 Messaging
+
+- szolgáltatófüggetlen `MessagingPort`;
+- bejövő üzenetek és kimenő válaszok egységes domain modellje;
+- chatcsatorna, beszélgetésszál és felhasználó Kelvin sessionhöz rendelése;
+- engedélyezett felhasználók és csatornák allowlistje;
+- üzenetazonosítók deduplikálása és újrapróbálható feldolgozás;
+- első felhős adapterként Slack app Socket Mode kapcsolattal;
+- Slack említések, közvetlen üzenetek, válaszok és állapotértesítések;
+- első helyi, internet nélkül használható adapter Matrix vagy Mattermost
+  rendszerhez;
+- opcionális WhatsApp Business Platform adapter nyilvános HTTPS webhookkal;
+- a hozzáférési tokenek és webhook titkok lokális secret konfigurációban;
+- auditkapcsolat a külső üzenet, a Kelvin session és az agent futás között;
+- távoli chatből indított állapotváltoztatás továbbra is helyi jóváhagyást
+  igényel a Windows `kelvin` kliensben.
+
+Elfogadási feltétel: egy engedélyezett felhasználó Slackből vagy a kiválasztott
+helyi chatrendszerből üzenetet tud küldeni Kelvinnek, a választ ugyanabban a
+beszélgetésben kapja meg, és a külső csatorna kiesése nem akadályozza a helyi
+chat vagy agent működését. Állapotváltoztató agentművelet távoli üzenet
+hatására sem futhat le helyi jóváhagyás nélkül.
 
 ## Post-1.0 opcionális Voice
 
@@ -258,4 +301,6 @@ automatizáció.
 - offline kiadási és licencleltár-folyamat;
 - biztonsági és jogosultsági alapértelmezések;
 - ütemezhető, korlátozott automatizálás;
+- dokumentált helyi és opcionális felhős értesítési adapterek;
+- dokumentált, jogosultságkezelt kétirányú messaging adapterek;
 - teljes regressziós és üzemeltetési ellenőrzés.

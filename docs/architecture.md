@@ -16,6 +16,7 @@ megőriznie:
 
 ### Windows 11 host
 
+- Ollama és a telepített helyi modellek;
 - PowerShell terminál és későbbi `kelvin` kliens;
 - felhasználói jóváhagyások kezelése;
 - engedélyezett PowerShell-, Git- és fájleszközök végrehajtása;
@@ -23,10 +24,9 @@ megőriznie:
 
 ### Ubuntu Server 24.04 LTS guest
 
-- Ollama és a telepített helyi modellek;
 - Kelvin FastAPI backend;
 - PostgreSQL + pgvector perzisztens adatai;
-- Open WebUI;
+- későbbi Open WebUI;
 - naplók és szolgáltatáskonfigurációk.
 
 Az összeköttetés kizárólag a host és a VM közötti, korlátozott hálózati
