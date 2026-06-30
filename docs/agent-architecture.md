@@ -309,6 +309,31 @@ Minden fájl- és Git-művelet előtt:
 Minden szelet külön kis Conventional Commit és lehetőség szerint külön
 pull request.
 
+## Első Windows kliens
+
+A kezdeti `kelvin` parancs három, kizárólag olvasási műveletet támogat:
+
+```powershell
+uv run kelvin --api-url http://192.168.10.13:8000 `
+  --workspace-id kelvin-assistant git status
+
+uv run kelvin --api-url http://192.168.10.13:8000 `
+  --workspace-id kelvin-assistant git diff
+
+uv run kelvin --api-url http://192.168.10.13:8000 `
+  --workspace-id kelvin-assistant file search "AgentService"
+```
+
+A kliens az aktuális könyvtárat használja workspace-ként, hacsak a
+`--workspace` opció mást nem ad meg. A gyakran használt értékek a
+`KELVIN_API_URL`, `KELVIN_WORKSPACE_ID` és `KELVIN_WORKSPACE_PATH`
+környezeti változókkal is beállíthatók.
+
+Minden parancs létrehoz egy backend által kezelt agentfutást. A backend
+ellenőrzi az eszközt és a workspace azonosítóját, a tényleges Git- vagy
+fájlolvasás viszont a Windows kliensen fut. A VM ezért nem kap hozzáférést
+a Windows fájlrendszeréhez, és a modell nem küldhet tetszőleges shellparancsot.
+
 ## Elfogadási feltételek
 
 A v0.6 akkor kész, ha:
@@ -330,4 +355,3 @@ A v0.6 akkor kész, ha:
 - [ADR-0001: Portok és adapterek](decisions/0001-ports-and-adapters.md)
 - [ADR-0002: Hostoldali PowerShell-végrehajtás](decisions/0002-host-side-powershell-execution.md)
 - [ADR-0010: Kliens által közvetített strukturált agentciklus](decisions/0010-client-mediated-agent-loop.md)
-
