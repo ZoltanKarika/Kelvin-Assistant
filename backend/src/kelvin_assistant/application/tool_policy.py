@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Protocol
 
 from kelvin_assistant.domain.agent import ToolCall, ToolRisk
 from kelvin_assistant.ports.tools import ToolRegistry, UnknownToolError
@@ -30,6 +31,19 @@ class ToolPolicyResult:
 
     decision: ToolPolicyDecision
     reason: str
+
+
+class ToolPolicy(Protocol):
+    """Interface for deterministic tool authorization."""
+
+    def evaluate(
+        self,
+        call: ToolCall,
+        *,
+        context: ToolPolicyContext,
+    ) -> ToolPolicyResult:
+        """Return the authorization decision for one proposed call."""
+        ...
 
 
 class DefaultToolPolicy:
