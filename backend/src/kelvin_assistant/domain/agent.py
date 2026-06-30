@@ -69,6 +69,13 @@ class ToolRisk(StrEnum):
         return self is not ToolRisk.READ
 
 
+class ToolExecutionTarget(StrEnum):
+    """Trusted runtime responsible for executing a tool."""
+
+    WINDOWS_CLIENT = "windows_client"
+    BACKEND = "backend"
+
+
 class ApprovalDecision(StrEnum):
     """User decision for one proposed tool call."""
 
@@ -137,6 +144,13 @@ def _normalize_required_text(value: str, field_name: str) -> str:
     return normalized
 
 
+def _normalize_tool_name(value: str) -> str:
+    name = value.strip()
+    if not _TOOL_NAME_PATTERN.fullmatch(name):
+        raise AgentDomainError("Tool name must use a lowercase namespace and operation")
+    return name
+
+
 def _freeze_json(value: JsonValue) -> JsonValue:
     if isinstance(value, Mapping):
         frozen: dict[str, JsonValue] = {}
@@ -149,6 +163,13 @@ def _freeze_json(value: JsonValue) -> JsonValue:
     if isinstance(value, tuple):
         return tuple(_freeze_json(item) for item in value)
     return value
+
+
+def _freeze_json_mapping(value: Mapping[str, JsonValue]) -> Mapping[str, JsonValue]:
+    frozen = _freeze_json(value)
+    if not isinstance(frozen, Mapping):
+        raise AgentDomainError("Expected a JSON object")
+    return frozen
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,6 +195,35 @@ class ClarificationRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class ToolDefinition:
+    """Metadata and JSON input schema for one registered tool."""
+
+    name: str
+    description: str
+    input_schema: Mapping[str, JsonValue]
+    risk: ToolRisk
+    execution_target: ToolExecutionTarget
+    timeout_seconds: int = 30
+
+    def __post_init__(self) -> None:
+        """Normalize and validate tool metadata."""
+
+        object.__setattr__(self, "name", _normalize_tool_name(self.name))
+        object.__setattr__(
+            self,
+            "description",
+            _normalize_required_text(self.description, "Tool description"),
+        )
+        object.__setattr__(
+            self,
+            "input_schema",
+            _freeze_json_mapping(self.input_schema),
+        )
+        if self.timeout_seconds < 1 or self.timeout_seconds > 300:
+            raise AgentDomainError("Tool timeout must be between 1 and 300 seconds")
+
+
+@dataclass(frozen=True, slots=True)
 class ToolCall:
     """A validated, structured request to invoke one registered tool."""
 
@@ -187,13 +237,7 @@ class ToolCall:
     def __post_init__(self) -> None:
         """Normalize text and freeze tool arguments."""
 
-        name = self.name.strip()
-        if not _TOOL_NAME_PATTERN.fullmatch(name):
-            raise AgentDomainError(
-                "Tool name must use a lowercase namespace and operation"
-            )
-
-        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "name", _normalize_tool_name(self.name))
         object.__setattr__(
             self,
             "reason",
@@ -207,7 +251,11 @@ class ToolCall:
                 "Tool call expected effect",
             ),
         )
-        object.__setattr__(self, "arguments", _freeze_json(self.arguments))
+        object.__setattr__(
+            self,
+            "arguments",
+            _freeze_json_mapping(self.arguments),
+        )
 
 
 @dataclass(frozen=True, slots=True)
