@@ -6,7 +6,15 @@ from uuid import uuid4
 import pytest
 
 from kelvin_assistant.adapters.memory_agent_runs import InMemoryAgentRunStore
-from kelvin_assistant.domain.agent import AgentRun, AgentStatus
+from kelvin_assistant.domain.agent import (
+    AgentRun,
+    AgentStatus,
+    ToolCall,
+    ToolPolicyDecision,
+    ToolPolicyResult,
+    ToolProposal,
+    ToolRisk,
+)
 from kelvin_assistant.ports.agent_runs import (
     AgentRunConflictError,
     AgentRunNotFoundError,
@@ -126,5 +134,40 @@ def test_concurrent_updates_allow_exactly_one_winner() -> None:
         assert sum(result is None for result in results) == 1
         assert sum(isinstance(result, AgentRunConflictError) for result in results) == 1
         assert (await store.get(original.id)).version == 1
+
+    asyncio.run(scenario())
+
+
+def test_update_proposal_atomically_persists_run_and_tool_call() -> None:
+    """Proposal storage updates run state and tool data under one lock."""
+
+    async def scenario() -> None:
+        store = InMemoryAgentRunStore()
+        original = AgentRun.create("Inspect the project")
+        planning = original.transition_to(AgentStatus.PLANNING)
+        awaiting = planning.transition_to(AgentStatus.AWAITING_APPROVAL)
+        proposal = ToolProposal(
+            run=awaiting,
+            call=ToolCall(
+                name="file.patch",
+                arguments={"workspace": "kelvin-assistant"},
+                reason="Update one file.",
+                expected_effect="The file content changes.",
+                risk=ToolRisk.WRITE,
+            ),
+            policy_result=ToolPolicyResult(
+                decision=ToolPolicyDecision.REQUIRE_APPROVAL,
+                reason="Write operations require approval.",
+            ),
+        )
+        await store.add(planning)
+
+        await store.update_proposal(
+            proposal,
+            expected_version=planning.version,
+        )
+
+        assert await store.get(original.id) == awaiting
+        assert await store.get_proposal(original.id) == proposal
 
     asyncio.run(scenario())

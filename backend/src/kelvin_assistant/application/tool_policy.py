@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Protocol
 
-from kelvin_assistant.domain.agent import ToolCall, ToolRisk
+from kelvin_assistant.domain.agent import (
+    ToolCall,
+    ToolPolicyDecision,
+    ToolPolicyResult,
+    ToolRisk,
+)
 from kelvin_assistant.ports.tools import ToolRegistry, UnknownToolError
-
-
-class ToolPolicyDecision(StrEnum):
-    """Authorization result for one proposed tool call."""
-
-    ALLOW = "allow"
-    REQUIRE_APPROVAL = "require_approval"
-    DENY = "deny"
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,14 +19,7 @@ class ToolPolicyContext:
     """Trusted facts supplied by the execution boundary."""
 
     workspace_authorized: bool
-
-
-@dataclass(frozen=True, slots=True)
-class ToolPolicyResult:
-    """A policy decision with a user-readable reason."""
-
-    decision: ToolPolicyDecision
-    reason: str
+    workspace_id: str | None = None
 
 
 class ToolPolicy(Protocol):
@@ -74,6 +63,17 @@ class DefaultToolPolicy:
             return ToolPolicyResult(
                 decision=ToolPolicyDecision.DENY,
                 reason="The requested workspace is not authorized.",
+            )
+
+        requested_workspace = call.arguments.get("workspace")
+        if (
+            context.workspace_id is not None
+            and requested_workspace is not None
+            and requested_workspace != context.workspace_id
+        ):
+            return ToolPolicyResult(
+                decision=ToolPolicyDecision.DENY,
+                reason="Tool arguments target a different workspace.",
             )
 
         if call.risk is not definition.risk:

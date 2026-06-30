@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     rag_enabled: bool = Field(default=False)
     rag_collection: str = Field(default="manual")
     rag_result_limit: int = Field(default=3, gt=0)
+    agent_workspace_ids: tuple[str, ...] = Field(default=())
 
 
 @lru_cache(maxsize=1)

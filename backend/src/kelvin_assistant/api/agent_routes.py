@@ -1,5 +1,6 @@
 """Versioned API routes for server-managed agent runs."""
 
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -8,19 +9,40 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from kelvin_assistant.api.dependencies import (
     get_agent_run_store,
     get_agent_service,
+    get_workspace_authorizer,
 )
-from kelvin_assistant.api.schemas import AgentRunCreateRequest, AgentRunResponse
+from kelvin_assistant.api.schemas import (
+    AgentRunCreateRequest,
+    AgentRunResponse,
+    AgentToolApprovalRequest,
+    AgentToolCallRequest,
+    AgentToolProposalResponse,
+)
 from kelvin_assistant.application.agent import AgentService, AgentServiceError
-from kelvin_assistant.domain.agent import AgentDomainError, AgentRun
+from kelvin_assistant.application.tool_policy import ToolPolicyContext
+from kelvin_assistant.domain.agent import (
+    AgentDomainError,
+    AgentRun,
+    ApprovalDecision,
+    ToolCall,
+    ToolPolicyDecision,
+    ToolProposal,
+)
 from kelvin_assistant.ports.agent_runs import (
+    AgentProposalNotFoundError,
     AgentRunConflictError,
     AgentRunNotFoundError,
     AgentRunStore,
 )
+from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 RuntimeAgentService = Annotated[AgentService, Depends(get_agent_service)]
 RuntimeAgentRunStore = Annotated[AgentRunStore, Depends(get_agent_run_store)]
+RuntimeWorkspaceAuthorizer = Annotated[
+    WorkspaceAuthorizer,
+    Depends(get_workspace_authorizer),
+]
 UNPROCESSABLE_CONTENT = 422
 
 
@@ -41,7 +63,11 @@ async def create_agent_run(
     """Create and persist one received agent run."""
 
     try:
-        run = service.start_run(request.goal, max_steps=request.max_steps)
+        run = service.start_run(
+            request.goal,
+            max_steps=request.max_steps,
+            workspace_id=request.workspace_id,
+        )
         await store.add(run)
     except AgentDomainError as exc:
         raise HTTPException(
@@ -117,6 +143,119 @@ async def begin_agent_planning(
     return _agent_run_response(planned)
 
 
+@router.post(
+    "/runs/{run_id}/tools",
+    response_model=AgentToolProposalResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Agent run not found."},
+        status.HTTP_409_CONFLICT: {
+            "description": "Invalid or concurrent agent transition.",
+        },
+        UNPROCESSABLE_CONTENT: {"description": "Invalid tool call."},
+    },
+)
+async def propose_agent_tool(
+    run_id: UUID,
+    request: AgentToolCallRequest,
+    service: RuntimeAgentService,
+    store: RuntimeAgentRunStore,
+    workspace_authorizer: RuntimeWorkspaceAuthorizer,
+) -> AgentToolProposalResponse:
+    """Evaluate and persist one structured tool proposal."""
+
+    try:
+        current = await store.get(run_id)
+        call = ToolCall(
+            name=request.name,
+            arguments=request.arguments,
+            reason=request.reason,
+            expected_effect=request.expected_effect,
+            risk=request.risk,
+        )
+        proposal = service.propose_tool(
+            current,
+            call,
+            context=ToolPolicyContext(
+                workspace_authorized=workspace_authorizer.is_authorized(
+                    current.workspace_id
+                ),
+                workspace_id=current.workspace_id,
+            ),
+        )
+        if proposal.policy_result.decision is not ToolPolicyDecision.DENY:
+            await store.update_proposal(
+                proposal,
+                expected_version=current.version,
+            )
+    except AgentRunNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except AgentDomainError as exc:
+        raise HTTPException(
+            status_code=UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except (AgentServiceError, AgentRunConflictError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    return _tool_proposal_response(proposal)
+
+
+@router.post(
+    "/runs/{run_id}/approval",
+    response_model=AgentToolProposalResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Agent run or proposal not found.",
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Invalid approval or concurrent transition.",
+        },
+    },
+)
+async def resolve_agent_tool_approval(
+    run_id: UUID,
+    request: AgentToolApprovalRequest,
+    service: RuntimeAgentService,
+    store: RuntimeAgentRunStore,
+) -> AgentToolProposalResponse:
+    """Approve or reject the active server-managed tool proposal."""
+
+    try:
+        proposal = await store.get_proposal(run_id)
+        if proposal.call.id != request.tool_call_id:
+            raise AgentServiceError("Approval does not match the active tool call")
+        resolved = service.resolve_approval(
+            proposal,
+            decision=ApprovalDecision(request.decision),
+            decided_by="local-client",
+            decided_at=datetime.now(UTC),
+        )
+        await store.update_proposal(
+            resolved,
+            expected_version=proposal.run.version,
+        )
+    except (AgentRunNotFoundError, AgentProposalNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (AgentServiceError, AgentRunConflictError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    return _tool_proposal_response(resolved)
+
+
 def _agent_run_response(run: AgentRun) -> AgentRunResponse:
     """Convert an agent domain object into the public API schema."""
 
@@ -127,4 +266,22 @@ def _agent_run_response(run: AgentRun) -> AgentRunResponse:
         step_count=run.step_count,
         max_steps=run.max_steps,
         version=run.version,
+        workspace_id=run.workspace_id,
+    )
+
+
+def _tool_proposal_response(
+    proposal: ToolProposal,
+) -> AgentToolProposalResponse:
+    """Convert a server-managed proposal into the public API schema."""
+
+    return AgentToolProposalResponse(
+        run=_agent_run_response(proposal.run),
+        tool_call_id=proposal.call.id,
+        tool_name=proposal.call.name,
+        policy_decision=proposal.policy_result.decision,
+        policy_reason=proposal.policy_result.reason,
+        approval_status=(
+            proposal.approval.decision if proposal.approval is not None else None
+        ),
     )

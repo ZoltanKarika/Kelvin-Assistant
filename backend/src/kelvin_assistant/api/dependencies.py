@@ -11,6 +11,7 @@ from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 
 
 def get_runtime_settings(request: Request) -> Settings:
@@ -81,3 +82,13 @@ def get_agent_run_store(request: Request) -> AgentRunStore:
         msg = "Agent run store is not configured."
         raise RuntimeError(msg)
     return cast(AgentRunStore, store)
+
+
+def get_workspace_authorizer(request: Request) -> WorkspaceAuthorizer:
+    """Return the configured workspace authorizer."""
+
+    authorizer = getattr(request.app.state, "workspace_authorizer", None)
+    if authorizer is None:
+        msg = "Workspace authorizer is not configured."
+        raise RuntimeError(msg)
+    return cast(WorkspaceAuthorizer, authorizer)

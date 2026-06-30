@@ -29,7 +29,9 @@ from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
 from kelvin_assistant.ports.sessions import SessionStore
+from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 from kelvin_assistant.tools.registry import StaticToolRegistry
+from kelvin_assistant.tools.workspaces import StaticWorkspaceAuthorizer
 
 
 def create_app(
@@ -40,6 +42,7 @@ def create_app(
     memory_service: MemoryService | None = None,
     agent_service: AgentService | None = None,
     agent_run_store: AgentRunStore | None = None,
+    workspace_authorizer: WorkspaceAuthorizer | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application."""
 
@@ -79,6 +82,11 @@ def create_app(
     active_agent_run_store = (
         agent_run_store if agent_run_store is not None else InMemoryAgentRunStore()
     )
+    active_workspace_authorizer = (
+        workspace_authorizer
+        if workspace_authorizer is not None
+        else StaticWorkspaceAuthorizer(active_settings.agent_workspace_ids)
+    )
     active_chat_service = ChatService(
         llm_provider=active_llm_provider,
         session_store=active_session_store,
@@ -106,6 +114,7 @@ def create_app(
     app.state.memory_service = active_memory_service
     app.state.agent_service = active_agent_service
     app.state.agent_run_store = active_agent_run_store
+    app.state.workspace_authorizer = active_workspace_authorizer
     app.mount(
         "/static",
         StaticFiles(directory=FRONTEND_DIR),

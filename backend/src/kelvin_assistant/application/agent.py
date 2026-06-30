@@ -8,8 +8,6 @@ from datetime import datetime
 from kelvin_assistant.application.tool_policy import (
     ToolPolicy,
     ToolPolicyContext,
-    ToolPolicyDecision,
-    ToolPolicyResult,
 )
 from kelvin_assistant.domain.agent import (
     DEFAULT_MAX_AGENT_STEPS,
@@ -19,6 +17,8 @@ from kelvin_assistant.domain.agent import (
     ClarificationRequest,
     ToolApproval,
     ToolCall,
+    ToolPolicyDecision,
+    ToolProposal,
 )
 
 
@@ -34,16 +34,6 @@ class AgentClarification:
     request: ClarificationRequest
 
 
-@dataclass(frozen=True, slots=True)
-class ToolProposal:
-    """Policy result and lifecycle state for one proposed tool call."""
-
-    run: AgentRun
-    call: ToolCall
-    policy_result: ToolPolicyResult
-    approval: ToolApproval | None = None
-
-
 class AgentService:
     """Coordinate lifecycle transitions without executing external tools."""
 
@@ -57,10 +47,15 @@ class AgentService:
         goal: str,
         *,
         max_steps: int = DEFAULT_MAX_AGENT_STEPS,
+        workspace_id: str | None = None,
     ) -> AgentRun:
         """Create a new agent run without starting side effects."""
 
-        return AgentRun.create(goal, max_steps=max_steps)
+        return AgentRun.create(
+            goal,
+            max_steps=max_steps,
+            workspace_id=workspace_id,
+        )
 
     def request_clarification(
         self,

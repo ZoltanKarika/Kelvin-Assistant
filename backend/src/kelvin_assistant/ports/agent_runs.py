@@ -3,7 +3,7 @@
 from typing import Protocol
 from uuid import UUID
 
-from kelvin_assistant.domain.agent import AgentRun
+from kelvin_assistant.domain.agent import AgentRun, ToolProposal
 
 
 class AgentRunStoreError(RuntimeError):
@@ -26,6 +26,14 @@ class AgentRunConflictError(AgentRunStoreError):
         self.run_id = run_id
 
 
+class AgentProposalNotFoundError(AgentRunStoreError):
+    """Raised when a run has no server-managed tool proposal."""
+
+    def __init__(self, run_id: UUID) -> None:
+        super().__init__(f"Agent tool proposal not found: {run_id}")
+        self.run_id = run_id
+
+
 class AgentRunStore(Protocol):
     """Persistence boundary for immutable, versioned agent runs."""
 
@@ -44,4 +52,17 @@ class AgentRunStore(Protocol):
         expected_version: int,
     ) -> None:
         """Replace a run when its stored version matches the expectation."""
+        ...
+
+    async def update_proposal(
+        self,
+        proposal: ToolProposal,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Atomically store a proposal and its updated agent run."""
+        ...
+
+    async def get_proposal(self, run_id: UUID) -> ToolProposal:
+        """Return the active proposal for a run or raise not-found."""
         ...
