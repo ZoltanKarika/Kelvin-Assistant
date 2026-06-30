@@ -29,6 +29,7 @@ def test_agent_run_create_normalizes_goal() -> None:
     assert run.status is AgentStatus.RECEIVED
     assert run.step_count == 0
     assert run.max_steps == 12
+    assert run.version == 0
     assert run.status.is_terminal is False
 
 
@@ -63,8 +64,10 @@ def test_agent_run_follows_read_only_execution_lifecycle() -> None:
     assert planning.status is AgentStatus.PLANNING
     assert executing.status is AgentStatus.EXECUTING
     assert executing.step_count == 1
+    assert executing.version == 2
     assert observing.status is AgentStatus.OBSERVING
     assert completed.status is AgentStatus.COMPLETED
+    assert completed.version == 4
     assert completed.status.is_terminal is True
 
 

@@ -294,6 +294,7 @@ class AgentRun:
     status: AgentStatus = AgentStatus.RECEIVED
     step_count: int = 0
     max_steps: int = DEFAULT_MAX_AGENT_STEPS
+    version: int = 0
 
     def __post_init__(self) -> None:
         """Normalize and validate run invariants."""
@@ -309,6 +310,8 @@ class AgentRun:
             )
         if self.step_count < 0 or self.step_count > self.max_steps:
             raise AgentDomainError("Agent step count is outside the allowed range")
+        if self.version < 0:
+            raise AgentDomainError("Agent version cannot be negative")
 
     @classmethod
     def create(
@@ -341,4 +344,5 @@ class AgentRun:
             self,
             status=next_status,
             step_count=next_step_count,
+            version=self.version + 1,
         )
