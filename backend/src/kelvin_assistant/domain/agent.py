@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 DEFAULT_MAX_AGENT_STEPS = 12
 MAX_AGENT_STEPS = 100
+MAX_AGENT_GOAL_LENGTH = 8_192
 _TOOL_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 
 type JsonScalar = str | int | float | bool | None
@@ -304,6 +305,10 @@ class AgentRun:
             "goal",
             _normalize_required_text(self.goal, "Agent goal"),
         )
+        if len(self.goal) > MAX_AGENT_GOAL_LENGTH:
+            raise AgentDomainError(
+                f"Agent goal cannot exceed {MAX_AGENT_GOAL_LENGTH} characters"
+            )
         if self.max_steps < 1 or self.max_steps > MAX_AGENT_STEPS:
             raise AgentDomainError(
                 f"Agent max steps must be between 1 and {MAX_AGENT_STEPS}"
