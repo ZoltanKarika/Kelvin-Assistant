@@ -213,10 +213,9 @@ def test_send_message_adds_knowledge_context_without_persisting_it() -> None:
                 ChatMessage(
                     role=ChatRole.SYSTEM,
                     content=(
-                        "Használd az alábbi helyi tudásbázis-részleteket, "
-                        "ha relevánsak a felhasználó kérdéséhez. Ha a "
-                        "részletek nem relevánsak, hagyd figyelmen kívül "
-                        "őket. Ne találj ki forrást.\n\n"
+                        "Use the following local knowledge base excerpts if they "
+                        "are relevant to the user's question. If they are not "
+                        "relevant, ignore them. Do not invent sources.\n\n"
                         "[1] source=Kelvin Notes; chunk=2\n"
                         "Ollama a Windows hoston fut."
                     ),
@@ -264,9 +263,9 @@ def test_send_message_adds_memory_context_without_persisting_it() -> None:
                 ChatMessage(
                     role=ChatRole.SYSTEM,
                     content=(
-                        "Használd az alábbi hosszú távú memóriákat a válasz "
-                        "személyre szabásához, ha relevánsak. Ne állítsd, hogy "
-                        "ezek biztosan teljes körűek.\n\n"
+                        "Use the following long-term memories to personalize the "
+                        "answer if they are relevant. Do not claim that these "
+                        "memories are complete or exhaustive.\n\n"
                         "[1] scope=user; kind=preference; confidence=0.90\n"
                         "The user prefers step-by-step explanations."
                     ),

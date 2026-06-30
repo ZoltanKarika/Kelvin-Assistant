@@ -11,13 +11,14 @@ from kelvin_assistant.ports.memory import MemoryContextProvider
 from kelvin_assistant.ports.sessions import SessionStore
 
 RAG_CONTEXT_TEMPLATE = (
-    "Használd az alábbi helyi tudásbázis-részleteket, ha relevánsak a "
-    "felhasználó kérdéséhez. Ha a részletek nem relevánsak, hagyd figyelmen "
-    "kívül őket. Ne találj ki forrást.\n\n{context}"
+    "Use the following local knowledge base excerpts if they are relevant to "
+    "the user's question. If they are not relevant, ignore them. Do not invent "
+    "sources.\n\n{context}"
 )
 MEMORY_CONTEXT_TEMPLATE = (
-    "Használd az alábbi hosszú távú memóriákat a válasz személyre szabásához, "
-    "ha relevánsak. Ne állítsd, hogy ezek biztosan teljes körűek.\n\n{context}"
+    "Use the following long-term memories to personalize the answer if they "
+    "are relevant. Do not claim that these memories are complete or exhaustive."
+    "\n\n{context}"
 )
 
 
