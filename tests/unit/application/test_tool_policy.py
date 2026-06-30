@@ -5,12 +5,12 @@ import pytest
 from kelvin_assistant.application.tool_policy import (
     DefaultToolPolicy,
     ToolPolicyContext,
-    ToolPolicyDecision,
 )
 from kelvin_assistant.domain.agent import (
     ToolCall,
     ToolDefinition,
     ToolExecutionTarget,
+    ToolPolicyDecision,
     ToolRisk,
 )
 from kelvin_assistant.tools.registry import StaticToolRegistry
