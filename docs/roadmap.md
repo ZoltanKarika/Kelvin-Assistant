@@ -202,6 +202,8 @@ Részletesen: [v0.5 Memory](memory-design.md).
 ## v0.6 Agent
 
 - agent domain modellek és explicit állapotgép;
+- szolgáltatófüggetlen, strukturált `AgentPlanner` port;
+- természetes nyelvű célból clarify, tool vagy complete döntés;
 - célzott visszakérdezés hiányos vagy kockázatos kéréseknél;
 - strukturált eszközregiszter és determinisztikus policy engine;
 - `kelvin` PowerShell-kliens a Windows hoston;
