@@ -8,6 +8,7 @@ from uuid import UUID
 import pytest
 
 from kelvin_assistant.cli.agent import (
+    AgentGoalCommand,
     ClientCommand,
     build_parser,
     execute_command,
@@ -24,6 +25,7 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
     ToolRisk,
 )
+from kelvin_assistant.ports.agent_client import AgentToolStep
 from kelvin_assistant.ports.processes import ProcessRequest, ProcessResult
 
 RUN_ID = UUID("11111111-1111-4111-8111-111111111111")
@@ -54,6 +56,21 @@ class FakeAgentApiClient:
 
     async def begin_planning(self, run_id: UUID) -> AgentRun:
         return _run(AgentStatus.PLANNING, 1)
+
+    async def plan_next(
+        self,
+        run_id: UUID,
+        **kwargs: object,
+    ) -> AgentToolStep:
+        proposal = await self.propose_tool(
+            run_id,
+            name="git.status",
+            arguments={"include_untracked": True},
+            reason="Inspect the repository.",
+            expected_effect="Read Git state.",
+            risk=ToolRisk.READ,
+        )
+        return AgentToolStep(proposal=proposal)
 
     async def propose_tool(
         self,
@@ -147,6 +164,30 @@ def test_parser_builds_git_diff_command() -> None:
     )
 
 
+def test_parser_builds_natural_language_agent_command() -> None:
+    """The agent subcommand preserves one explicit natural-language goal."""
+
+    workspace_root = Path.cwd()
+    command = parse_command(
+        build_parser(),
+        [
+            "--workspace-id",
+            "kelvin-assistant",
+            "--workspace",
+            str(workspace_root),
+            "agent",
+            "Show the current Git status.",
+        ],
+    )
+
+    assert command == AgentGoalCommand(
+        api_url="http://127.0.0.1:8000",
+        workspace_id="kelvin-assistant",
+        workspace_root=workspace_root.resolve(),
+        goal="Show the current Git status.",
+    )
+
+
 def test_parser_builds_fixed_text_search_command() -> None:
     """File search remains fixed-text and bounded by a result limit."""
 
@@ -166,6 +207,7 @@ def test_parser_builds_fixed_text_search_command() -> None:
         ],
     )
 
+    assert isinstance(command, ClientCommand)
     assert command.tool_name == "file.search"
     assert command.arguments == {
         "query": "AgentService",
@@ -193,6 +235,7 @@ def test_parser_builds_approval_gated_file_patch() -> None:
         ],
     )
 
+    assert isinstance(command, ClientCommand)
     assert command.tool_name == "file.patch"
     assert command.arguments == {
         "path": "notes.txt",
@@ -239,4 +282,31 @@ def test_execute_command_prints_local_tool_output(
         cwd=workspace_root.resolve(),
         timeout_seconds=15,
     )
+    assert "## main...origin/main" in capsys.readouterr().out
+
+
+def test_execute_agent_goal_runs_model_selected_tool(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The natural-language CLI path executes only the structured proposal."""
+
+    api_client = FakeAgentApiClient()
+    runner = FakeProcessRunner()
+    command = AgentGoalCommand(
+        api_url="http://kelvin.test:8000",
+        workspace_id="kelvin-assistant",
+        workspace_root=Path.cwd(),
+        goal="Show the current Git status.",
+    )
+
+    exit_code = asyncio.run(
+        execute_command(
+            command,
+            api_client=api_client,
+            process_runner=runner,
+        )
+    )
+
+    assert exit_code == 0
+    assert api_client.name == "git.status"
     assert "## main...origin/main" in capsys.readouterr().out

@@ -14,9 +14,13 @@ from kelvin_assistant.domain.agent import (
     ToolPolicyDecision,
     ToolRisk,
 )
+from kelvin_assistant.domain.planner import ClarificationTurn
 from kelvin_assistant.ports.agent_client import (
+    AgentClarificationStep,
     AgentClientResponseError,
     AgentClientUnavailableError,
+    AgentCompletionStep,
+    AgentToolStep,
 )
 
 RUN_ID = UUID("11111111-1111-4111-8111-111111111111")
@@ -172,6 +176,106 @@ def test_client_translates_http_rejection() -> None:
         match="Agent run is not planning",
     ):
         asyncio.run(client.begin_planning(RUN_ID))
+
+
+@pytest.mark.parametrize(
+    ("response_payload", "expected_type"),
+    [
+        (
+            {
+                "action": "clarify",
+                "run": _run_payload("clarifying", 1),
+                "question": "Which file should I inspect?",
+                "reason": "The target file is missing.",
+            },
+            AgentClarificationStep,
+        ),
+        (
+            {
+                "action": "tool",
+                "proposal": {
+                    "run": _run_payload("executing", 2),
+                    "tool_call_id": str(CALL_ID),
+                    "tool_name": "git.status",
+                    "arguments": {"include_untracked": True},
+                    "reason": "Inspect the repository.",
+                    "expected_effect": "Read Git state.",
+                    "risk": "read",
+                    "policy_decision": "allow",
+                    "policy_reason": "Read-only tool is allowed.",
+                    "approval_status": None,
+                },
+            },
+            AgentToolStep,
+        ),
+        (
+            {
+                "action": "complete",
+                "run": _run_payload("completed", 1),
+                "summary": "No tool is required.",
+            },
+            AgentCompletionStep,
+        ),
+    ],
+)
+def test_client_parses_structured_planner_actions(
+    response_payload: dict[str, object],
+    expected_type: type[object],
+) -> None:
+    """Every planner action becomes one explicit client-side result type."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        assert request.url.path == f"/api/v1/agent/runs/{RUN_ID}/next"
+        assert json.loads(request.content) == {
+            "clarifications": [
+                {
+                    "question": "Which file?",
+                    "answer": "README.md",
+                }
+            ],
+            "observation": "Previous step succeeded.",
+        }
+        return httpx2.Response(200, json=response_payload)
+
+    client = HttpAgentApiClient(
+        "http://kelvin.test:8000",
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    step = asyncio.run(
+        client.plan_next(
+            RUN_ID,
+            clarifications=(
+                ClarificationTurn(
+                    question="Which file?",
+                    answer="README.md",
+                ),
+            ),
+            observation="Previous step succeeded.",
+        )
+    )
+
+    assert isinstance(step, expected_type)
+
+
+def test_client_rejects_unknown_planner_action() -> None:
+    """An unknown action cannot silently cross the client trust boundary."""
+
+    client = HttpAgentApiClient(
+        "http://kelvin.test:8000",
+        transport=httpx2.MockTransport(
+            lambda request: httpx2.Response(
+                200,
+                json={"action": "run_shell"},
+            )
+        ),
+    )
+
+    with pytest.raises(
+        AgentClientResponseError,
+        match="invalid planner response",
+    ):
+        asyncio.run(client.plan_next(RUN_ID))
 
 
 def test_client_submits_explicit_write_approval() -> None:
