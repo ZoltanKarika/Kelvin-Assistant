@@ -22,3 +22,4 @@ Aktuális döntések:
 - [ADR-0008: Workflow UI előnyben a Voice mérföldkővel szemben](0008-workflow-ui-over-voice.md)
 - [ADR-0009: Típusos, törölhető memória modell](0009-memory-model.md)
 - [ADR-0010: Kliens által közvetített strukturált agentciklus](0010-client-mediated-agent-loop.md)
+- [ADR-0011: PostgreSQL-alapú agent audit és futásállapot](0011-postgresql-agent-audit.md)

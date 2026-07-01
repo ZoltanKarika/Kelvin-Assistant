@@ -15,6 +15,8 @@ Later, the project may move these migrations behind Alembic.
 
 - `001_create_knowledge_schema.sql`: creates the initial knowledge/RAG tables.
 - `002_create_memory_schema.sql`: creates the initial v0.5 memory tables.
+- `003_create_agent_audit_schema.sql`: creates persistent v0.6 agent run,
+  proposal, approval, and tool result tables.
 
 ## Running manually on the Ubuntu VM
 
@@ -36,6 +38,16 @@ psql \
   --username=kelvin \
   --dbname=kelvin_assistant \
   --file=infrastructure/sql/002_create_memory_schema.sql
+```
+
+Run the agent audit schema before enabling PostgreSQL agent persistence:
+
+```bash
+psql \
+  --host=127.0.0.1 \
+  --username=kelvin \
+  --dbname=kelvin_assistant \
+  --file=infrastructure/sql/003_create_agent_audit_schema.sql
 ```
 
 Use `PGPASSWORD` or an interactive password prompt. Do not commit database
