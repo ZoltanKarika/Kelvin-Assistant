@@ -360,16 +360,16 @@ A kliens az aktuális könyvtárat használja workspace-ként, hacsak a
 `KELVIN_API_URL`, `KELVIN_WORKSPACE_ID` és `KELVIN_WORKSPACE_PATH`
 környezeti változókkal is beállíthatók.
 
-Az `agent` alparancs természetes nyelvű célt küld a planner API-nak. Az első
-iteráció egyetlen strukturált döntést kezel:
+Az `agent` alparancs természetes nyelvű célt küld a planner API-nak. A kliens
+egy korlátozott, többfordulós ciklusban három strukturált döntést kezel:
 
-- `clarify`: kiírja a planner célzott kérdését és indoklását;
+- `clarify`: kiírja a planner célzott kérdését és bekéri a választ;
 - `tool`: a policy által ellenőrzött eszközt helyben végrehajtja;
 - `complete`: kiírja a planner összefoglalóját.
 
-Ez még nem teljes, automatikus többlépéses ciklus. A visszakérdezésre adott
-válasz és az eszközmegfigyelés alapján történő folytatás a következő
-implementációs szelet.
+Sikeres eszközfutás után a korlátozott kimenet observationként visszakerül a
+plannerhez. A ciklus legfeljebb az agentfutás `max_steps` értékéig tarthat.
+Minden állapotváltoztató eszköz továbbra is külön helyi jóváhagyást kér.
 
 Minden parancs létrehoz egy backend által kezelt agentfutást. A backend
 ellenőrzi az eszközt és a workspace azonosítóját, a tényleges Git- vagy

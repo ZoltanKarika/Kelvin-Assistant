@@ -1,7 +1,7 @@
 """Unit tests for the PowerShell-friendly Kelvin client."""
 
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from uuid import UUID
 
@@ -25,7 +25,12 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
     ToolRisk,
 )
-from kelvin_assistant.ports.agent_client import AgentToolStep
+from kelvin_assistant.domain.planner import ClarificationTurn
+from kelvin_assistant.ports.agent_client import (
+    AgentCompletionStep,
+    AgentNextStep,
+    AgentToolStep,
+)
 from kelvin_assistant.ports.processes import ProcessRequest, ProcessResult
 
 RUN_ID = UUID("11111111-1111-4111-8111-111111111111")
@@ -49,6 +54,7 @@ class FakeAgentApiClient:
     def __init__(self) -> None:
         self.name = ""
         self.arguments: Mapping[str, JsonValue] = {}
+        self.submitted = False
 
     async def create_run(self, *, goal: str, workspace_id: str) -> AgentRun:
         assert workspace_id == "kelvin-assistant"
@@ -60,8 +66,16 @@ class FakeAgentApiClient:
     async def plan_next(
         self,
         run_id: UUID,
-        **kwargs: object,
-    ) -> AgentToolStep:
+        *,
+        clarifications: Sequence[ClarificationTurn] = (),
+        observation: str | None = None,
+    ) -> AgentNextStep:
+        if self.submitted:
+            assert observation == "Tool git.status succeeded.\n## main...origin/main"
+            return AgentCompletionStep(
+                run=_run(AgentStatus.COMPLETED, 4),
+                summary="Repository status inspected.",
+            )
         proposal = await self.propose_tool(
             run_id,
             name="git.status",
@@ -115,6 +129,7 @@ class FakeAgentApiClient:
         result: ToolExecutionResult,
     ) -> AgentRun:
         assert result.tool_call_id == CALL_ID
+        self.submitted = True
         return _run(AgentStatus.OBSERVING, 3)
 
 
@@ -309,4 +324,6 @@ def test_execute_agent_goal_runs_model_selected_tool(
 
     assert exit_code == 0
     assert api_client.name == "git.status"
-    assert "## main...origin/main" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "## main...origin/main" in output
+    assert "Repository status inspected." in output

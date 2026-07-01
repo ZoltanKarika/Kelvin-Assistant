@@ -1,7 +1,7 @@
 """Unit tests for local read-only agent orchestration."""
 
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from uuid import UUID
 
@@ -12,7 +12,6 @@ from kelvin_assistant.application.local_agent import (
     LocalClarificationResult,
     LocalCompletionResult,
     LocalReadToolClient,
-    LocalToolRunResult,
     ToolApprovalRejectedError,
 )
 from kelvin_assistant.domain.agent import (
@@ -28,6 +27,7 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
     ToolRisk,
 )
+from kelvin_assistant.domain.planner import ClarificationTurn
 from kelvin_assistant.ports.agent_client import (
     AgentClarificationStep,
     AgentCompletionStep,
@@ -69,6 +69,7 @@ class FakeAgentApiClient:
         self.workspace_id = workspace_id
         self.submitted_result: ToolExecutionResult | None = None
         self.goal = ""
+        self.plan_contexts: list[tuple[tuple[ClarificationTurn, ...], str | None]] = []
 
     async def create_run(self, *, goal: str, workspace_id: str) -> AgentRun:
         assert workspace_id == "kelvin-assistant"
@@ -86,9 +87,21 @@ class FakeAgentApiClient:
     async def plan_next(
         self,
         run_id: UUID,
-        **kwargs: object,
+        *,
+        clarifications: Sequence[ClarificationTurn] = (),
+        observation: str | None = None,
     ) -> AgentNextStep:
         assert run_id == RUN_ID
+        self.plan_contexts.append((tuple(clarifications), observation))
+        if self.submitted_result is not None:
+            return AgentCompletionStep(
+                run=_run(
+                    AgentStatus.COMPLETED,
+                    workspace_id=self.workspace_id,
+                    version=4,
+                ),
+                summary="Repository status inspected.",
+            )
         proposal = await self.propose_tool(
             run_id,
             name="git.status",
@@ -346,8 +359,16 @@ def test_client_runs_model_selected_tool_from_natural_language() -> None:
     result = asyncio.run(client.run_goal("Show the current Git status."))
 
     assert api_client.goal == "Show the current Git status."
-    assert isinstance(result, LocalToolRunResult)
-    assert result.execution.output == "## main...origin/main"
+    assert isinstance(result, LocalCompletionResult)
+    assert result.summary == "Repository status inspected."
+    assert result.executions[0].output == "## main...origin/main"
+    assert api_client.plan_contexts == [
+        ((), None),
+        (
+            (),
+            "Tool git.status succeeded.\n## main...origin/main",
+        ),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -380,7 +401,9 @@ def test_client_returns_non_tool_planner_decision(
         async def plan_next(
             self,
             run_id: UUID,
-            **kwargs: object,
+            *,
+            clarifications: Sequence[ClarificationTurn] = (),
+            observation: str | None = None,
         ) -> AgentClarificationStep | AgentCompletionStep:
             return step
 
@@ -394,6 +417,80 @@ def test_client_returns_non_tool_planner_decision(
     result = asyncio.run(client.run_goal("Help with the repository."))
 
     assert isinstance(result, expected_type)
+
+
+def test_client_answers_clarification_and_continues_to_completion() -> None:
+    """One targeted answer is carried into the next bounded planner request."""
+
+    class ClarifyingApiClient(FakeAgentApiClient):
+        async def plan_next(
+            self,
+            run_id: UUID,
+            *,
+            clarifications: Sequence[ClarificationTurn] = (),
+            observation: str | None = None,
+        ) -> AgentNextStep:
+            if not clarifications:
+                return AgentClarificationStep(
+                    run=_run(AgentStatus.CLARIFYING, version=1),
+                    question="Which file should I inspect?",
+                    reason="The target file is missing.",
+                )
+            assert tuple(clarifications) == (
+                ClarificationTurn(
+                    question="Which file should I inspect?",
+                    answer="README.md",
+                ),
+            )
+            return AgentCompletionStep(
+                run=_run(AgentStatus.COMPLETED, version=2),
+                summary="README.md selected.",
+            )
+
+    client = LocalReadToolClient(
+        api_client=ClarifyingApiClient(),
+        executors={},
+        workspace_id="kelvin-assistant",
+        workspace_root=Path.cwd(),
+        clarification_handler=lambda question: "README.md",
+    )
+
+    result = asyncio.run(client.run_goal("Inspect a documentation file."))
+
+    assert isinstance(result, LocalCompletionResult)
+    assert result.summary == "README.md selected."
+
+
+def test_client_rejects_empty_clarification_answer() -> None:
+    """Whitespace cannot be submitted as meaningful planner context."""
+
+    class ClarifyingApiClient(FakeAgentApiClient):
+        async def plan_next(
+            self,
+            run_id: UUID,
+            *,
+            clarifications: Sequence[ClarificationTurn] = (),
+            observation: str | None = None,
+        ) -> AgentNextStep:
+            return AgentClarificationStep(
+                run=_run(AgentStatus.CLARIFYING, version=1),
+                question="Which file should I inspect?",
+                reason="The target file is missing.",
+            )
+
+    client = LocalReadToolClient(
+        api_client=ClarifyingApiClient(),
+        executors={},
+        workspace_id="kelvin-assistant",
+        workspace_root=Path.cwd(),
+        clarification_handler=lambda question: " ",
+    )
+
+    with pytest.raises(
+        LocalAgentClientError,
+        match="answer cannot be empty",
+    ):
+        asyncio.run(client.run_goal("Inspect a documentation file."))
 
 
 def test_client_rejects_remote_workspace_mismatch() -> None:

@@ -245,6 +245,7 @@ async def execute_command(
         workspace_id=command.workspace_id,
         workspace_root=command.workspace_root,
         approval_handler=approval_prompt or _prompt_for_approval,
+        clarification_handler=_prompt_for_clarification,
     )
     if isinstance(command, AgentGoalCommand):
         result = await client.run_goal(command.goal)
@@ -256,6 +257,11 @@ async def execute_command(
         print(f"Reason: {result.reason}")
         return 0
     if isinstance(result, LocalCompletionResult):
+        for execution in result.executions:
+            if execution.output:
+                print(execution.output)
+            if execution.truncated:
+                print("[output truncated]")
         print(result.summary)
         return 0
     if not isinstance(result, LocalToolRunResult):
@@ -277,6 +283,13 @@ def _prompt_for_approval(preview: str) -> bool:
     print(preview, end="" if preview.endswith("\n") else "\n")
     answer = input("\nApply this change? [y/N] ")
     return answer.strip().lower() in {"y", "yes"}
+
+
+def _prompt_for_clarification(question: str) -> str:
+    """Request one targeted answer from the interactive local user."""
+
+    print(f"\nKelvin needs clarification: {question}")
+    return input("> ")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
