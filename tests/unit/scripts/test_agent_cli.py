@@ -207,6 +207,42 @@ def test_parser_builds_natural_language_agent_command() -> None:
     )
 
 
+def test_parser_accepts_custom_positive_api_timeout() -> None:
+    """Slow local planners can use a bounded, explicit client timeout."""
+
+    command = parse_command(
+        build_parser(),
+        [
+            "--workspace-id",
+            "kelvin-assistant",
+            "--timeout-seconds",
+            "180",
+            "agent",
+            "Show the current Git status.",
+        ],
+    )
+
+    assert isinstance(command, AgentGoalCommand)
+    assert command.timeout_seconds == 180.0
+
+
+def test_parser_rejects_non_positive_api_timeout() -> None:
+    """A disabled or negative timeout cannot create an unbounded request."""
+
+    with pytest.raises(SystemExit):
+        parse_command(
+            build_parser(),
+            [
+                "--workspace-id",
+                "kelvin-assistant",
+                "--timeout-seconds",
+                "0",
+                "agent",
+                "Show the current Git status.",
+            ],
+        )
+
+
 def test_parser_builds_fixed_text_search_command() -> None:
     """File search remains fixed-text and bounded by a result limit."""
 
