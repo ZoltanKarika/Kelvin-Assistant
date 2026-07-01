@@ -32,7 +32,7 @@ Egy helyi JSON vagy JSONL fájl egyszerűbb lenne, de:
 - párhuzamos kéréseknél külön zárolást igényelne;
 - nehezebb lenne konzisztensen összekapcsolni a futást, jóváhagyást és
   eredményt;
-- kereséshez és későbbi workflow UI-hoz új indexelő réteg kellene;
+- kereséshez és későbbi n8n-integrációhoz új indexelő réteg kellene;
 - a projekt már használ helyi PostgreSQL-t.
 
 ## Következmények
@@ -42,7 +42,7 @@ Előnyök:
 - API-újraindítás után is megmaradó agentállapot;
 - egy jóváhagyott írás pontos argumentumai visszakereshetők;
 - adatbázis-szintű constraint-ek védenek a hibás státuszoktól;
-- a későbbi workflow UI közvetlenül lekérdezhető történetet kaphat.
+- a későbbi n8n-integráció korrelálható futástörténetet kaphat.
 
 Hátrányok:
 

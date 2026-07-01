@@ -9,7 +9,7 @@ megőriznie:
 - cserélhető nyelvi modellek és adattárak;
 - tesztelhető alkalmazási logika;
 - különválasztott Windows és Linux biztonsági határ;
-- később hozzáadható hang- és automatizálási modulok;
+- később hozzáadható hangmodul és self-hosted n8n automatizáció;
 - egyszerű helyi üzemeltetés és visszaállíthatóság.
 
 ## Telepítési nézet
@@ -26,6 +26,7 @@ megőriznie:
 
 - Kelvin FastAPI backend;
 - PostgreSQL + pgvector perzisztens adatai;
+- későbbi self-hosted n8n automatizációs szolgáltatás;
 - későbbi Open WebUI;
 - naplók és szolgáltatáskonfigurációk.
 
@@ -70,6 +71,14 @@ tartalmazhat közvetlen modell- vagy adatbázis-hívásokat.
 Az agentciklus a felhasználói célt, a modell válaszát és az engedélyezett
 eszközhívásokat koordinálja. Az eszközleírás és az eszköz végrehajtása
 elkülönül. A Windows-eszközök tényleges végrehajtója a PowerShell-kliens.
+
+### Automatizáció
+
+A vizuális workflow-szerkesztést, időzítést, újrapróbálást és külső
+integrációkat a self-hosted n8n biztosítja. Kelvin verziózott HTTP API-kon
+keresztül kapcsolódik hozzá, és megtartja az AI-, agent-, policy- és
+jóváhagyási felelősséget. Az n8n nem kap közvetlen, korlátlan hozzáférést a
+Windows hosthoz.
 
 ## Fő adatfolyamok
 

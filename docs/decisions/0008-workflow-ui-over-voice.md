@@ -1,6 +1,6 @@
 # ADR-0008: Workflow UI előnyben a Voice mérföldkővel szemben
 
-Állapot: Accepted
+Állapot: Superseded by ADR-0013
 
 ## Kontextus
 
