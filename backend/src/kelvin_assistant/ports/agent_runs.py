@@ -14,6 +14,14 @@ class AgentRunStoreError(RuntimeError):
     """Base error raised by agent run storage implementations."""
 
 
+class AgentRunStoreConfigurationError(AgentRunStoreError):
+    """Raised when persistent agent storage is not configured."""
+
+
+class AgentRunStoreUnavailableError(AgentRunStoreError):
+    """Raised when persistent agent storage cannot complete an operation."""
+
+
 class AgentRunNotFoundError(AgentRunStoreError):
     """Raised when a requested agent run does not exist."""
 
