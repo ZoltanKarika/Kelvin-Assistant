@@ -150,6 +150,36 @@ def test_begin_planning_translates_concurrent_update_to_409() -> None:
     assert "changed concurrently" in response.json()["detail"]
 
 
+def test_cancel_run_closes_active_tool_proposal() -> None:
+    """Cancellation persists a terminal state and retires pending work."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("git.status", "read"),
+        )
+        cancelled = client.post(f"/api/v1/agent/runs/{run_id}/cancel")
+        active = client.get(f"/api/v1/agent/runs/{run_id}/tools/active")
+        repeated = client.post(f"/api/v1/agent/runs/{run_id}/cancel")
+
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "cancelled"
+    assert active.status_code == 404
+    assert repeated.status_code == 409
+    assert "terminal" in repeated.json()["detail"]
+
+
+def test_cancel_run_returns_404_for_unknown_id() -> None:
+    """Cancellation cannot create or hide an unknown run."""
+
+    run_id = uuid4()
+    with TestClient(_app()) as client:
+        response = client.post(f"/api/v1/agent/runs/{run_id}/cancel")
+
+    assert response.status_code == 404
+
+
 def test_propose_read_tool_enters_execution_without_approval() -> None:
     """An allowed read proposal is persisted in executing state."""
 

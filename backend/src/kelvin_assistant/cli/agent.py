@@ -303,6 +303,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ToolApprovalRejectedError:
         LOGGER.info("Tool change was not applied")
         return 0
+    except KeyboardInterrupt:
+        LOGGER.info("Agent run cancelled by user")
+        return 130
     except (AgentClientError, ToolExecutionError, OSError, ValueError) as exc:
         LOGGER.error("Kelvin command failed: %s", exc)
         return 1

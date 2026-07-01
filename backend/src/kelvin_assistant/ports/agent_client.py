@@ -70,6 +70,10 @@ class AgentApiClient(Protocol):
         """Move one server-managed run into planning."""
         ...
 
+    async def cancel_run(self, run_id: UUID) -> AgentRun:
+        """Cancel one active server-managed run."""
+        ...
+
     async def plan_next(
         self,
         run_id: UUID,

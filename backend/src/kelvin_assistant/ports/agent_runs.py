@@ -74,6 +74,15 @@ class AgentRunStore(Protocol):
         """Replace a run when its stored version matches the expectation."""
         ...
 
+    async def cancel_run(
+        self,
+        run: AgentRun,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Atomically cancel a run and close any active tool proposal."""
+        ...
+
     async def update_proposal(
         self,
         proposal: ToolProposal,

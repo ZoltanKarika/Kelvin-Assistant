@@ -40,6 +40,10 @@ class AsyncLocalProcessRunner:
                 process.communicate(),
                 timeout=request.timeout_seconds,
             )
+        except asyncio.CancelledError:
+            process.kill()
+            await process.communicate()
+            raise
         except TimeoutError as exc:
             process.kill()
             await process.communicate()

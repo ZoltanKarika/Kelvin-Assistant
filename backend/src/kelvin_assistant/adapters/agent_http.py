@@ -79,6 +79,15 @@ class HttpAgentApiClient:
         )
         return _parse_run(payload)
 
+    async def cancel_run(self, run_id: UUID) -> AgentRun:
+        """Cancel one active server-managed run."""
+
+        payload = await self._request(
+            "POST",
+            f"/api/v1/agent/runs/{run_id}/cancel",
+        )
+        return _parse_run(payload)
+
     async def plan_next(
         self,
         run_id: UUID,

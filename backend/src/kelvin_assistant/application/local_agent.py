@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from uuid import UUID
 
 from kelvin_assistant.domain.agent import (
     MAX_TOOL_OUTPUT_LENGTH,
@@ -111,6 +113,27 @@ class LocalReadToolClient:
             workspace_id=self._workspace_id,
         )
         self._verify_workspace(run)
+        try:
+            return await self._run_tool_lifecycle(
+                run,
+                name=name,
+                arguments=arguments,
+                executor=executor,
+            )
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            await self._cancel_remote_run(run.id)
+            raise
+
+    async def _run_tool_lifecycle(
+        self,
+        run: AgentRun,
+        *,
+        name: str,
+        arguments: Mapping[str, JsonValue],
+        executor: ToolExecutor,
+    ) -> LocalToolRunResult:
+        """Complete one explicit tool lifecycle for an existing run."""
+
         planned = await self._api_client.begin_planning(run.id)
         if planned.status is not AgentStatus.PLANNING:
             raise LocalAgentClientError("Remote agent did not enter planning")
@@ -148,6 +171,15 @@ class LocalReadToolClient:
             workspace_id=self._workspace_id,
         )
         self._verify_workspace(run)
+        try:
+            return await self._run_goal_loop(run)
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            await self._cancel_remote_run(run.id)
+            raise
+
+    async def _run_goal_loop(self, run: AgentRun) -> LocalAgentStepResult:
+        """Continue one existing goal within its server-defined step limit."""
+
         clarifications: list[ClarificationTurn] = []
         observation: str | None = None
         executions: list[ToolExecutionResult] = []
@@ -209,6 +241,19 @@ class LocalReadToolClient:
         raise LocalAgentClientError(
             f"Agent loop reached its {run.max_steps} step limit"
         )
+
+    async def _cancel_remote_run(self, run_id: UUID) -> None:
+        """Best-effort cancel a run without masking the local interruption."""
+
+        try:
+            cancelled = await self._api_client.cancel_run(run_id)
+            self._verify_workspace(cancelled)
+            if cancelled.status is not AgentStatus.CANCELLED:
+                raise LocalAgentClientError(
+                    "Remote agent did not enter cancelled state"
+                )
+        except AgentClientError:
+            return
 
     async def _execute_proposal(
         self,

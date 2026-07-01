@@ -7,6 +7,7 @@ from uuid import UUID
 
 import pytest
 
+import kelvin_assistant.cli.agent as agent_cli
 from kelvin_assistant.cli.agent import (
     AgentGoalCommand,
     ClientCommand,
@@ -62,6 +63,9 @@ class FakeAgentApiClient:
 
     async def begin_planning(self, run_id: UUID) -> AgentRun:
         return _run(AgentStatus.PLANNING, 1)
+
+    async def cancel_run(self, run_id: UUID) -> AgentRun:
+        return _run(AgentStatus.CANCELLED, 4)
 
     async def plan_next(
         self,
@@ -327,3 +331,25 @@ def test_execute_agent_goal_runs_model_selected_tool(
     output = capsys.readouterr().out
     assert "## main...origin/main" in output
     assert "Repository status inspected." in output
+
+
+def test_main_returns_interrupt_exit_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ctrl+C produces the conventional exit code after client cleanup."""
+
+    async def interrupt(*args: object, **kwargs: object) -> int:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(agent_cli, "execute_command", interrupt)
+
+    exit_code = agent_cli.main(
+        [
+            "--workspace-id",
+            "kelvin-assistant",
+            "git",
+            "status",
+        ]
+    )
+
+    assert exit_code == 130

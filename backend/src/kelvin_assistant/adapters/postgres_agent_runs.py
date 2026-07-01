@@ -123,6 +123,35 @@ class PostgresAgentRunStore(AgentRunStore):
 
         await self._execute(operation)
 
+    async def cancel_run(
+        self,
+        run: AgentRun,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Atomically cancel a run and close any active proposal."""
+
+        async def operation(cursor: _AgentCursor) -> None:
+            await _lock_and_validate_run(
+                cursor,
+                run,
+                expected_version=expected_version,
+            )
+            await _update_run(cursor, run)
+            await cursor.execute(
+                """
+                update agent_tool_proposals
+                set
+                    closed_at = now(),
+                    updated_at = now()
+                where run_id = %s
+                  and closed_at is null
+                """,
+                (run.id,),
+            )
+
+        await self._execute(operation)
+
     async def update_proposal(
         self,
         proposal: ToolProposal,
