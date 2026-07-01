@@ -82,8 +82,9 @@ class HttpAgentApiClient:
         arguments: Mapping[str, JsonValue],
         reason: str,
         expected_effect: str,
+        risk: ToolRisk,
     ) -> ToolProposal:
-        """Submit one read-only tool proposal and parse server policy."""
+        """Submit one tool proposal and parse deterministic server policy."""
 
         payload = await self._request(
             "POST",
@@ -93,33 +94,29 @@ class HttpAgentApiClient:
                 "arguments": _thaw_json(arguments),
                 "reason": reason,
                 "expected_effect": expected_effect,
-                "risk": ToolRisk.READ.value,
+                "risk": risk.value,
             },
         )
-        try:
-            run_payload = _require_mapping(payload["run"])
-            call = ToolCall(
-                id=UUID(_require_string(payload["tool_call_id"])),
-                name=_require_string(payload["tool_name"]),
-                arguments=_freeze_json_mapping(payload["arguments"]),
-                reason=_require_string(payload["reason"]),
-                expected_effect=_require_string(payload["expected_effect"]),
-                risk=ToolRisk(_require_string(payload["risk"])),
-            )
-            return ToolProposal(
-                run=_parse_run(run_payload),
-                call=call,
-                policy_result=ToolPolicyResult(
-                    decision=ToolPolicyDecision(
-                        _require_string(payload["policy_decision"])
-                    ),
-                    reason=_require_string(payload["policy_reason"]),
-                ),
-            )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise AgentClientResponseError(
-                "Kelvin API returned an invalid tool proposal"
-            ) from exc
+        return _parse_proposal(payload)
+
+    async def resolve_approval(
+        self,
+        run_id: UUID,
+        *,
+        tool_call_id: UUID,
+        approved: bool,
+    ) -> ToolProposal:
+        """Submit one explicit local user decision for a pending tool."""
+
+        payload = await self._request(
+            "POST",
+            f"/api/v1/agent/runs/{run_id}/approval",
+            {
+                "tool_call_id": str(tool_call_id),
+                "decision": "approved" if approved else "rejected",
+            },
+        )
+        return _parse_proposal(payload)
 
     async def submit_result(
         self,
@@ -196,6 +193,33 @@ def _parse_run(payload: Mapping[str, Any]) -> AgentRun:
     except (KeyError, TypeError, ValueError) as exc:
         raise AgentClientResponseError(
             "Kelvin API returned an invalid agent run"
+        ) from exc
+
+
+def _parse_proposal(payload: Mapping[str, Any]) -> ToolProposal:
+    try:
+        run_payload = _require_mapping(payload["run"])
+        call = ToolCall(
+            id=UUID(_require_string(payload["tool_call_id"])),
+            name=_require_string(payload["tool_name"]),
+            arguments=_freeze_json_mapping(payload["arguments"]),
+            reason=_require_string(payload["reason"]),
+            expected_effect=_require_string(payload["expected_effect"]),
+            risk=ToolRisk(_require_string(payload["risk"])),
+        )
+        return ToolProposal(
+            run=_parse_run(run_payload),
+            call=call,
+            policy_result=ToolPolicyResult(
+                decision=ToolPolicyDecision(
+                    _require_string(payload["policy_decision"])
+                ),
+                reason=_require_string(payload["policy_reason"]),
+            ),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise AgentClientResponseError(
+            "Kelvin API returned an invalid tool proposal"
         ) from exc
 
 

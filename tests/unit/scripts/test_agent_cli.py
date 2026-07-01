@@ -63,6 +63,7 @@ class FakeAgentApiClient:
         arguments: Mapping[str, JsonValue],
         reason: str,
         expected_effect: str,
+        risk: ToolRisk,
     ) -> ToolProposal:
         self.name = name
         self.arguments = arguments
@@ -74,13 +75,22 @@ class FakeAgentApiClient:
                 arguments=arguments,
                 reason=reason,
                 expected_effect=expected_effect,
-                risk=ToolRisk.READ,
+                risk=risk,
             ),
             policy_result=ToolPolicyResult(
                 decision=ToolPolicyDecision.ALLOW,
                 reason="Read-only tool is allowed.",
             ),
         )
+
+    async def resolve_approval(
+        self,
+        run_id: UUID,
+        *,
+        tool_call_id: UUID,
+        approved: bool,
+    ) -> ToolProposal:
+        raise AssertionError("Read tool must not request approval")
 
     async def submit_result(
         self,
@@ -160,6 +170,34 @@ def test_parser_builds_fixed_text_search_command() -> None:
     assert command.arguments == {
         "query": "AgentService",
         "max_results": 10,
+    }
+
+
+def test_parser_builds_approval_gated_file_patch() -> None:
+    """Patch input becomes one exact replacement without shell text."""
+
+    command = parse_command(
+        build_parser(),
+        [
+            "--workspace-id",
+            "kelvin-assistant",
+            "--workspace",
+            str(Path.cwd()),
+            "file",
+            "patch",
+            "notes.txt",
+            "--old-text",
+            "old value",
+            "--new-text",
+            "new value",
+        ],
+    )
+
+    assert command.tool_name == "file.patch"
+    assert command.arguments == {
+        "path": "notes.txt",
+        "old_text": "old value",
+        "new_text": "new value",
     }
 
 
