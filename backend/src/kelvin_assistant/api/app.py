@@ -7,6 +7,7 @@ from kelvin_assistant.adapters.memory_agent_runs import InMemoryAgentRunStore
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
 from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider, OllamaProvider
 from kelvin_assistant.adapters.postgres import PostgresDatabaseClient
+from kelvin_assistant.adapters.postgres_agent_runs import PostgresAgentRunStore
 from kelvin_assistant.adapters.postgres_knowledge import PostgresKnowledgeRepository
 from kelvin_assistant.adapters.postgres_memory import PostgresMemoryRepository
 from kelvin_assistant.api.agent_routes import router as agent_router
@@ -88,7 +89,13 @@ def create_app(
         )
     )
     active_agent_run_store = (
-        agent_run_store if agent_run_store is not None else InMemoryAgentRunStore()
+        agent_run_store
+        if agent_run_store is not None
+        else (
+            PostgresAgentRunStore(active_settings)
+            if active_settings.database_url is not None
+            else InMemoryAgentRunStore()
+        )
     )
     active_workspace_authorizer = (
         workspace_authorizer
