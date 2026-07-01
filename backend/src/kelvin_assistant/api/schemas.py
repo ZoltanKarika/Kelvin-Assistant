@@ -18,6 +18,13 @@ from kelvin_assistant.domain.agent import (
 )
 from kelvin_assistant.domain.chat import MAX_MESSAGE_LENGTH
 from kelvin_assistant.domain.memory import MemoryKind, MemoryScope
+from kelvin_assistant.domain.planner import (
+    MAX_CLARIFICATION_ANSWER_LENGTH,
+    MAX_CLARIFICATION_QUESTION_LENGTH,
+    MAX_CLARIFICATION_TURNS,
+    MAX_COMPLETION_SUMMARY_LENGTH,
+    MAX_PLANNER_REASON_LENGTH,
+)
 
 
 class RootResponse(BaseModel):
@@ -174,6 +181,61 @@ class AgentToolResultResponse(BaseModel):
     error: str | None
     truncated: bool
     duration_ms: int
+
+
+class AgentClarificationTurnRequest(BaseModel):
+    """One prior planner question and user answer carried by the client."""
+
+    question: str = Field(
+        min_length=1,
+        max_length=MAX_CLARIFICATION_QUESTION_LENGTH,
+    )
+    answer: str = Field(
+        min_length=1,
+        max_length=MAX_CLARIFICATION_ANSWER_LENGTH,
+    )
+
+
+class AgentNextRequest(BaseModel):
+    """Bounded context for planning the next agent step."""
+
+    clarifications: list[AgentClarificationTurnRequest] = Field(
+        default_factory=list,
+        max_length=MAX_CLARIFICATION_TURNS,
+    )
+    observation: str | None = Field(
+        default=None,
+        max_length=MAX_TOOL_OUTPUT_LENGTH,
+    )
+
+
+class AgentNextClarificationResponse(BaseModel):
+    """Planner response requiring one targeted user answer."""
+
+    action: Literal["clarify"] = "clarify"
+    run: AgentRunResponse
+    question: str = Field(max_length=MAX_CLARIFICATION_QUESTION_LENGTH)
+    reason: str = Field(max_length=MAX_PLANNER_REASON_LENGTH)
+
+
+class AgentNextToolResponse(BaseModel):
+    """Planner response containing one policy-evaluated tool proposal."""
+
+    action: Literal["tool"] = "tool"
+    proposal: AgentToolProposalResponse
+
+
+class AgentNextCompletionResponse(BaseModel):
+    """Planner response completing the agent run without another tool."""
+
+    action: Literal["complete"] = "complete"
+    run: AgentRunResponse
+    summary: str = Field(max_length=MAX_COMPLETION_SUMMARY_LENGTH)
+
+
+type AgentNextResponse = (
+    AgentNextClarificationResponse | AgentNextToolResponse | AgentNextCompletionResponse
+)
 
 
 class MemoryCreateRequest(BaseModel):

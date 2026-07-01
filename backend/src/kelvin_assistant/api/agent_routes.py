@@ -7,11 +7,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from kelvin_assistant.api.dependencies import (
+    get_agent_planning_service,
     get_agent_run_store,
     get_agent_service,
     get_workspace_authorizer,
 )
 from kelvin_assistant.api.schemas import (
+    AgentNextClarificationResponse,
+    AgentNextCompletionResponse,
+    AgentNextRequest,
+    AgentNextResponse,
+    AgentNextToolResponse,
     AgentRunCreateRequest,
     AgentRunResponse,
     AgentToolApprovalRequest,
@@ -21,26 +27,44 @@ from kelvin_assistant.api.schemas import (
     AgentToolResultResponse,
 )
 from kelvin_assistant.application.agent import AgentService, AgentServiceError
+from kelvin_assistant.application.agent_planning import (
+    AgentPlanningError,
+    AgentPlanningService,
+    ClarificationOutcome,
+    CompletionOutcome,
+    ToolOutcome,
+)
 from kelvin_assistant.application.tool_policy import ToolPolicyContext
 from kelvin_assistant.domain.agent import (
     AgentDomainError,
     AgentRun,
+    AgentStatus,
     ApprovalDecision,
     ToolCall,
     ToolExecutionResult,
     ToolPolicyDecision,
     ToolProposal,
 )
+from kelvin_assistant.domain.planner import ClarificationTurn, PlannerDomainError
 from kelvin_assistant.ports.agent_runs import (
     AgentProposalNotFoundError,
     AgentRunConflictError,
     AgentRunNotFoundError,
     AgentRunStore,
+    AgentRunStoreError,
+)
+from kelvin_assistant.ports.planner import (
+    AgentPlannerResponseError,
+    AgentPlannerUnavailableError,
 )
 from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 RuntimeAgentService = Annotated[AgentService, Depends(get_agent_service)]
+RuntimeAgentPlanningService = Annotated[
+    AgentPlanningService,
+    Depends(get_agent_planning_service),
+]
 RuntimeAgentRunStore = Annotated[AgentRunStore, Depends(get_agent_run_store)]
 RuntimeWorkspaceAuthorizer = Annotated[
     WorkspaceAuthorizer,
@@ -72,7 +96,7 @@ async def create_agent_run(
             workspace_id=request.workspace_id,
         )
         await store.add(run)
-    except AgentDomainError as exc:
+    except (AgentDomainError, PlannerDomainError) as exc:
         raise HTTPException(
             status_code=UNPROCESSABLE_CONTENT,
             detail=str(exc),
@@ -144,6 +168,132 @@ async def begin_agent_planning(
         ) from exc
 
     return _agent_run_response(planned)
+
+
+@router.post(
+    "/runs/{run_id}/next",
+    response_model=AgentNextResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Agent run not found."},
+        status.HTTP_409_CONFLICT: {
+            "description": "Invalid or concurrent agent transition.",
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": "Invalid planner context.",
+        },
+        status.HTTP_502_BAD_GATEWAY: {
+            "description": "Planner returned unusable output.",
+        },
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "description": "Planner provider is unavailable.",
+        },
+    },
+)
+async def plan_next_agent_step(
+    run_id: UUID,
+    request: AgentNextRequest,
+    planning_service: RuntimeAgentPlanningService,
+    store: RuntimeAgentRunStore,
+    workspace_authorizer: RuntimeWorkspaceAuthorizer,
+) -> AgentNextResponse:
+    """Plan, validate, policy-check, and persist one next agent decision."""
+
+    planned: AgentRun | None = None
+    try:
+        current = await store.get(run_id)
+        planned = planning_service.prepare_run(current)
+        if planned.version != current.version:
+            await store.update(planned, expected_version=current.version)
+        outcome = await planning_service.plan_next(
+            planned,
+            clarifications=tuple(
+                ClarificationTurn(
+                    question=turn.question,
+                    answer=turn.answer,
+                )
+                for turn in request.clarifications
+            ),
+            observation=request.observation,
+            policy_context=ToolPolicyContext(
+                workspace_authorized=workspace_authorizer.is_authorized(
+                    planned.workspace_id
+                ),
+                workspace_id=planned.workspace_id,
+            ),
+        )
+    except AgentRunNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except AgentPlannerUnavailableError as exc:
+        await _fail_planning_run(planning_service, store, planned)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except AgentPlannerResponseError as exc:
+        await _fail_planning_run(planning_service, store, planned)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except AgentDomainError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except AgentPlanningError as exc:
+        await _fail_planning_run(planning_service, store, planned)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except (AgentServiceError, AgentRunConflictError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    try:
+        if isinstance(outcome, ClarificationOutcome):
+            await store.update(
+                outcome.clarification.run,
+                expected_version=planned.version,
+            )
+            return AgentNextClarificationResponse(
+                run=_agent_run_response(outcome.clarification.run),
+                question=outcome.decision.question,
+                reason=outcome.decision.reason,
+            )
+        if isinstance(outcome, CompletionOutcome):
+            await store.update(outcome.run, expected_version=planned.version)
+            return AgentNextCompletionResponse(
+                run=_agent_run_response(outcome.run),
+                summary=outcome.decision.summary,
+            )
+        if isinstance(outcome, ToolOutcome):
+            if outcome.proposal.policy_result.decision is ToolPolicyDecision.DENY:
+                failed = planning_service.fail_run(planned)
+                await store.update(failed, expected_version=planned.version)
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=outcome.proposal.policy_result.reason,
+                )
+            await store.update_proposal(
+                outcome.proposal,
+                expected_version=planned.version,
+            )
+            return AgentNextToolResponse(
+                proposal=_tool_proposal_response(outcome.proposal)
+            )
+    except AgentRunConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    raise RuntimeError("Unsupported planning outcome")
 
 
 @router.post(
@@ -360,6 +510,22 @@ def _agent_run_response(run: AgentRun) -> AgentRunResponse:
         version=run.version,
         workspace_id=run.workspace_id,
     )
+
+
+async def _fail_planning_run(
+    planning_service: AgentPlanningService,
+    store: AgentRunStore,
+    planned: AgentRun | None,
+) -> None:
+    """Best-effort persist a failed state without hiding planner errors."""
+
+    if planned is None or planned.status is not AgentStatus.PLANNING:
+        return
+    try:
+        failed = planning_service.fail_run(planned)
+        await store.update(failed, expected_version=planned.version)
+    except AgentRunStoreError:
+        return
 
 
 def _tool_proposal_response(

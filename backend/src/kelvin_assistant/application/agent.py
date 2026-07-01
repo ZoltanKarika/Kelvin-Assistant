@@ -62,9 +62,12 @@ class AgentService:
         run: AgentRun,
         request: ClarificationRequest,
     ) -> AgentClarification:
-        """Pause a newly received run for required user information."""
+        """Pause a received or planning run for required information."""
 
-        self._require_status(run, AgentStatus.RECEIVED)
+        if run.status not in {AgentStatus.RECEIVED, AgentStatus.PLANNING}:
+            raise AgentServiceError(
+                f"Cannot request clarification from agent status {run.status}"
+            )
         return AgentClarification(
             run=run.transition_to(AgentStatus.CLARIFYING),
             request=request,
@@ -177,6 +180,15 @@ class AgentService:
                 f"Cannot complete agent run from status {run.status}"
             )
         return run.transition_to(AgentStatus.COMPLETED)
+
+    def fail_run(self, run: AgentRun) -> AgentRun:
+        """Fail any non-terminal run after a bounded application error."""
+
+        if run.status.is_terminal:
+            raise AgentServiceError(
+                f"Cannot fail terminal agent run with status {run.status}"
+            )
+        return run.transition_to(AgentStatus.FAILED)
 
     @staticmethod
     def _require_status(run: AgentRun, expected: AgentStatus) -> None:

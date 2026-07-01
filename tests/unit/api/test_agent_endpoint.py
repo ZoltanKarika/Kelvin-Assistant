@@ -18,8 +18,19 @@ from kelvin_assistant.domain.agent import (
     ToolRisk,
 )
 from kelvin_assistant.domain.chat import ChatMessage
+from kelvin_assistant.domain.planner import (
+    ClarifyDecision,
+    CompleteDecision,
+    PlannerDecision,
+    PlannerRequest,
+    ToolDecision,
+)
 from kelvin_assistant.ports.agent_runs import AgentRunConflictError
 from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.ports.planner import (
+    AgentPlanner,
+    AgentPlannerResponseError,
+)
 from kelvin_assistant.tools.registry import StaticToolRegistry
 
 
@@ -437,10 +448,178 @@ def test_submit_tool_result_cannot_complete_twice() -> None:
     assert repeated.status_code == 404
 
 
+def test_next_plans_and_persists_read_only_tool() -> None:
+    """Natural-language planning reuses registry risk and policy evaluation."""
+
+    planner = StubAgentPlanner(
+        ToolDecision(
+            tool_name="git.status",
+            arguments={"include_untracked": True},
+            reason="Inspect repository state.",
+            expected_effect="No workspace change.",
+        )
+    )
+    with TestClient(_app(agent_planner=planner)) as client:
+        created = client.post(
+            "/api/v1/agent/runs",
+            json={
+                "goal": "Show the Git status",
+                "workspace_id": "kelvin-assistant",
+            },
+        )
+        run_id = created.json()["id"]
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/next",
+            json={},
+        )
+        stored = client.get(f"/api/v1/agent/runs/{run_id}")
+
+    assert response.status_code == 200
+    assert response.json()["action"] == "tool"
+    proposal = response.json()["proposal"]
+    assert proposal["tool_name"] == "git.status"
+    assert proposal["risk"] == "read"
+    assert proposal["policy_decision"] == "allow"
+    assert proposal["run"]["status"] == "executing"
+    assert stored.json()["status"] == "executing"
+    assert len(planner.requests) == 1
+
+
+def test_next_continues_after_targeted_clarification() -> None:
+    """Client-carried clarification context can resume the persisted run."""
+
+    planner = StubAgentPlanner(
+        ClarifyDecision(
+            question="Which file should be changed?",
+            reason="The target file is missing.",
+        ),
+        CompleteDecision(summary="The target is now clear."),
+    )
+    with TestClient(_app(agent_planner=planner)) as client:
+        created = client.post(
+            "/api/v1/agent/runs",
+            json={
+                "goal": "Update the documentation",
+                "workspace_id": "kelvin-assistant",
+            },
+        )
+        run_id = created.json()["id"]
+        clarification = client.post(
+            f"/api/v1/agent/runs/{run_id}/next",
+            json={},
+        )
+        completion = client.post(
+            f"/api/v1/agent/runs/{run_id}/next",
+            json={
+                "clarifications": [
+                    {
+                        "question": "Which file should be changed?",
+                        "answer": "README.md",
+                    }
+                ]
+            },
+        )
+
+    assert clarification.status_code == 200
+    assert clarification.json()["action"] == "clarify"
+    assert clarification.json()["run"]["status"] == "clarifying"
+    assert completion.status_code == 200
+    assert completion.json()["action"] == "complete"
+    assert completion.json()["run"]["status"] == "completed"
+    assert planner.requests[1].clarifications[0].answer == "README.md"
+
+
+def test_next_rejects_tool_for_unauthorized_workspace() -> None:
+    """Planner output cannot bypass deterministic workspace authorization."""
+
+    planner = StubAgentPlanner(
+        ToolDecision(
+            tool_name="git.status",
+            arguments={},
+            reason="Inspect state.",
+            expected_effect="No change.",
+        )
+    )
+    with TestClient(_app(agent_planner=planner)) as client:
+        created = client.post(
+            "/api/v1/agent/runs",
+            json={
+                "goal": "Inspect another project",
+                "workspace_id": "other-project",
+            },
+        )
+        run_id = created.json()["id"]
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/next",
+            json={},
+        )
+        stored = client.get(f"/api/v1/agent/runs/{run_id}")
+
+    assert response.status_code == 403
+    assert stored.json()["status"] == "failed"
+
+
+def test_next_fails_run_for_invalid_planner_arguments() -> None:
+    """Schema-invalid model arguments never become an executable proposal."""
+
+    planner = StubAgentPlanner(
+        ToolDecision(
+            tool_name="git.status",
+            arguments={"include_untracked": "yes"},
+            reason="Inspect state.",
+            expected_effect="No change.",
+        )
+    )
+    with TestClient(_app(agent_planner=planner)) as client:
+        created = client.post(
+            "/api/v1/agent/runs",
+            json={
+                "goal": "Inspect repository",
+                "workspace_id": "kelvin-assistant",
+            },
+        )
+        run_id = created.json()["id"]
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/next",
+            json={},
+        )
+        stored = client.get(f"/api/v1/agent/runs/{run_id}")
+
+    assert response.status_code == 502
+    assert "must be boolean" in response.json()["detail"]
+    assert stored.json()["status"] == "failed"
+
+
+def test_next_fails_run_for_unusable_planner_response() -> None:
+    """Two invalid LLM responses leave an auditable failed run."""
+
+    planner = StubAgentPlanner(
+        error=AgentPlannerResponseError("invalid structured output twice")
+    )
+    with TestClient(_app(agent_planner=planner)) as client:
+        created = client.post(
+            "/api/v1/agent/runs",
+            json={
+                "goal": "Inspect repository",
+                "workspace_id": "kelvin-assistant",
+            },
+        )
+        run_id = created.json()["id"]
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/next",
+            json={},
+        )
+        stored = client.get(f"/api/v1/agent/runs/{run_id}")
+
+    assert response.status_code == 502
+    assert stored.json()["status"] == "failed"
+
+
 def _app(
     *,
     agent_run_store: InMemoryAgentRunStore | None = None,
     agent_service: AgentService | None = None,
+    agent_planner: AgentPlanner | None = None,
 ) -> FastAPI:
     return create_app(
         Settings(
@@ -453,6 +632,7 @@ def _app(
         llm_provider=StubLLMProvider(),
         agent_run_store=agent_run_store,
         agent_service=agent_service,
+        agent_planner=agent_planner,
     )
 
 
@@ -522,6 +702,25 @@ class StubLLMProvider(LLMProvider):
 
     async def check_readiness(self) -> None:
         """Report the stub provider as ready."""
+
+
+class StubAgentPlanner:
+    """Return queued structured decisions or one stable planner error."""
+
+    def __init__(
+        self,
+        *decisions: PlannerDecision,
+        error: AgentPlannerResponseError | None = None,
+    ) -> None:
+        self._decisions = list(decisions)
+        self._error = error
+        self.requests: list[PlannerRequest] = []
+
+    async def plan(self, request: PlannerRequest) -> PlannerDecision:
+        self.requests.append(request)
+        if self._error is not None:
+            raise self._error
+        return self._decisions.pop(0)
 
 
 class ConflictAgentRunStore(InMemoryAgentRunStore):
