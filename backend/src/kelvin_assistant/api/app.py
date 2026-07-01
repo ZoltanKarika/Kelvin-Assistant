@@ -33,6 +33,7 @@ from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 from kelvin_assistant.tools.read_definitions import read_tool_definitions
 from kelvin_assistant.tools.registry import StaticToolRegistry
 from kelvin_assistant.tools.workspaces import StaticWorkspaceAuthorizer
+from kelvin_assistant.tools.write_definitions import write_tool_definitions
 
 
 def create_app(
@@ -79,7 +80,11 @@ def create_app(
         agent_service
         if agent_service is not None
         else AgentService(
-            DefaultToolPolicy(StaticToolRegistry(read_tool_definitions()))
+            DefaultToolPolicy(
+                StaticToolRegistry(
+                    (*read_tool_definitions(), *write_tool_definitions())
+                )
+            )
         )
     )
     active_agent_run_store = (

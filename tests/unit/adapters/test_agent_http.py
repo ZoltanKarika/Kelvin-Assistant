@@ -12,6 +12,7 @@ from kelvin_assistant.domain.agent import (
     AgentStatus,
     ToolExecutionResult,
     ToolPolicyDecision,
+    ToolRisk,
 )
 from kelvin_assistant.ports.agent_client import (
     AgentClientResponseError,
@@ -96,6 +97,7 @@ def test_client_completes_remote_read_tool_lifecycle() -> None:
             arguments={"include_untracked": True},
             reason="Inspect the local repository.",
             expected_effect="Read Git state.",
+            risk=ToolRisk.READ,
         )
         completed = await client.submit_result(
             proposal.run.id,
@@ -170,6 +172,53 @@ def test_client_translates_http_rejection() -> None:
         match="Agent run is not planning",
     ):
         asyncio.run(client.begin_planning(RUN_ID))
+
+
+def test_client_submits_explicit_write_approval() -> None:
+    """Approval is bound to the exact server-issued tool call identifier."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        assert request.url.path == f"/api/v1/agent/runs/{RUN_ID}/approval"
+        assert json.loads(request.content) == {
+            "tool_call_id": str(CALL_ID),
+            "decision": "approved",
+        }
+        return httpx2.Response(
+            200,
+            json={
+                "run": _run_payload("executing", 3),
+                "tool_call_id": str(CALL_ID),
+                "tool_name": "file.patch",
+                "arguments": {
+                    "path": "notes.txt",
+                    "old_text": "old",
+                    "new_text": "new",
+                },
+                "reason": "Update the documented value.",
+                "expected_effect": "Apply the approved workspace change.",
+                "risk": "write",
+                "policy_decision": "require_approval",
+                "policy_reason": "State-changing tools require approval.",
+                "approval_status": "approved",
+            },
+        )
+
+    client = HttpAgentApiClient(
+        "http://kelvin.test:8000",
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    proposal = asyncio.run(
+        client.resolve_approval(
+            RUN_ID,
+            tool_call_id=CALL_ID,
+            approved=True,
+        )
+    )
+
+    assert proposal.run.status is AgentStatus.EXECUTING
+    assert proposal.call.name == "file.patch"
+    assert proposal.call.risk is ToolRisk.WRITE
 
 
 def test_client_translates_connection_failure() -> None:

@@ -9,6 +9,7 @@ from kelvin_assistant.domain.agent import (
     JsonValue,
     ToolExecutionResult,
     ToolProposal,
+    ToolRisk,
 )
 
 
@@ -48,8 +49,19 @@ class AgentApiClient(Protocol):
         arguments: Mapping[str, JsonValue],
         reason: str,
         expected_effect: str,
+        risk: ToolRisk,
     ) -> ToolProposal:
-        """Submit one structured read-only tool proposal."""
+        """Submit one structured tool proposal."""
+        ...
+
+    async def resolve_approval(
+        self,
+        run_id: UUID,
+        *,
+        tool_call_id: UUID,
+        approved: bool,
+    ) -> ToolProposal:
+        """Resolve one pending tool proposal with an explicit user decision."""
         ...
 
     async def submit_result(

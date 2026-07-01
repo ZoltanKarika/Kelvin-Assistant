@@ -1,7 +1,8 @@
 """Ports for discovering registered agent tools."""
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from kelvin_assistant.domain.agent import (
     ToolCall,
@@ -24,6 +25,19 @@ class UnknownToolError(ToolRegistryError):
 
 class ToolExecutionError(RuntimeError):
     """Raised when a tool call violates executor boundaries."""
+
+
+@dataclass(frozen=True, slots=True)
+class ToolPreview:
+    """Complete user-visible preview prepared before a write approval."""
+
+    content: str
+
+    def __post_init__(self) -> None:
+        """Require a non-empty, non-truncated approval preview."""
+
+        if not self.content.strip():
+            raise ValueError("Tool preview cannot be empty")
 
 
 class ToolRegistry(Protocol):
@@ -53,4 +67,18 @@ class ToolExecutor(Protocol):
         workspace_root: Path,
     ) -> ToolExecutionResult:
         """Execute a validated call without using a shell."""
+        ...
+
+
+@runtime_checkable
+class PreviewableToolExecutor(ToolExecutor, Protocol):
+    """Executor that prepares a complete preview before changing state."""
+
+    async def preview(
+        self,
+        call: ToolCall,
+        *,
+        workspace_root: Path,
+    ) -> ToolPreview:
+        """Prepare and retain the exact operation awaiting approval."""
         ...

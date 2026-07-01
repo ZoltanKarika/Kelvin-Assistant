@@ -6,7 +6,7 @@ import argparse
 import asyncio
 import logging
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -18,7 +18,11 @@ from kelvin_assistant.adapters.read_tools import (
     GitDiffExecutor,
     GitStatusExecutor,
 )
-from kelvin_assistant.application.local_agent import LocalReadToolClient
+from kelvin_assistant.adapters.write_tools import FilePatchExecutor
+from kelvin_assistant.application.local_agent import (
+    LocalReadToolClient,
+    ToolApprovalRejectedError,
+)
 from kelvin_assistant.domain.agent import JsonValue
 from kelvin_assistant.ports.agent_client import AgentApiClient, AgentClientError
 from kelvin_assistant.ports.processes import ProcessRunner
@@ -78,7 +82,10 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("--staged", action="store_true")
     diff_parser.add_argument("--path", help="Optional relative workspace path.")
 
-    file_parser = command_parsers.add_parser("file", help="Read workspace files.")
+    file_parser = command_parsers.add_parser(
+        "file",
+        help="Search or safely update workspace files.",
+    )
     file_commands = file_parser.add_subparsers(dest="file_command", required=True)
     search_parser = file_commands.add_parser(
         "search",
@@ -91,6 +98,21 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=50,
         help="Maximum returned matching lines. Default: 50.",
+    )
+    patch_parser = file_commands.add_parser(
+        "patch",
+        help="Preview and approve one exact text replacement.",
+    )
+    patch_parser.add_argument("path", help="Relative UTF-8 file path.")
+    patch_parser.add_argument(
+        "--old-text",
+        required=True,
+        help="Exact text that must occur once.",
+    )
+    patch_parser.add_argument(
+        "--new-text",
+        required=True,
+        help="Replacement text. May be empty.",
     )
     return parser
 
@@ -138,19 +160,33 @@ def parse_command(
             arguments=arguments,
         )
 
-    search_arguments: dict[str, JsonValue] = {
-        "query": cast(str, args.query),
-        "max_results": cast(int, args.max_results),
-    }
-    search_path = cast(str | None, args.path)
-    if search_path is not None:
-        search_arguments["path"] = search_path
+    file_command = cast(str, args.file_command)
+    if file_command == "search":
+        search_arguments: dict[str, JsonValue] = {
+            "query": cast(str, args.query),
+            "max_results": cast(int, args.max_results),
+        }
+        search_path = cast(str | None, args.path)
+        if search_path is not None:
+            search_arguments["path"] = search_path
+        return ClientCommand(
+            api_url=api_url,
+            workspace_id=workspace_id,
+            workspace_root=workspace_root,
+            tool_name="file.search",
+            arguments=search_arguments,
+        )
+
     return ClientCommand(
         api_url=api_url,
         workspace_id=workspace_id,
         workspace_root=workspace_root,
-        tool_name="file.search",
-        arguments=search_arguments,
+        tool_name="file.patch",
+        arguments={
+            "path": cast(str, args.path),
+            "old_text": cast(str, args.old_text),
+            "new_text": cast(str, args.new_text),
+        },
     )
 
 
@@ -159,6 +195,7 @@ async def execute_command(
     *,
     api_client: AgentApiClient | None = None,
     process_runner: ProcessRunner | None = None,
+    approval_prompt: Callable[[str], bool] | None = None,
 ) -> int:
     """Execute one parsed command and print its bounded result."""
 
@@ -168,12 +205,14 @@ async def execute_command(
         "git.status": GitStatusExecutor(active_process_runner),
         "git.diff": GitDiffExecutor(active_process_runner),
         "file.search": FileSearchExecutor(active_process_runner),
+        "file.patch": FilePatchExecutor(),
     }
     client = LocalReadToolClient(
         api_client=active_api_client,
         executors=executors,
         workspace_id=command.workspace_id,
         workspace_root=command.workspace_root,
+        approval_handler=approval_prompt or _prompt_for_approval,
     )
     result = await client.run_tool(command.tool_name, command.arguments)
     if result.execution.output:
@@ -186,6 +225,15 @@ async def execute_command(
     return 0
 
 
+def _prompt_for_approval(preview: str) -> bool:
+    """Show the complete diff and accept only an explicit yes."""
+
+    print("\nProposed change:\n")
+    print(preview, end="" if preview.endswith("\n") else "\n")
+    answer = input("\nApply this change? [y/N] ")
+    return answer.strip().lower() in {"y", "yes"}
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the local Kelvin client and return a process exit code."""
 
@@ -194,6 +242,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         command = parse_command(parser, argv)
         return asyncio.run(execute_command(command))
+    except ToolApprovalRejectedError:
+        LOGGER.info("Tool change was not applied")
+        return 0
     except (AgentClientError, ToolExecutionError, OSError, ValueError) as exc:
         LOGGER.error("Kelvin command failed: %s", exc)
         return 1
