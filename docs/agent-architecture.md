@@ -97,6 +97,24 @@ Az alkalmazási réteg koordinátora. Feladata:
 Az `AgentService` nem importálhat FastAPI-, PowerShell- vagy Git-specifikus
 kódot.
 
+### AgentPlanner
+
+Az `AgentPlanner` port természetes nyelvű célból pontosan egy strukturált
+döntést készít:
+
+- `clarify`: célzott kérdés, ha lényeges adat hiányzik;
+- `tool`: regisztrált eszköz neve és típusos argumentumai;
+- `complete`: a feladat lezárható további eszköz nélkül.
+
+A planner megkapja a registry eszközleírásait, de nem állíthat be kockázati
+szintet és nem hagyhat jóvá műveletet. A planner kimenete nem végrehajtási
+engedély: minden `tool` döntés ugyanúgy átmegy a domain-validáción, a
+registryn, a policy engine-en és szükség esetén a felhasználói jóváhagyáson.
+
+Az első provider adapter Ollamát használ. Az alkalmazási réteg csak az
+`AgentPlanner` portot ismeri, ezért később más helyi modell vagy provider az
+agentciklus átírása nélkül hozzáadható.
+
 ### ToolRegistry
 
 Az engedélyezett eszközök katalógusa. Minden eszköznek van:
@@ -271,6 +289,9 @@ Egy műveleti javaslat logikai formája:
 
 A modell nem küldhet végrehajtható PowerShell-kódrészletet strukturált
 argumentum helyett. A kliens csak regisztrált eszköznevet fogad el.
+
+A természetes nyelvű planner teljes szerződését és hibatűrését az
+[ADR-0012](decisions/0012-structured-agent-planner.md) rögzíti.
 
 ## Munkakönyvtár-biztonság
 
