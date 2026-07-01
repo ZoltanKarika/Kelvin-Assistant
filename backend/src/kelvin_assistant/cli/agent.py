@@ -1,4 +1,4 @@
-"""PowerShell-friendly local Kelvin client for safe read-only tools."""
+"""PowerShell-friendly local Kelvin client for policy-controlled tools."""
 
 from __future__ import annotations
 
@@ -20,7 +20,10 @@ from kelvin_assistant.adapters.read_tools import (
 )
 from kelvin_assistant.adapters.write_tools import FilePatchExecutor
 from kelvin_assistant.application.local_agent import (
+    LocalClarificationResult,
+    LocalCompletionResult,
     LocalReadToolClient,
+    LocalToolRunResult,
     ToolApprovalRejectedError,
 )
 from kelvin_assistant.domain.agent import JsonValue
@@ -41,6 +44,19 @@ class ClientCommand:
     workspace_root: Path
     tool_name: str
     arguments: Mapping[str, JsonValue]
+
+
+@dataclass(frozen=True, slots=True)
+class AgentGoalCommand:
+    """Normalized natural-language request for one planned agent step."""
+
+    api_url: str
+    workspace_id: str
+    workspace_root: Path
+    goal: str
+
+
+type ParsedClientCommand = ClientCommand | AgentGoalCommand
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,6 +84,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     command_parsers = parser.add_subparsers(dest="command", required=True)
+    agent_parser = command_parsers.add_parser(
+        "agent",
+        help="Plan and handle one natural-language agent step.",
+    )
+    agent_parser.add_argument("goal", help="Natural-language goal for Kelvin.")
+
     git_parser = command_parsers.add_parser("git", help="Read Git workspace state.")
     git_commands = git_parser.add_subparsers(dest="git_command", required=True)
 
@@ -120,7 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
 def parse_command(
     parser: argparse.ArgumentParser,
     argv: Sequence[str] | None = None,
-) -> ClientCommand:
+) -> ParsedClientCommand:
     """Parse and normalize one CLI command."""
 
     args = parser.parse_args(argv)
@@ -134,6 +156,16 @@ def parse_command(
         parser.error("--workspace must point to a directory")
 
     command = cast(str, args.command)
+    if command == "agent":
+        goal = cast(str, args.goal).strip()
+        if not goal:
+            parser.error("agent goal cannot be empty")
+        return AgentGoalCommand(
+            api_url=api_url,
+            workspace_id=workspace_id,
+            workspace_root=workspace_root,
+            goal=goal,
+        )
     if command == "git":
         git_command = cast(str, args.git_command)
         if git_command == "status":
@@ -191,13 +223,13 @@ def parse_command(
 
 
 async def execute_command(
-    command: ClientCommand,
+    command: ParsedClientCommand,
     *,
     api_client: AgentApiClient | None = None,
     process_runner: ProcessRunner | None = None,
     approval_prompt: Callable[[str], bool] | None = None,
 ) -> int:
-    """Execute one parsed command and print its bounded result."""
+    """Execute one parsed tool or natural-language agent command."""
 
     active_api_client = api_client or HttpAgentApiClient(command.api_url)
     active_process_runner = process_runner or AsyncLocalProcessRunner()
@@ -214,7 +246,20 @@ async def execute_command(
         workspace_root=command.workspace_root,
         approval_handler=approval_prompt or _prompt_for_approval,
     )
-    result = await client.run_tool(command.tool_name, command.arguments)
+    if isinstance(command, AgentGoalCommand):
+        result = await client.run_goal(command.goal)
+    else:
+        result = await client.run_tool(command.tool_name, command.arguments)
+
+    if isinstance(result, LocalClarificationResult):
+        print(f"Clarification required: {result.question}")
+        print(f"Reason: {result.reason}")
+        return 0
+    if isinstance(result, LocalCompletionResult):
+        print(result.summary)
+        return 0
+    if not isinstance(result, LocalToolRunResult):
+        raise RuntimeError("Unsupported local agent result")
     if result.execution.output:
         print(result.execution.output)
     if result.execution.truncated:

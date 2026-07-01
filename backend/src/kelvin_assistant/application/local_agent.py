@@ -1,4 +1,4 @@
-"""Local client orchestration for approved read-only agent tools."""
+"""Local client orchestration for policy-controlled agent tools."""
 
 from __future__ import annotations
 
@@ -16,7 +16,13 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
     ToolRisk,
 )
-from kelvin_assistant.ports.agent_client import AgentApiClient, AgentClientError
+from kelvin_assistant.ports.agent_client import (
+    AgentApiClient,
+    AgentClarificationStep,
+    AgentClientError,
+    AgentCompletionStep,
+    AgentToolStep,
+)
 from kelvin_assistant.ports.tools import (
     PreviewableToolExecutor,
     ToolExecutionError,
@@ -40,8 +46,30 @@ class LocalToolRunResult:
     execution: ToolExecutionResult
 
 
+@dataclass(frozen=True, slots=True)
+class LocalClarificationResult:
+    """Planner question that must be answered before execution can continue."""
+
+    run: AgentRun
+    question: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class LocalCompletionResult:
+    """Planner summary completing a goal without local execution."""
+
+    run: AgentRun
+    summary: str
+
+
+type LocalAgentStepResult = (
+    LocalToolRunResult | LocalClarificationResult | LocalCompletionResult
+)
+
+
 class LocalReadToolClient:
-    """Coordinate backend policy, approval, and local Windows execution."""
+    """Coordinate planner, backend policy, approval, and Windows execution."""
 
     def __init__(
         self,
@@ -102,6 +130,57 @@ class LocalReadToolClient:
             raise LocalAgentClientError(
                 "Remote proposal risk does not match local executor"
             )
+
+        return await self._execute_proposal(proposal, executor)
+
+    async def run_goal(self, goal: str) -> LocalAgentStepResult:
+        """Plan and handle one natural-language agent step."""
+
+        normalized_goal = goal.strip()
+        if not normalized_goal:
+            raise ValueError("Agent goal cannot be empty")
+        run = await self._api_client.create_run(
+            goal=normalized_goal,
+            workspace_id=self._workspace_id,
+        )
+        self._verify_workspace(run)
+        step = await self._api_client.plan_next(run.id)
+        if isinstance(step, AgentClarificationStep):
+            self._verify_workspace(step.run)
+            return LocalClarificationResult(
+                run=step.run,
+                question=step.question,
+                reason=step.reason,
+            )
+        if isinstance(step, AgentCompletionStep):
+            self._verify_workspace(step.run)
+            return LocalCompletionResult(
+                run=step.run,
+                summary=step.summary,
+            )
+        if not isinstance(step, AgentToolStep):
+            raise LocalAgentClientError("Remote planner returned an unknown step")
+        proposal = step.proposal
+        self._verify_workspace(proposal.run)
+        executor = self._executors.get(proposal.call.name)
+        if executor is None:
+            raise LocalAgentClientError(
+                f"Local executor is not registered: {proposal.call.name}"
+            )
+        if proposal.call.name != executor.definition.name:
+            raise LocalAgentClientError("Remote proposal does not match local executor")
+        if proposal.call.risk is not executor.definition.risk:
+            raise LocalAgentClientError(
+                "Remote proposal risk does not match local executor"
+            )
+        return await self._execute_proposal(proposal, executor)
+
+    async def _execute_proposal(
+        self,
+        proposal: ToolProposal,
+        executor: ToolExecutor,
+    ) -> LocalToolRunResult:
+        """Execute one already policy-evaluated remote proposal."""
 
         if proposal.policy_result.decision is ToolPolicyDecision.DENY:
             raise LocalAgentClientError(

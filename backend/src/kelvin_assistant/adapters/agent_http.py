@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any, cast
 from uuid import UUID
@@ -20,9 +20,14 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
     ToolRisk,
 )
+from kelvin_assistant.domain.planner import ClarificationTurn
 from kelvin_assistant.ports.agent_client import (
+    AgentClarificationStep,
     AgentClientResponseError,
     AgentClientUnavailableError,
+    AgentCompletionStep,
+    AgentNextStep,
+    AgentToolStep,
 )
 
 
@@ -73,6 +78,31 @@ class HttpAgentApiClient:
             f"/api/v1/agent/runs/{run_id}/plan",
         )
         return _parse_run(payload)
+
+    async def plan_next(
+        self,
+        run_id: UUID,
+        *,
+        clarifications: Sequence[ClarificationTurn] = (),
+        observation: str | None = None,
+    ) -> AgentNextStep:
+        """Request and parse one model-planned next step."""
+
+        payload = await self._request(
+            "POST",
+            f"/api/v1/agent/runs/{run_id}/next",
+            {
+                "clarifications": [
+                    {
+                        "question": turn.question,
+                        "answer": turn.answer,
+                    }
+                    for turn in clarifications
+                ],
+                "observation": observation,
+            },
+        )
+        return _parse_next_step(payload)
 
     async def propose_tool(
         self,
@@ -220,6 +250,31 @@ def _parse_proposal(payload: Mapping[str, Any]) -> ToolProposal:
     except (KeyError, TypeError, ValueError) as exc:
         raise AgentClientResponseError(
             "Kelvin API returned an invalid tool proposal"
+        ) from exc
+
+
+def _parse_next_step(payload: Mapping[str, Any]) -> AgentNextStep:
+    try:
+        action = _require_string(payload["action"])
+        if action == "clarify":
+            return AgentClarificationStep(
+                run=_parse_run(_require_mapping(payload["run"])),
+                question=_require_string(payload["question"]),
+                reason=_require_string(payload["reason"]),
+            )
+        if action == "tool":
+            return AgentToolStep(
+                proposal=_parse_proposal(_require_mapping(payload["proposal"]))
+            )
+        if action == "complete":
+            return AgentCompletionStep(
+                run=_parse_run(_require_mapping(payload["run"])),
+                summary=_require_string(payload["summary"]),
+            )
+        raise ValueError(f"Unknown agent action: {action}")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise AgentClientResponseError(
+            "Kelvin API returned an invalid planner response"
         ) from exc
 
 

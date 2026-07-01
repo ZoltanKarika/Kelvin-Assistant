@@ -1,6 +1,7 @@
 """Port and errors for the remote agent HTTP API."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
     ToolRisk,
 )
+from kelvin_assistant.domain.planner import ClarificationTurn
 
 
 class AgentClientError(RuntimeError):
@@ -23,6 +25,33 @@ class AgentClientUnavailableError(AgentClientError):
 
 class AgentClientResponseError(AgentClientError):
     """Raised when the remote Kelvin API returns an unusable response."""
+
+
+@dataclass(frozen=True, slots=True)
+class AgentClarificationStep:
+    """Remote planner decision requiring one user answer."""
+
+    run: AgentRun
+    question: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class AgentToolStep:
+    """Remote planner decision containing one policy-evaluated tool."""
+
+    proposal: ToolProposal
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCompletionStep:
+    """Remote planner decision completing the current run."""
+
+    run: AgentRun
+    summary: str
+
+
+type AgentNextStep = AgentClarificationStep | AgentToolStep | AgentCompletionStep
 
 
 class AgentApiClient(Protocol):
@@ -39,6 +68,16 @@ class AgentApiClient(Protocol):
 
     async def begin_planning(self, run_id: UUID) -> AgentRun:
         """Move one server-managed run into planning."""
+        ...
+
+    async def plan_next(
+        self,
+        run_id: UUID,
+        *,
+        clarifications: Sequence[ClarificationTurn] = (),
+        observation: str | None = None,
+    ) -> AgentNextStep:
+        """Request one model-planned and policy-evaluated next step."""
         ...
 
     async def propose_tool(

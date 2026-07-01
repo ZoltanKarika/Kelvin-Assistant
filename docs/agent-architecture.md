@@ -334,9 +334,13 @@ pull request.
 
 ## Első Windows kliens
 
-A kezdeti `kelvin` parancs három, kizárólag olvasási műveletet támogat:
+A `kelvin` kliens természetes nyelvű agentlépést, három olvasási eszközt és
+egy jóváhagyásköteles fájlmódosítást támogat:
 
 ```powershell
+uv run kelvin --api-url http://192.168.10.13:8000 `
+  --workspace-id kelvin-assistant agent "Show the current Git status."
+
 uv run kelvin --api-url http://192.168.10.13:8000 `
   --workspace-id kelvin-assistant git status
 
@@ -355,6 +359,17 @@ A kliens az aktuális könyvtárat használja workspace-ként, hacsak a
 `--workspace` opció mást nem ad meg. A gyakran használt értékek a
 `KELVIN_API_URL`, `KELVIN_WORKSPACE_ID` és `KELVIN_WORKSPACE_PATH`
 környezeti változókkal is beállíthatók.
+
+Az `agent` alparancs természetes nyelvű célt küld a planner API-nak. Az első
+iteráció egyetlen strukturált döntést kezel:
+
+- `clarify`: kiírja a planner célzott kérdését és indoklását;
+- `tool`: a policy által ellenőrzött eszközt helyben végrehajtja;
+- `complete`: kiírja a planner összefoglalóját.
+
+Ez még nem teljes, automatikus többlépéses ciklus. A visszakérdezésre adott
+válasz és az eszközmegfigyelés alapján történő folytatás a következő
+implementációs szelet.
 
 Minden parancs létrehoz egy backend által kezelt agentfutást. A backend
 ellenőrzi az eszközt és a workspace azonosítóját, a tényleges Git- vagy

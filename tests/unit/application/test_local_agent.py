@@ -9,7 +9,10 @@ import pytest
 
 from kelvin_assistant.application.local_agent import (
     LocalAgentClientError,
+    LocalClarificationResult,
+    LocalCompletionResult,
     LocalReadToolClient,
+    LocalToolRunResult,
     ToolApprovalRejectedError,
 )
 from kelvin_assistant.domain.agent import (
@@ -24,6 +27,12 @@ from kelvin_assistant.domain.agent import (
     ToolPolicyResult,
     ToolProposal,
     ToolRisk,
+)
+from kelvin_assistant.ports.agent_client import (
+    AgentClarificationStep,
+    AgentCompletionStep,
+    AgentNextStep,
+    AgentToolStep,
 )
 from kelvin_assistant.ports.tools import ToolPreview
 
@@ -59,10 +68,11 @@ class FakeAgentApiClient:
         self.decision = decision
         self.workspace_id = workspace_id
         self.submitted_result: ToolExecutionResult | None = None
+        self.goal = ""
 
     async def create_run(self, *, goal: str, workspace_id: str) -> AgentRun:
-        assert goal == "Execute tool git.status."
         assert workspace_id == "kelvin-assistant"
+        self.goal = goal
         return _run(AgentStatus.RECEIVED, workspace_id=self.workspace_id)
 
     async def begin_planning(self, run_id: UUID) -> AgentRun:
@@ -72,6 +82,22 @@ class FakeAgentApiClient:
             workspace_id=self.workspace_id,
             version=1,
         )
+
+    async def plan_next(
+        self,
+        run_id: UUID,
+        **kwargs: object,
+    ) -> AgentNextStep:
+        assert run_id == RUN_ID
+        proposal = await self.propose_tool(
+            run_id,
+            name="git.status",
+            arguments={"include_untracked": True},
+            reason="Inspect the repository.",
+            expected_effect="Read Git state.",
+            risk=ToolRisk.READ,
+        )
+        return AgentToolStep(proposal=proposal)
 
     async def propose_tool(
         self,
@@ -181,6 +207,13 @@ class FakeWriteAgentApiClient:
 
     async def begin_planning(self, run_id: UUID) -> AgentRun:
         return _run(AgentStatus.PLANNING, version=1)
+
+    async def plan_next(
+        self,
+        run_id: UUID,
+        **kwargs: object,
+    ) -> AgentToolStep:
+        raise AssertionError("Manual write test must not call the planner")
 
     async def propose_tool(
         self,
@@ -296,6 +329,71 @@ def test_client_runs_allowed_tool_and_submits_result() -> None:
     assert result.execution.output == "## main...origin/main"
     assert executor.workspace_root == workspace_root
     assert api_client.submitted_result == result.execution
+
+
+def test_client_runs_model_selected_tool_from_natural_language() -> None:
+    """A natural-language goal can select an allowed local read executor."""
+
+    api_client = FakeAgentApiClient()
+    executor = FakeToolExecutor()
+    client = LocalReadToolClient(
+        api_client=api_client,
+        executors={"git.status": executor},
+        workspace_id="kelvin-assistant",
+        workspace_root=Path.cwd(),
+    )
+
+    result = asyncio.run(client.run_goal("Show the current Git status."))
+
+    assert api_client.goal == "Show the current Git status."
+    assert isinstance(result, LocalToolRunResult)
+    assert result.execution.output == "## main...origin/main"
+
+
+@pytest.mark.parametrize(
+    ("step", "expected_type"),
+    [
+        (
+            AgentClarificationStep(
+                run=_run(AgentStatus.CLARIFYING, version=1),
+                question="Which file should I inspect?",
+                reason="The target is missing.",
+            ),
+            LocalClarificationResult,
+        ),
+        (
+            AgentCompletionStep(
+                run=_run(AgentStatus.COMPLETED, version=1),
+                summary="No local tool is required.",
+            ),
+            LocalCompletionResult,
+        ),
+    ],
+)
+def test_client_returns_non_tool_planner_decision(
+    step: AgentClarificationStep | AgentCompletionStep,
+    expected_type: type[object],
+) -> None:
+    """Clarification and completion never start a local executable."""
+
+    class NonToolApiClient(FakeAgentApiClient):
+        async def plan_next(
+            self,
+            run_id: UUID,
+            **kwargs: object,
+        ) -> AgentClarificationStep | AgentCompletionStep:
+            return step
+
+    client = LocalReadToolClient(
+        api_client=NonToolApiClient(),
+        executors={"git.status": FakeToolExecutor()},
+        workspace_id="kelvin-assistant",
+        workspace_root=Path.cwd(),
+    )
+
+    result = asyncio.run(client.run_goal("Help with the repository."))
+
+    assert isinstance(result, expected_type)
 
 
 def test_client_rejects_remote_workspace_mismatch() -> None:
