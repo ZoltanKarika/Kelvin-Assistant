@@ -69,6 +69,7 @@ class FakeAgentApiClient:
         self.workspace_id = workspace_id
         self.submitted_result: ToolExecutionResult | None = None
         self.goal = ""
+        self.cancelled = False
         self.plan_contexts: list[tuple[tuple[ClarificationTurn, ...], str | None]] = []
 
     async def create_run(self, *, goal: str, workspace_id: str) -> AgentRun:
@@ -82,6 +83,15 @@ class FakeAgentApiClient:
             AgentStatus.PLANNING,
             workspace_id=self.workspace_id,
             version=1,
+        )
+
+    async def cancel_run(self, run_id: UUID) -> AgentRun:
+        assert run_id == RUN_ID
+        self.cancelled = True
+        return _run(
+            AgentStatus.CANCELLED,
+            workspace_id=self.workspace_id,
+            version=4,
         )
 
     async def plan_next(
@@ -220,6 +230,9 @@ class FakeWriteAgentApiClient:
 
     async def begin_planning(self, run_id: UUID) -> AgentRun:
         return _run(AgentStatus.PLANNING, version=1)
+
+    async def cancel_run(self, run_id: UUID) -> AgentRun:
+        return _run(AgentStatus.CANCELLED, version=4)
 
     async def plan_next(
         self,
@@ -491,6 +504,41 @@ def test_client_rejects_empty_clarification_answer() -> None:
         match="answer cannot be empty",
     ):
         asyncio.run(client.run_goal("Inspect a documentation file."))
+
+
+def test_client_cancels_remote_run_after_keyboard_interrupt() -> None:
+    """An interrupted local prompt does not leave an active backend run."""
+
+    class ClarifyingApiClient(FakeAgentApiClient):
+        async def plan_next(
+            self,
+            run_id: UUID,
+            *,
+            clarifications: Sequence[ClarificationTurn] = (),
+            observation: str | None = None,
+        ) -> AgentNextStep:
+            return AgentClarificationStep(
+                run=_run(AgentStatus.CLARIFYING, version=1),
+                question="Which file should I inspect?",
+                reason="The target file is missing.",
+            )
+
+    def interrupt(question: str) -> str:
+        raise KeyboardInterrupt
+
+    api_client = ClarifyingApiClient()
+    client = LocalReadToolClient(
+        api_client=api_client,
+        executors={},
+        workspace_id="kelvin-assistant",
+        workspace_root=Path.cwd(),
+        clarification_handler=interrupt,
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        asyncio.run(client.run_goal("Inspect a documentation file."))
+
+    assert api_client.cancelled
 
 
 def test_client_rejects_remote_workspace_mismatch() -> None:

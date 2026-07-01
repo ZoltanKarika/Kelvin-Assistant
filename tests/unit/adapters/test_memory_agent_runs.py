@@ -224,3 +224,45 @@ def test_complete_proposal_atomically_stores_result_and_closes_call() -> None:
             await store.get_proposal(planning.id)
 
     asyncio.run(scenario())
+
+
+def test_cancel_run_atomically_closes_active_proposal() -> None:
+    """Cancellation updates the run and removes any pending tool call."""
+
+    async def scenario() -> None:
+        store = InMemoryAgentRunStore()
+        planning = AgentRun.create("Inspect the project").transition_to(
+            AgentStatus.PLANNING
+        )
+        executing = planning.transition_to(AgentStatus.EXECUTING)
+        proposal = ToolProposal(
+            run=executing,
+            call=ToolCall(
+                name="git.status",
+                arguments={},
+                reason="Inspect repository state.",
+                expected_effect="No state change.",
+                risk=ToolRisk.READ,
+            ),
+            policy_result=ToolPolicyResult(
+                decision=ToolPolicyDecision.ALLOW,
+                reason="Read-only tool is allowed.",
+            ),
+        )
+        await store.add(planning)
+        await store.update_proposal(
+            proposal,
+            expected_version=planning.version,
+        )
+        cancelled = executing.transition_to(AgentStatus.CANCELLED)
+
+        await store.cancel_run(
+            cancelled,
+            expected_version=executing.version,
+        )
+
+        assert await store.get(planning.id) == cancelled
+        with pytest.raises(AgentProposalNotFoundError):
+            await store.get_proposal(planning.id)
+
+    asyncio.run(scenario())

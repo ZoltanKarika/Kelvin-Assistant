@@ -178,6 +178,25 @@ def test_client_translates_http_rejection() -> None:
         asyncio.run(client.begin_planning(RUN_ID))
 
 
+def test_client_cancels_remote_run() -> None:
+    """The adapter maps local interruption to the versioned cancel endpoint."""
+
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "POST"
+        assert request.url.path == f"/api/v1/agent/runs/{RUN_ID}/cancel"
+        assert not request.content
+        return httpx2.Response(200, json=_run_payload("cancelled", 2))
+
+    client = HttpAgentApiClient(
+        "http://kelvin.test:8000",
+        transport=httpx2.MockTransport(handle_request),
+    )
+
+    cancelled = asyncio.run(client.cancel_run(RUN_ID))
+
+    assert cancelled.status is AgentStatus.CANCELLED
+
+
 @pytest.mark.parametrize(
     ("response_payload", "expected_type"),
     [

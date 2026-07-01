@@ -190,6 +190,15 @@ class AgentService:
             )
         return run.transition_to(AgentStatus.FAILED)
 
+    def cancel_run(self, run: AgentRun) -> AgentRun:
+        """Cancel one active run without rewriting a terminal outcome."""
+
+        if run.status.is_terminal:
+            raise AgentServiceError(
+                f"Cannot cancel terminal agent run with status {run.status}"
+            )
+        return run.transition_to(AgentStatus.CANCELLED)
+
     @staticmethod
     def _require_status(run: AgentRun, expected: AgentStatus) -> None:
         if run.status is not expected:

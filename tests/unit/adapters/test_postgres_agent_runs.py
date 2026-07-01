@@ -166,6 +166,29 @@ def test_update_rejects_stale_version(
     assert len(cursor.executed) == 1
 
 
+def test_cancel_run_closes_active_proposal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cancellation and proposal closure share one database transaction."""
+
+    cursor = FakeCursor(rows=[(2,)])
+    _install_fake_psycopg(monkeypatch, cursor)
+    store = PostgresAgentRunStore(_settings())
+
+    asyncio.run(
+        store.cancel_run(
+            _run(AgentStatus.CANCELLED, version=3),
+            expected_version=2,
+        )
+    )
+
+    assert len(cursor.executed) == 3
+    assert "update agent_runs" in cursor.executed[1].sql
+    assert "update agent_tool_proposals" in cursor.executed[2].sql
+    assert "closed_at = now()" in cursor.executed[2].sql
+    assert cursor.executed[2].params == (RUN_ID,)
+
+
 def test_update_proposal_persists_pending_approval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

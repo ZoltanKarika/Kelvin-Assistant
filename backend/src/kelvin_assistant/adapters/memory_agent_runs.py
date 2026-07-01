@@ -62,6 +62,26 @@ class InMemoryAgentRunStore(AgentRunStore):
                 raise AgentRunConflictError(run.id)
             self._runs[run.id] = run
 
+    async def cancel_run(
+        self,
+        run: AgentRun,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Cancel one run and remove its active proposal atomically."""
+
+        async with self._lock:
+            stored_run = self._runs.get(run.id)
+            if stored_run is None:
+                raise AgentRunNotFoundError(run.id)
+            if (
+                stored_run.version != expected_version
+                or run.version != expected_version + 1
+            ):
+                raise AgentRunConflictError(run.id)
+            self._runs[run.id] = run
+            self._proposals.pop(run.id, None)
+
     async def update_proposal(
         self,
         proposal: ToolProposal,

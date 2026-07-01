@@ -210,6 +210,30 @@ def test_service_records_failed_execution() -> None:
     assert failed.status.is_terminal is True
 
 
+def test_service_cancels_active_run() -> None:
+    """An active run can be terminated without starting another step."""
+
+    service = _service()
+    planning = service.begin_planning(service.start_run("Inspect the project"))
+
+    cancelled = service.cancel_run(planning)
+
+    assert cancelled.status is AgentStatus.CANCELLED
+    assert cancelled.step_count == planning.step_count
+    assert cancelled.version == planning.version + 1
+
+
+def test_service_rejects_cancelling_terminal_run() -> None:
+    """A recorded terminal outcome cannot be rewritten as cancellation."""
+
+    service = _service()
+    planning = service.begin_planning(service.start_run("Inspect the project"))
+    completed = service.complete_run(planning)
+
+    with pytest.raises(AgentServiceError, match="terminal"):
+        service.cancel_run(completed)
+
+
 def test_service_rejects_invalid_approval_resolution() -> None:
     """A read proposal has no approval that can be resolved."""
 

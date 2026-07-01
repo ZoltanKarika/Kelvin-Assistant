@@ -135,6 +135,41 @@ async def get_agent_run(
 
 
 @router.post(
+    "/runs/{run_id}/cancel",
+    response_model=AgentRunResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Agent run not found."},
+        status.HTTP_409_CONFLICT: {
+            "description": "Run is terminal or changed concurrently.",
+        },
+    },
+)
+async def cancel_agent_run(
+    run_id: UUID,
+    service: RuntimeAgentService,
+    store: RuntimeAgentRunStore,
+) -> AgentRunResponse:
+    """Cancel one active run and close its pending tool proposal."""
+
+    try:
+        current = await store.get(run_id)
+        cancelled = service.cancel_run(current)
+        await store.cancel_run(cancelled, expected_version=current.version)
+    except AgentRunNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (AgentServiceError, AgentRunConflictError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    return _agent_run_response(cancelled)
+
+
+@router.post(
     "/runs/{run_id}/plan",
     response_model=AgentRunResponse,
     status_code=status.HTTP_200_OK,

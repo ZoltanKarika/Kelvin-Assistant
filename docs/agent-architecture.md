@@ -310,6 +310,12 @@ Minden fájl- és Git-művelet előtt:
 - maximális agentlépésszám megakadályozza a végtelen ciklust;
 - minden eszköznek timeoutja van;
 - a megszakítás új eszköz indítását tiltja;
+- a Windows kliens `Ctrl+C` esetén best-effort meghívja a
+  `POST /api/v1/agent/runs/{run_id}/cancel` végpontot;
+- a cancel művelet atomikusan `cancelled` állapotba teszi a futást és lezárja
+  az aktív tool proposalt;
+- a már terminális futás eredménye megszakítással nem írható felül;
+- folyamatban lévő helyi gyermekfolyamat megszakításkor leáll;
 - részleges végrehajtás esetén Kelvin nem állíthatja, hogy a teljes feladat
   elkészült;
 - az eszközkimenet mérete korlátozott és szükség esetén rövidített;
