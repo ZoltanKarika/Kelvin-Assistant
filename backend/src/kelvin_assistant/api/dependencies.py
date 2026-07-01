@@ -5,6 +5,7 @@ from typing import cast
 from fastapi import Request
 
 from kelvin_assistant.application.agent import AgentService
+from kelvin_assistant.application.agent_planning import AgentPlanningService
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.application.memory import MemoryService
 from kelvin_assistant.config.settings import Settings
@@ -70,6 +71,16 @@ def get_agent_service(request: Request) -> AgentService:
     service = getattr(request.app.state, "agent_service", None)
     if not isinstance(service, AgentService):
         msg = "Agent service is not configured."
+        raise RuntimeError(msg)
+    return service
+
+
+def get_agent_planning_service(request: Request) -> AgentPlanningService:
+    """Return the structured agent planning service."""
+
+    service = getattr(request.app.state, "agent_planning_service", None)
+    if not isinstance(service, AgentPlanningService):
+        msg = "Agent planning service is not configured."
         raise RuntimeError(msg)
     return service
 

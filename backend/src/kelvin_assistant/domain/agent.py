@@ -130,6 +130,7 @@ _ALLOWED_TRANSITIONS: Mapping[AgentStatus, frozenset[AgentStatus]] = {
     ),
     AgentStatus.PLANNING: frozenset(
         {
+            AgentStatus.CLARIFYING,
             AgentStatus.AWAITING_APPROVAL,
             AgentStatus.EXECUTING,
             AgentStatus.COMPLETED,

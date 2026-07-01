@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from kelvin_assistant.adapters.llm_planner import StructuredLLMAgentPlanner
 from kelvin_assistant.adapters.memory_agent_runs import InMemoryAgentRunStore
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
 from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider, OllamaProvider
@@ -17,6 +18,7 @@ from kelvin_assistant.api.frontend_routes import router as frontend_router
 from kelvin_assistant.api.memory_routes import router as memory_router
 from kelvin_assistant.api.routes import router
 from kelvin_assistant.application.agent import AgentService
+from kelvin_assistant.application.agent_planning import AgentPlanningService
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.application.knowledge_search import KnowledgeSearchService
 from kelvin_assistant.application.memory import (
@@ -29,6 +31,7 @@ from kelvin_assistant.observability.logging import configure_logging
 from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.ports.planner import AgentPlanner
 from kelvin_assistant.ports.sessions import SessionStore
 from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 from kelvin_assistant.tools.read_definitions import read_tool_definitions
@@ -44,6 +47,7 @@ def create_app(
     database_client: DatabaseClient | None = None,
     memory_service: MemoryService | None = None,
     agent_service: AgentService | None = None,
+    agent_planner: AgentPlanner | None = None,
     agent_run_store: AgentRunStore | None = None,
     workspace_authorizer: WorkspaceAuthorizer | None = None,
 ) -> FastAPI:
@@ -77,16 +81,23 @@ def create_app(
         if memory_service is not None
         else MemoryService(PostgresMemoryRepository(active_settings))
     )
+    active_tool_registry = StaticToolRegistry(
+        (*read_tool_definitions(), *write_tool_definitions())
+    )
     active_agent_service = (
         agent_service
         if agent_service is not None
-        else AgentService(
-            DefaultToolPolicy(
-                StaticToolRegistry(
-                    (*read_tool_definitions(), *write_tool_definitions())
-                )
-            )
-        )
+        else AgentService(DefaultToolPolicy(active_tool_registry))
+    )
+    active_agent_planner = (
+        agent_planner
+        if agent_planner is not None
+        else StructuredLLMAgentPlanner(active_llm_provider)
+    )
+    active_agent_planning_service = AgentPlanningService(
+        planner=active_agent_planner,
+        registry=active_tool_registry,
+        agent_service=active_agent_service,
     )
     active_agent_run_store = (
         agent_run_store
@@ -128,6 +139,7 @@ def create_app(
     app.state.chat_service = active_chat_service
     app.state.memory_service = active_memory_service
     app.state.agent_service = active_agent_service
+    app.state.agent_planning_service = active_agent_planning_service
     app.state.agent_run_store = active_agent_run_store
     app.state.workspace_authorizer = active_workspace_authorizer
     app.mount(
