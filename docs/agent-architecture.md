@@ -366,6 +366,11 @@ A kliens az aktuális könyvtárat használja workspace-ként, hacsak a
 `KELVIN_API_URL`, `KELVIN_WORKSPACE_ID` és `KELVIN_WORKSPACE_PATH`
 környezeti változókkal is beállíthatók.
 
+A Windows kliens API-kérésenként alapértelmezetten 120 másodpercet vár, mert a
+planner hibás strukturált modellválasz esetén egy javítási kört is indíthat.
+Az érték a `--timeout-seconds` kapcsolóval vagy a
+`KELVIN_API_TIMEOUT_SECONDS` környezeti változóval módosítható.
+
 Az `agent` alparancs természetes nyelvű célt küld a planner API-nak. A kliens
 egy korlátozott, többfordulós ciklusban három strukturált döntést kezel:
 

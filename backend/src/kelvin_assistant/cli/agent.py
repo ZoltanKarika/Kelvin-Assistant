@@ -33,6 +33,7 @@ from kelvin_assistant.ports.tools import ToolExecutionError, ToolExecutor
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_API_URL = "http://127.0.0.1:8000"
+DEFAULT_API_TIMEOUT_SECONDS = 120.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +45,7 @@ class ClientCommand:
     workspace_root: Path
     tool_name: str
     arguments: Mapping[str, JsonValue]
+    timeout_seconds: float = DEFAULT_API_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,7 @@ class AgentGoalCommand:
     workspace_id: str
     workspace_root: Path
     goal: str
+    timeout_seconds: float = DEFAULT_API_TIMEOUT_SECONDS
 
 
 type ParsedClientCommand = ClientCommand | AgentGoalCommand
@@ -81,6 +84,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path(os.getenv("KELVIN_WORKSPACE_PATH", ".")),
         help="Local Windows workspace path. Default: current directory.",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=_positive_float,
+        default=os.getenv(
+            "KELVIN_API_TIMEOUT_SECONDS",
+            str(DEFAULT_API_TIMEOUT_SECONDS),
+        ),
+        help="Kelvin API request timeout. Default: 120 seconds.",
     )
 
     command_parsers = parser.add_subparsers(dest="command", required=True)
@@ -154,6 +166,7 @@ def parse_command(
     workspace_root = cast(Path, args.workspace).resolve(strict=True)
     if not workspace_root.is_dir():
         parser.error("--workspace must point to a directory")
+    timeout_seconds = cast(float, args.timeout_seconds)
 
     command = cast(str, args.command)
     if command == "agent":
@@ -165,6 +178,7 @@ def parse_command(
             workspace_id=workspace_id,
             workspace_root=workspace_root,
             goal=goal,
+            timeout_seconds=timeout_seconds,
         )
     if command == "git":
         git_command = cast(str, args.git_command)
@@ -177,6 +191,7 @@ def parse_command(
                 arguments={
                     "include_untracked": not cast(bool, args.no_untracked),
                 },
+                timeout_seconds=timeout_seconds,
             )
         arguments: dict[str, JsonValue] = {
             "staged": cast(bool, args.staged),
@@ -190,6 +205,7 @@ def parse_command(
             workspace_root=workspace_root,
             tool_name="git.diff",
             arguments=arguments,
+            timeout_seconds=timeout_seconds,
         )
 
     file_command = cast(str, args.file_command)
@@ -207,6 +223,7 @@ def parse_command(
             workspace_root=workspace_root,
             tool_name="file.search",
             arguments=search_arguments,
+            timeout_seconds=timeout_seconds,
         )
 
     return ClientCommand(
@@ -219,6 +236,7 @@ def parse_command(
             "old_text": cast(str, args.old_text),
             "new_text": cast(str, args.new_text),
         },
+        timeout_seconds=timeout_seconds,
     )
 
 
@@ -231,7 +249,10 @@ async def execute_command(
 ) -> int:
     """Execute one parsed tool or natural-language agent command."""
 
-    active_api_client = api_client or HttpAgentApiClient(command.api_url)
+    active_api_client = api_client or HttpAgentApiClient(
+        command.api_url,
+        timeout_seconds=command.timeout_seconds,
+    )
     active_process_runner = process_runner or AsyncLocalProcessRunner()
     executors: dict[str, ToolExecutor] = {
         "git.status": GitStatusExecutor(active_process_runner),
@@ -283,6 +304,18 @@ def _prompt_for_approval(preview: str) -> bool:
     print(preview, end="" if preview.endswith("\n") else "\n")
     answer = input("\nApply this change? [y/N] ")
     return answer.strip().lower() in {"y", "yes"}
+
+
+def _positive_float(value: str) -> float:
+    """Parse one strictly positive CLI duration."""
+
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
 
 
 def _prompt_for_clarification(question: str) -> str:
