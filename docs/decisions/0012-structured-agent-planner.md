@@ -145,7 +145,7 @@ Előnyök:
 - modell- és providerfüggetlen alkalmazási szerződés;
 - a jelenlegi policy, approval és audit réteg változatlanul megmarad;
 - a planner külön hamis adapterrel unit tesztelhető;
-- a későbbi workflow UI ugyanazt a döntési modellt használhatja.
+- a későbbi n8n-integráció ugyanazt a döntési modellt használhatja.
 
 Hátrányok:
 

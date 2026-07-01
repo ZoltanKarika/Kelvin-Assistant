@@ -13,9 +13,9 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezés alatt |
-| v0.7 Workflow UI | n8n-szerű vizuális folyamatépítő | Tervezett |
-| v0.8 Automation Runtime | Workflow futtatás, naplózás és jóváhagyások | Tervezett |
-| v0.9 Messaging | Kétirányú Slack és helyi chat integráció | Tervezett |
+| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció | Tervezett |
+| v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
+| v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 ## v0.1 Foundation
@@ -222,68 +222,60 @@ viszont pontosítást kér.
 
 Részletes terv: [v0.6 Agent architektúra](agent-architecture.md).
 
-## v0.7 Workflow UI
+## v0.7 n8n Integration
 
-- n8n-szerű, de Kelvin-specifikus vizuális folyamatépítő;
-- workflow definíciók mentése JSON vagy YAML formában;
-- alap node-ok:
-  - prompt / chat;
-  - RAG keresés;
-  - fájl beolvasás;
-  - HTTP kérés;
-  - értesítés szolgáltatófüggetlen adapteren keresztül;
-  - shell / PowerShell előkészítés jóváhagyási ponttal;
-- manuális workflow futtatás;
-- egyszerű futási eredmény és hibanapló megjelenítése.
+- self-hosted n8n Community Edition az Ubuntu VM-en;
+- kizárólag a helyi hálózatról elérhető, hitelesített n8n felület;
+- dokumentált HTTP-szerződés az n8n és Kelvin verziózott API-ja között;
+- n8n workflow Kelvin chat-, RAG- és agentfolyamat indításához;
+- Kelvinből csak név szerint engedélyezett n8n webhook indítható;
+- workflow- és agentfutás közös korrelációs azonosítója;
+- titkok az n8n credential store-ban vagy környezeti konfigurációban;
+- az offline és internetet igénylő workflow-k egyértelmű elkülönítése.
 
-Elfogadási feltétel: a felhasználó webes felületen össze tud rakni egy egyszerű
-workflow-t, amely legalább egy prompt/RAG lépést és egy fájl- vagy HTTP-lépést
-tartalmaz, majd kézzel el tudja indítani.
+Az n8n az időzítésekért, integrációkért és vizuális workflow-szerkesztésért
+felel. Kelvin továbbra is az AI-, RAG-, memória-, agent-, policy- és
+jóváhagyási szabályok tulajdonosa. Az n8n nem kerülheti meg a Windows
+`kelvin` kliens helyi jóváhagyását.
 
-## v0.8 Automation Runtime
+Elfogadási feltétel: egy helyi n8n workflow HTTP-n meghívja Kelvin egyik
+verziózott API-ját, a válasz felhasználható a következő node-ban, és egy
+állapotváltoztató Windows-eszköz jóváhagyás nélkül továbbra sem hajtható végre.
 
-- workflow futtatómotor;
-- node input/output adatátadás;
-- futási naplók és hibák tárolása;
-- biztonságos jóváhagyási pontok veszélyes műveletek előtt;
-- alap retry és megszakítás;
-- értesítési események sikeres, hibás és jóváhagyásra váró futásokhoz;
-- cserélhető notification port;
-- első helyi értesítési adapter, például self-hosted Gotify vagy Matrix;
-- opcionális Google Chat webhook adapter internetkapcsolattal és megfelelő
-  Google Workspace-hozzáféréssel;
-- értesítési titkok kizárólag lokális környezeti konfigurációban;
-- eseménykimenet a későbbi kétirányú messaging adapterekhez;
-- későbbi ütemezés előkészítése.
+## v0.8 Integration Hardening
 
-Elfogadási feltétel: egy mentett workflow újrafuttatható, a futás eredménye
-visszanézhető, és a potenciálisan veszélyes műveletek nem futnak le jóváhagyás
-nélkül. Egy konfigurált helyi adapter értesítést tud küldeni a futás
-eredményéről, miközben az internetes adapterek hiánya nem akadályozza Kelvin
-offline működését.
+- n8n és Kelvin közötti hitelesítés és kulcsrotáció;
+- idempotens kérések, timeout, retry és hibautak;
+- workflow-, agent- és eszközfutások összekapcsolt auditja;
+- engedélyezett workflow-k és webhookok allowlistje;
+- n8n workflow-k exportja és verziózott mentése titkok nélkül;
+- PostgreSQL-, Kelvin- és n8n-adatok mentési és visszaállítási eljárása;
+- health check, naplózás és üzemeltetési hibakeresési útmutató;
+- minta workflow-k helyi értesítéshez és jóváhagyásra váró futásokhoz.
+
+Elfogadási feltétel: egy workflow biztonságosan újrapróbálható, futása
+visszakövethető Kelvin auditadataiig, a konfiguráció menthető és
+visszaállítható, miközben titok nem kerül a repositoryba.
 
 ## v0.9 Messaging
 
-- szolgáltatófüggetlen `MessagingPort`;
-- bejövő üzenetek és kimenő válaszok egységes domain modellje;
+- elsődlegesen n8n kommunikációs node-ok használata külön Kelvin-adapterek
+  helyett;
+- bejövő üzenetek normalizálása Kelvin verziózott API-kérésre;
 - chatcsatorna, beszélgetésszál és felhasználó Kelvin sessionhöz rendelése;
 - engedélyezett felhasználók és csatornák allowlistje;
 - üzenetazonosítók deduplikálása és újrapróbálható feldolgozás;
-- első felhős adapterként Slack app Socket Mode kapcsolattal;
-- Slack említések, közvetlen üzenetek, válaszok és állapotértesítések;
-- első helyi, internet nélkül használható adapter Matrix vagy Mattermost
-  rendszerhez;
-- opcionális WhatsApp Business Platform adapter nyilvános HTTPS webhookkal;
-- a hozzáférési tokenek és webhook titkok lokális secret konfigurációban;
-- auditkapcsolat a külső üzenet, a Kelvin session és az agent futás között;
+- első felhős workflow Slackhez;
+- opcionális WhatsApp Business Platform workflow;
+- első helyi workflow Matrix vagy Mattermost rendszerhez;
+- hozzáférési tokenek kizárólag az n8n credential store-ban;
+- auditkapcsolat a külső üzenet, az n8n workflow és a Kelvin agentfutás között;
 - távoli chatből indított állapotváltoztatás továbbra is helyi jóváhagyást
   igényel a Windows `kelvin` kliensben.
 
-Elfogadási feltétel: egy engedélyezett felhasználó Slackből vagy a kiválasztott
-helyi chatrendszerből üzenetet tud küldeni Kelvinnek, a választ ugyanabban a
-beszélgetésben kapja meg, és a külső csatorna kiesése nem akadályozza a helyi
-chat vagy agent működését. Állapotváltoztató agentművelet távoli üzenet
-hatására sem futhat le helyi jóváhagyás nélkül.
+Elfogadási feltétel: egy engedélyezett felhasználó a kiválasztott n8n
+üzenetküldő workflow-n keresztül kommunikál Kelvinnel, és a külső szolgáltatás
+kiesése nem akadályozza a helyi chat vagy agent működését.
 
 ## Post-1.0 opcionális Voice
 
@@ -302,7 +294,7 @@ automatizáció.
 - dokumentált telepítés, frissítés, mentés és visszaállítás;
 - offline kiadási és licencleltár-folyamat;
 - biztonsági és jogosultsági alapértelmezések;
-- ütemezhető, korlátozott automatizálás;
-- dokumentált helyi és opcionális felhős értesítési adapterek;
-- dokumentált, jogosultságkezelt kétirányú messaging adapterek;
+- self-hosted n8n-en keresztül ütemezhető, korlátozott automatizálás;
+- dokumentált helyi és opcionális felhős n8n integrációk;
+- dokumentált, jogosultságkezelt kétirányú messaging workflow-k;
 - teljes regressziós és üzemeltetési ellenőrzés.

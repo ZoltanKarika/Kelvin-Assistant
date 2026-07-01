@@ -40,7 +40,7 @@ Az agent csak indokolt esetben kérdez vissza. A cél pontosítása külön
 - külön tesztelhetők;
 - kockázati szint rendelhető hozzájuk;
 - nem igényelnek tetszőleges shellszöveg végrehajtását;
-- később a workflow UI is ugyanazokat az eszközöket használhatja.
+- később az n8n-integráció is ugyanazokat az agent API-kat használhatja.
 
 ### Miért a Windows kliens hajt végre?
 
@@ -92,7 +92,7 @@ Pozitív:
 - a modell és a végrehajtás között ellenőrizhető biztonsági határ marad;
 - az eszközök unit tesztelhetők valódi shell nélkül;
 - nincs új bejövő végrehajtási port a Windows hoston;
-- a későbbi workflow UI újrahasználhatja az eszközregisztert;
+- a későbbi n8n-integráció újrahasználhatja az eszközregisztert és a policy-t;
 - a felhasználó megtartja az irányítást az állapotváltoztatások felett.
 
 Negatív és kompromisszum:

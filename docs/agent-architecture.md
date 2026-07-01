@@ -53,8 +53,10 @@ Nem része:
 - időzített workflow-k;
 - teljes n8n-szerű vizuális szerkesztő.
 
-A workflow-szerkesztő a v0.7, a tartós automatizációs futtatómotor pedig a
-v0.8 része. Mindkettő a v0.6 biztonságos eszközmodelljére épül majd.
+A workflow-szerkesztést és az automatizációs futtatómotort a self-hosted n8n
+biztosítja. A v0.7 és v0.8 feladata ezért az n8n integrációja és megerősítése,
+nem egy külön Kelvin workflow-motor megépítése. Az n8n a v0.6 biztonságos
+agent API-ját használja, és nem kerülheti meg a helyi jóváhagyásokat.
 
 ## Telepítési kép
 

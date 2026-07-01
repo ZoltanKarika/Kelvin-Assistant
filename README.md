@@ -46,9 +46,9 @@ Jelenleg működik:
 - aktív user memóriák chat contextbe illesztése;
 - nyelvsemleges chat context promptok.
 
-Az agentfunkciók, workflow UI, automatizálás és opcionális hangvezérlés még
-nincsenek integrálva. A DHCP-foglalás, az offline csomag-előkészítés és a mentési
-eljárás továbbra is hátralévő üzemeltetési feladat.
+Az agentfunkciók fejlesztés alatt állnak. Az n8n-integráció és az opcionális
+hangvezérlés még nincs kész. A DHCP-foglalás, az offline csomag-előkészítés és
+a mentési eljárás továbbra is hátralévő üzemeltetési feladat.
 
 ## Projektcél
 
@@ -62,7 +62,7 @@ A rendszer fokozatosan az alábbi képességeket biztosítja:
 - saját webes felület, később opcionálisan Open WebUI;
 - PowerShell-alapú agentkliens;
 - később Whisper beszédfelismerés és Piper TTS;
-- később szabályozott automatizálási lehetőségek.
+- később self-hosted n8n-en keresztül szabályozott automatizálás.
 
 A cél a teljesen offline futás. A telepítőcsomagokat, Python-függőségeket és
 modellfájlokat az offline üzembe helyezés előtt ellenőrzött módon kell
@@ -202,8 +202,9 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
-| v0.7 Workflow UI | n8n-szerű vizuális folyamatépítő | Tervezett |
-| v0.8 Automation Runtime | Workflow futtatás és jóváhagyások | Tervezett |
+| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció | Tervezett |
+| v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
+| v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 Részletesen: [docs/roadmap.md](docs/roadmap.md).
