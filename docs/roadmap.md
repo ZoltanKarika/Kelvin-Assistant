@@ -12,7 +12,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
-| v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezés alatt |
+| v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
 | v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció | Tervezett |
 | v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
@@ -221,6 +221,24 @@ feladatnál nem kérdez vissza feleslegesen, kétértelmű vagy kockázatos kér
 viszont pontosítást kér.
 
 Részletes terv: [v0.6 Agent architektúra](agent-architecture.md).
+
+Production validáció:
+
+- a Windows `kelvin` kliens természetes nyelvű célból a `git.status` eszközt
+  választotta és helyben végrehajtotta;
+- a tool eredménye observationként visszakerült a plannerhez, amely egy második
+  körben összefoglalta az eredményt;
+- a futás PostgreSQL-ben `completed` állapotban, egy végrehajtott lépéssel
+  jelent meg;
+- `Ctrl+C` közben a kliens meghívta a cancel API-t, és a futás PostgreSQL-ben
+  `cancelled` állapotba került;
+- a korábbi aktív tesztfutások szabályosan lezárásra kerültek;
+- Ruff, formázás és mypy ellenőrzés sikeres;
+- a teljes Windows tesztcsomag `308 passed` eredménnyel futott le;
+- a folyamat helyi Windows hostot, Ubuntu VM-et, Ollamát és PostgreSQL-t
+  használt, külső AI- vagy felhőszolgáltatás nélkül.
+
+Eredmény: a v0.6 elfogadási feltételei teljesültek.
 
 ## v0.7 n8n Integration
 

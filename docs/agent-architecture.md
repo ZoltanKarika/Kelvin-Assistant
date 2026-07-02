@@ -397,17 +397,32 @@ megszakad és új preview szükséges.
 
 A v0.6 akkor kész, ha:
 
-- [ ] egyértelmű olvasási feladatot Kelvin felesleges visszakérdezés nélkül
+- [x] egyértelmű olvasási feladatot Kelvin felesleges visszakérdezés nélkül
       meg tud tervezni;
-- [ ] kétértelmű vagy kockázatos kérésnél célzottan visszakérdez;
-- [ ] ismeretlen eszközt vagy workspace-en kívüli útvonalat elutasít;
-- [ ] állapotváltoztató művelet jóváhagyás nélkül nem fut le;
-- [ ] a Windows kliens legalább fájlkeresést és Git állapotellenőrzést tud
+- [x] kétértelmű vagy kockázatos kérésnél célzottan visszakérdez;
+- [x] ismeretlen eszközt vagy workspace-en kívüli útvonalat elutasít;
+- [x] állapotváltoztató művelet jóváhagyás nélkül nem fut le;
+- [x] a Windows kliens legalább fájlkeresést és Git állapotellenőrzést tud
       végrehajtani;
-- [ ] legalább egy fájlmódosítás diff-előnézettel és jóváhagyással működik;
-- [ ] minden végrehajtási kísérlet auditálható;
-- [ ] a folyamat megszakítható;
-- [ ] az agent internet nélkül is működik.
+- [x] legalább egy fájlmódosítás diff-előnézettel és jóváhagyással működik;
+- [x] minden végrehajtási kísérlet auditálható;
+- [x] a folyamat megszakítható;
+- [x] az agent internet nélkül is működik.
+
+## Production validáció
+
+Az elfogadási feltételek 2026. július 1-jén a tényleges Windows 11 host és
+Ubuntu Server 24.04 VM között lettek ellenőrizve:
+
+- természetes nyelvű cél → `git.status` planner döntés;
+- hostoldali végrehajtás → observation → `complete` planner döntés;
+- sikeres futás PostgreSQL `completed` állapottal;
+- `Ctrl+C` → cancel API → PostgreSQL `cancelled` állapot;
+- teljes quality check és `308 passed`.
+
+A validáció során az Ollama és a Gemma modell a Windows hoston, Kelvin és a
+PostgreSQL pedig az Ubuntu VM-en futott. Külső AI API nem vett részt a
+folyamatban.
 
 ## Kapcsolódó döntések
 

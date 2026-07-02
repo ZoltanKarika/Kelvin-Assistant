@@ -45,10 +45,16 @@ Jelenleg működik:
   `DELETE /api/v1/memory/{memory_id}`;
 - aktív user memóriák chat contextbe illesztése;
 - nyelvsemleges chat context promptok.
+- természetes nyelvű, többfordulós agent planner;
+- policy-ellenőrzött Git-, keresési és fájleszközök;
+- Windows `kelvin` kliens helyi végrehajtással;
+- diff-előnézet és jóváhagyás fájlmódosítás előtt;
+- PostgreSQL agent audit és szabályos `Ctrl+C` cancellation.
 
-Az agentfunkciók fejlesztés alatt állnak. Az n8n-integráció és az opcionális
-hangvezérlés még nincs kész. A DHCP-foglalás, az offline csomag-előkészítés és
-a mentési eljárás továbbra is hátralévő üzemeltetési feladat.
+A v0.6 agentfunkciói elkészültek és a Windows–Ubuntu production környezetben
+validálva lettek. Az n8n-integráció és az opcionális hangvezérlés még nincs
+kész. A DHCP-foglalás, az offline csomag-előkészítés és a mentési eljárás
+továbbra is hátralévő üzemeltetési feladat.
 
 ## Projektcél
 
@@ -172,6 +178,20 @@ curl.exe -N -X POST "http://127.0.0.1:8000/api/v1/chat/stream" `
     --data-binary $body
 ```
 
+Természetes nyelvű agentfeladat indítása a Windows workspace-ben:
+
+```powershell
+.\.venv\Scripts\kelvin.exe `
+  --api-url http://192.168.10.13:8000 `
+  --workspace-id kelvin-assistant `
+  agent "Show the current Git status and summarize the result."
+```
+
+A modell csak strukturált eszközt javasol. A tényleges Git- vagy
+fájlműveletet a Windows kliens hajtja végre a megadott workspace-ben.
+Állapotváltoztató művelet előtt diff-előnézet és helyi jóváhagyás szükséges.
+A kliens `Ctrl+C` esetén a backend agentfutását is megszakítja.
+
 Opcionális élő Ollama-ellenőrzés:
 
 ```powershell
@@ -201,7 +221,7 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.3 Conversation | Chat API, streaming és sessionkezelés | Kész |
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
-| v0.6 Agent | Eszközhívások, PowerShell és Git | Tervezett |
+| v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
 | v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció | Tervezett |
 | v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
