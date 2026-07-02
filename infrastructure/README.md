@@ -5,6 +5,7 @@ Helyi telepítési és üzemeltetési konfigurációk:
 - `systemd`: natív Ubuntu szolgáltatásegységek;
 - `sql`: kézzel olvasható adatbázis-sémák és kezdeti migrációk;
 - `docker`: későbbi opcionális Docker Compose telepítés;
+- `n8n`: külön automation VM-en futó n8n és PostgreSQL Compose stack;
 - `config`: nem titkos konfigurációs sablonok.
 
 Jelszó, token, privát kulcs és futásidejű adat nem kerülhet ebbe a

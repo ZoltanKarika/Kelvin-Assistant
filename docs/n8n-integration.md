@@ -105,13 +105,13 @@ Repositoryban tárolható:
 ```text
 infrastructure/n8n/
 ├── compose.yaml
-├── n8n.env.example
+├── .env.example
 └── README.md
 ```
 
 Nem kerülhet repositoryba:
 
-- valódi n8n környezeti fájl;
+- valódi `.env` környezeti fájl;
 - `N8N_ENCRYPTION_KEY`;
 - adatbázisjelszó;
 - Kelvin API-token;
