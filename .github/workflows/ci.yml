@@ -17,6 +17,41 @@ permissions:
   contents: read
 
 jobs:
+  infrastructure:
+    name: Infrastructure quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate n8n Compose configuration
+        run: >-
+          docker compose
+          --env-file infrastructure/n8n/.env.example
+          --file infrastructure/n8n/compose.yaml
+          config --quiet
+
+      - name: Reject floating image tags
+        shell: bash
+        run: |
+          images="$(
+            docker compose \
+              --env-file infrastructure/n8n/.env.example \
+              --file infrastructure/n8n/compose.yaml \
+              config --images
+          )"
+          if grep --extended-regexp '(^|:)latest$' <<<"$images"; then
+            echo "Floating latest image tags are not allowed."
+            exit 1
+          fi
+
+      - name: Verify production environment file is ignored
+        run: git check-ignore --quiet infrastructure/n8n/.env
+
   quality:
     name: Python quality
     runs-on: ubuntu-24.04
