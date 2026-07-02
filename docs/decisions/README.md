@@ -25,3 +25,4 @@ Aktuális döntések:
 - [ADR-0011: PostgreSQL-alapú agent audit és futásállapot](0011-postgresql-agent-audit.md)
 - [ADR-0012: Strukturált, szolgáltatófüggetlen agent planner](0012-structured-agent-planner.md)
 - [ADR-0013: Self-hosted n8n az automatizációs réteghez](0013-self-hosted-n8n-automation.md)
+- [ADR-0014: Scope-alapú Kelvin API-tokenek](0014-scoped-api-tokens.md)
