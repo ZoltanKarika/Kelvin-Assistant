@@ -13,8 +13,8 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
-| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció | Tervezett |
-| v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
+| v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Tervezett |
+| v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Tervezett |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
@@ -240,40 +240,73 @@ Production validáció:
 
 Eredmény: a v0.6 elfogadási feltételei teljesültek.
 
-## v0.7 n8n Integration
+## v0.7 Safe n8n Foundation
 
-- self-hosted n8n Community Edition az Ubuntu VM-en;
-- kizárólag a helyi hálózatról elérhető, hitelesített n8n felület;
+- self-hosted n8n Community Edition egy külön Ubuntu automation VM-en,
+  Docker Compose alatt;
+- rögzített konténerverzió, tartós volume és külön mentett
+  `N8N_ENCRYPTION_KEY`;
+- kizárólag a Windows host vagy a megbízható helyi hálózat felől elérhető,
+  hitelesített n8n felület;
 - dokumentált HTTP-szerződés az n8n és Kelvin verziózott API-ja között;
-- n8n workflow Kelvin chat-, RAG- és agentfolyamat indításához;
-- Kelvinből csak név szerint engedélyezett n8n webhook indítható;
+- képességalapú Kelvin API-jogosultságok, külön read, memory write,
+  agent execute, agent write és agent approve scope-pal;
+- alapértelmezetten read-only Kelvin credential az n8n kutató workflow-khoz;
+- első Kelvin-integráció a beépített HTTP Request node-dal, saját node
+  fejlesztése nélkül;
+- első kutató workflow engedélyezett RSS-, API- és webes forrásokkal, egyetlen
+  online szöveges AI-szolgáltatóval;
+- forrás URL, lekérési idő, oldal-, idő- és költségkorlát megőrzése;
+- minimum AI Firewall: a külső tartalom adatként kezelése, prompt injection
+  elkülönítése, titokminták maszkolása és webes szövegből közvetlen tool-hívás
+  tiltása;
 - workflow- és agentfutás közös korrelációs azonosítója;
-- titkok az n8n credential store-ban vagy környezeti konfigurációban;
-- az offline és internetet igénylő workflow-k egyértelmű elkülönítése.
+- online szolgáltatások kulcsai kizárólag az n8n credential store-ban;
+- az offline Kelvin core és az internetet igénylő workflow-k egyértelmű
+  elkülönítése.
 
-Az n8n az időzítésekért, integrációkért és vizuális workflow-szerkesztésért
-felel. Kelvin továbbra is az AI-, RAG-, memória-, agent-, policy- és
-jóváhagyási szabályok tulajdonosa. Az n8n nem kerülheti meg a Windows
-`kelvin` kliens helyi jóváhagyását.
+Az n8n az időzítésekért, online integrációkért, credentialökért és vizuális
+workflow-szerkesztésért felel. Kelvin továbbra is a helyi AI-, RAG-, memória-,
+agent-, policy- és jóváhagyási szabályok tulajdonosa. Az n8n nem kapja meg az
+online szolgáltatások nyers kulcsait továbbító Kelvin-végpontot, és nem
+kerülheti meg a Windows `kelvin` kliens helyi jóváhagyását.
 
-Elfogadási feltétel: egy helyi n8n workflow HTTP-n meghívja Kelvin egyik
-verziózott API-ját, a válasz felhasználható a következő node-ban, és egy
-állapotváltoztató Windows-eszköz jóváhagyás nélkül továbbra sem hajtható végre.
+Elfogadási feltétel: egy helyi n8n kutató workflow read-only credentiallel
+meghívja Kelvin verziózott API-ját, hivatkozott fejlesztési javaslatot készít,
+és sem külső webes utasítás, sem read-only token nem tud állapotváltoztató
+Kelvin- vagy Windows-eszközt elindítani.
 
-## v0.8 Integration Hardening
+## v0.8 AI Security & Integration Hardening
 
-- n8n és Kelvin közötti hitelesítés és kulcsrotáció;
-- idempotens kérések, timeout, retry és hibautak;
+- teljes AI Security Gateway, közérthető nevén „Firewall for AI”;
+- input guard veszélyes szándék, credential-kérés és prompt injection
+  felismerésére;
+- context guard webes, RAG- és memóriaforrások megbízhatósági határainak
+  megőrzésére;
+- output guard jelszavak, API-kulcsok, privát kulcsok és connection stringek
+  maszkolására;
+- determinisztikus tool guard és emberi jóváhagyás megtartása minden író
+  művelet előtt;
+- biztonsági döntések auditja a tiltott titok naplózása nélkül;
+- n8n és Kelvin közötti kulcsrotáció, scope-vizsgálat és visszavonás;
+- idempotens kérések, timeout, retry és dokumentált hibautak;
 - workflow-, agent- és eszközfutások összekapcsolt auditja;
-- engedélyezett workflow-k és webhookok allowlistje;
+- engedélyezett workflow-k, források és webhookok allowlistje;
+- online kódoló AI csak minimalizált és megtisztított projektkontextussal;
+- opcionális képgeneráló és további szöveges AI-szolgáltatók külön,
+  minimális jogosultságú credentialökkel;
+- saját Kelvin n8n node csak legalább két stabil HTTP-alapú workflow után;
+- Kelvin FastAPI konténerizálási próba külön tesztkörnyezetben, a működő
+  systemd telepítés megtartása mellett;
 - n8n workflow-k exportja és verziózott mentése titkok nélkül;
-- PostgreSQL-, Kelvin- és n8n-adatok mentési és visszaállítási eljárása;
-- health check, naplózás és üzemeltetési hibakeresési útmutató;
-- minta workflow-k helyi értesítéshez és jóváhagyásra váró futásokhoz.
+- PostgreSQL-, Kelvin-, n8n-adatok és az encryption key dokumentált,
+  elkülönített mentési és visszaállítási eljárása;
+- health check, naplózás és üzemeltetési hibakeresési útmutató.
 
-Elfogadási feltétel: egy workflow biztonságosan újrapróbálható, futása
-visszakövethető Kelvin auditadataiig, a konfiguráció menthető és
-visszaállítható, miközben titok nem kerül a repositoryba.
+Elfogadási feltétel: egy rosszindulatú forrásba ágyazott, `.env`, jelszó vagy
+API-kulcs kiolvasását kérő utasítás nem válthat ki tool-hívást, a titok nem
+jelenhet meg válaszban vagy naplóban, a workflow pedig biztonságosan
+újrapróbálható és Kelvin auditadataiig visszakövethető.
 
 ## v0.9 Messaging
 
@@ -310,6 +343,7 @@ automatizáció.
 
 - stabil és verziózott API;
 - dokumentált telepítés, frissítés, mentés és visszaállítás;
+- container-ready szerverkomponensek, dokumentált natív fallbackkel;
 - offline kiadási és licencleltár-folyamat;
 - biztonsági és jogosultsági alapértelmezések;
 - self-hosted n8n-en keresztül ütemezhető, korlátozott automatizálás;
