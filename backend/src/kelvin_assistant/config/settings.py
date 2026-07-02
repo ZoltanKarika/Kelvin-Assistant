@@ -1,6 +1,7 @@
 """Application settings loaded from the environment."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     api_host: str = Field(default="127.0.0.1")
     api_port: int = Field(default=8000, ge=1, le=65535)
+    api_auth_mode: Literal["disabled", "required"] = Field(default="disabled")
+    api_token_file: Path | None = Field(default=None)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_format: Literal["json", "console"] = "json"
     ollama_base_url: str = Field(default="http://localhost:11434")
