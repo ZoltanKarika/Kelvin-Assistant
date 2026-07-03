@@ -2,14 +2,17 @@
 
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from kelvin_assistant.adapters.file_api_tokens import FileApiTokenAuthenticator
 from kelvin_assistant.api.app import create_app
 from kelvin_assistant.application.memory import MemoryService
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.chat import ChatMessage
 from kelvin_assistant.domain.memory import MemoryItem, MemoryKind, MemoryScope
 from kelvin_assistant.ports.llm import LLMProvider
@@ -79,7 +82,10 @@ def test_list_memory_returns_active_memories_with_filters() -> None:
     """GET /memory returns active memories and forwards filters."""
 
     repository = FakeMemoryRepository(active_memories=(_memory(),))
-    with TestClient(_app(repository)) as client:
+    authenticator = FakeApiTokenAuthenticator(
+        principal=ApiPrincipal("test-client", frozenset({ApiScope.MEMORY_READ}))
+    )
+    with TestClient(_app(repository, authenticator)) as client:
         response = client.get(
             "/api/v1/memory",
             params={
@@ -87,6 +93,7 @@ def test_list_memory_returns_active_memories_with_filters() -> None:
                 "kind": "preference",
                 "limit": "10",
             },
+            headers={"Authorization": "Bearer test-token"},
         )
 
     assert response.status_code == 200
@@ -98,6 +105,31 @@ def test_list_memory_returns_active_memories_with_filters() -> None:
             "limit": 10,
         }
     ]
+
+
+def test_list_memory_rejects_missing_token() -> None:
+    """GET /memory returns 401 if the bearer token is missing."""
+
+    with TestClient(_app(FakeMemoryRepository())) as client:
+        response = client.get("/api/v1/memory")
+
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+def test_list_memory_rejects_token_with_wrong_scope() -> None:
+    """GET /memory returns 403 if the principal lacks the required scope."""
+
+    authenticator = FakeApiTokenAuthenticator(
+        principal=ApiPrincipal("test-client", frozenset({ApiScope.CHAT_USE}))
+    )
+    with TestClient(_app(FakeMemoryRepository(), authenticator)) as client:
+        response = client.get(
+            "/api/v1/memory", headers={"Authorization": "Bearer test-token"}
+        )
+
+    assert response.status_code == 403
+    assert "Missing required scope" in response.text
 
 
 def test_list_memory_rejects_invalid_limit() -> None:
@@ -136,16 +168,21 @@ def test_memory_repository_error_becomes_503() -> None:
     assert response.json() == {"detail": "PostgreSQL is unavailable"}
 
 
-def _app(repository: "FakeMemoryRepository") -> FastAPI:
+def _app(
+    repository: "FakeMemoryRepository",
+    authenticator: "FakeApiTokenAuthenticator" | None = None,
+) -> FastAPI:
     return create_app(
         Settings(
             app_name="Kelvin Test",
             app_version="0.5.0-test",
             environment="test",
             log_format="console",
+            api_auth_mode="required",
         ),
         llm_provider=StubLLMProvider(),
         memory_service=MemoryService(repository),
+        api_authenticator=cast(FileApiTokenAuthenticator, authenticator),
     )
 
 
@@ -160,6 +197,14 @@ def _memory() -> MemoryItem:
         metadata={"topic": "communication"},
         created_at=CREATED_AT,
     )
+
+
+class FakeApiTokenAuthenticator(FileApiTokenAuthenticator):
+    def __init__(self, principal: ApiPrincipal | None) -> None:
+        self._principal = principal
+
+    def authenticate(self, token: str) -> ApiPrincipal | None:
+        return self._principal
 
 
 class StubLLMProvider(LLMProvider):

@@ -1,8 +1,11 @@
 """FastAPI application factory."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from kelvin_assistant.adapters.file_api_tokens import FileApiTokenAuthenticator
 from kelvin_assistant.adapters.llm_planner import StructuredLLMAgentPlanner
 from kelvin_assistant.adapters.memory_agent_runs import InMemoryAgentRunStore
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
@@ -45,6 +48,7 @@ def create_app(
     llm_provider: LLMProvider | None = None,
     session_store: SessionStore | None = None,
     database_client: DatabaseClient | None = None,
+    api_authenticator: FileApiTokenAuthenticator | None = None,
     memory_service: MemoryService | None = None,
     agent_service: AgentService | None = None,
     agent_planner: AgentPlanner | None = None,
@@ -65,6 +69,18 @@ def create_app(
         if database_client is not None
         else PostgresDatabaseClient(active_settings)
     )
+    active_api_authenticator: FileApiTokenAuthenticator | None = None
+    if api_authenticator is not None:
+        active_api_authenticator = api_authenticator
+    elif active_settings.api_auth_mode == "required":
+        if active_settings.api_token_file is None:
+            raise RuntimeError(
+                "API authentication is required but KELVIN_API_TOKEN_FILE is not set"
+            )
+        active_api_authenticator = FileApiTokenAuthenticator.from_file(
+            Path(active_settings.api_token_file)
+        )
+
     knowledge_context_provider = (
         KnowledgeSearchService(
             embedding_provider=OllamaEmbeddingProvider(active_settings),
@@ -136,6 +152,7 @@ def create_app(
     app.state.settings = active_settings
     app.state.llm_provider = active_llm_provider
     app.state.database_client = active_database_client
+    app.state.api_authenticator = active_api_authenticator
     app.state.chat_service = active_chat_service
     app.state.memory_service = active_memory_service
     app.state.agent_service = active_agent_service

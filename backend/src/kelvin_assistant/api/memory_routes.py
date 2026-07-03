@@ -5,13 +5,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from kelvin_assistant.api.dependencies import get_memory_service
+from kelvin_assistant.api.dependencies import RequireScope, get_memory_service
 from kelvin_assistant.api.schemas import (
     MemoryCreateRequest,
     MemoryListResponse,
     MemoryResponse,
 )
 from kelvin_assistant.application.memory import MemoryService
+from kelvin_assistant.domain.auth import ApiScope
 from kelvin_assistant.domain.memory import MemoryItem, MemoryKind, MemoryScope
 from kelvin_assistant.ports.memory import (
     MemoryRepositoryConfigurationError,
@@ -20,6 +21,7 @@ from kelvin_assistant.ports.memory import (
 
 router = APIRouter(prefix="/api/v1", tags=["memory"])
 RuntimeMemoryService = Annotated[MemoryService, Depends(get_memory_service)]
+ReadMemoryAccess = Annotated[None, Depends(RequireScope(ApiScope.MEMORY_READ))]
 UNPROCESSABLE_CONTENT = 422
 
 
@@ -79,6 +81,7 @@ async def create_memory(
 )
 async def list_memories(
     memory_service: RuntimeMemoryService,
+    _: ReadMemoryAccess,
     scope: MemoryScope | None = None,
     kind: MemoryKind | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
