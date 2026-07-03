@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -42,13 +43,19 @@ from kelvin_assistant.tools.registry import StaticToolRegistry
 from kelvin_assistant.tools.workspaces import StaticWorkspaceAuthorizer
 from kelvin_assistant.tools.write_definitions import write_tool_definitions
 
+LOGGER = logging.getLogger(__name__)
+
+# Sentinel that distinguishes "caller passed no authenticator" (use settings)
+# from "caller explicitly passed None" (disable auth for this app instance).
+_NOT_PROVIDED: FileApiTokenAuthenticator | None = object()  # type: ignore[assignment]
+
 
 def create_app(
     settings: Settings | None = None,
     llm_provider: LLMProvider | None = None,
     session_store: SessionStore | None = None,
     database_client: DatabaseClient | None = None,
-    api_authenticator: FileApiTokenAuthenticator | None = None,
+    api_authenticator: FileApiTokenAuthenticator | None = _NOT_PROVIDED,
     memory_service: MemoryService | None = None,
     agent_service: AgentService | None = None,
     agent_planner: AgentPlanner | None = None,
@@ -69,17 +76,37 @@ def create_app(
         if database_client is not None
         else PostgresDatabaseClient(active_settings)
     )
-    active_api_authenticator: FileApiTokenAuthenticator | None = None
-    if api_authenticator is not None:
+
+    # Build the API token authenticator.
+    # Priority: explicit constructor arg > settings file > disabled.
+    # When auth is "required", the token file must be present and valid at
+    # startup.  A missing or malformed file is a hard failure (fail-closed).
+    # When auth is "disabled" (the development default), we store None and the
+    # security dependency skips all checks.
+    # If api_authenticator is explicitly provided (including None), use it
+    # directly and skip the settings-based logic entirely — useful for tests.
+    active_api_authenticator: FileApiTokenAuthenticator | None
+    if api_authenticator is not _NOT_PROVIDED:
         active_api_authenticator = api_authenticator
+        if api_authenticator is not None:
+            LOGGER.info("API authentication enabled via injected authenticator")
+        else:
+            LOGGER.info("API authentication disabled (injected None)")
     elif active_settings.api_auth_mode == "required":
         if active_settings.api_token_file is None:
             raise RuntimeError(
-                "API authentication is required but KELVIN_API_TOKEN_FILE is not set"
+                "KELVIN_API_TOKEN_FILE must be set when KELVIN_API_AUTH_MODE=required"
             )
         active_api_authenticator = FileApiTokenAuthenticator.from_file(
             Path(active_settings.api_token_file)
         )
+        LOGGER.info(
+            "API authentication enabled; token file: %s",
+            active_settings.api_token_file,
+        )
+    else:
+        active_api_authenticator = None
+        LOGGER.info("API authentication disabled (development mode)")
 
     knowledge_context_provider = (
         KnowledgeSearchService(
@@ -152,13 +179,13 @@ def create_app(
     app.state.settings = active_settings
     app.state.llm_provider = active_llm_provider
     app.state.database_client = active_database_client
-    app.state.api_authenticator = active_api_authenticator
     app.state.chat_service = active_chat_service
     app.state.memory_service = active_memory_service
     app.state.agent_service = active_agent_service
     app.state.agent_planning_service = active_agent_planning_service
     app.state.agent_run_store = active_agent_run_store
     app.state.workspace_authorizer = active_workspace_authorizer
+    app.state.api_token_authenticator = active_api_authenticator
     app.mount(
         "/static",
         StaticFiles(directory=FRONTEND_DIR),
