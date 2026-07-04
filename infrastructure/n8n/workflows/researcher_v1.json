@@ -1,0 +1,261 @@
+
+{
+  "name": "Researcher v1",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f5a7b3c9-9a2b-4e6a-8c5d-9f3e1a2b3c4d",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "api_url",
+              "value": "http://192.168.10.66:8000",
+              "type": "string"
+            },
+            {
+              "name": "rss_feed_url",
+              "value": "https://example.com/rss.xml",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ],
+      "id": "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
+      "name": "Set URLs"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_feed_url }}"
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "b2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7",
+      "name": "RSS Feed Read"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();
+return items.map(item => ({ json: { content: item.json.content } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2.1,
+      "position": [
+        600,
+        0
+      ],
+      "id": "c3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8",
+      "name": "Normalize and Extract"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.example.com/summarize",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{
+  "text": "{{ $json.content }}"
+}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        800,
+        0
+      ],
+      "id": "d4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8g9",
+      "name": "Summarize with AI",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder_credential_id",
+          "name": "Online AI API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();
+return items.map(item => {
+  const summary = item.json.summary;
+  const sanitizedContent = `--- BEGIN EXTERNAL DATA ---
+${summary}
+--- END EXTERNAL DATA ---`;
+  return { json: { sanitizedContent } };
+});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        0
+      ],
+      "id": "e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8g9h0",
+      "name": "Sanitize Content"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set URLs').item.json.api_url }}/api/v1/chat",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{
+  "message": "Evaluate this summary:
+
+{{ $json.sanitizedContent }}"
+}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8g9h0i1",
+      "name": "Kelvin Evaluation",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cZuE5eWPuh8TUSnX",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "final_output",
+              "value": "{{ $('Kelvin Evaluation').item.json }}",
+              "type": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1400,
+        0
+      ],
+      "id": "g7b8c9d0-e1f2-a3b4-c5d6-e7f8g9h0i1j2",
+      "name": "Format Output"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set URLs": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Read": {
+      "main": [
+        [
+          {
+            "node": "Normalize and Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize and Extract": {
+      "main": [
+        [
+          {
+            "node": "Summarize with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with AI": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Content": {
+      "main": [
+        [
+          {
+            "node": "Kelvin Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kelvin Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e9f0a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4",
+  "meta": {
+    "instanceId": "a771b1c24939a6dbba071abc213d67513e41b835b7691c799a772d5fb05819b5"
+  },
+  "id": "gH8i9j0k-1l2m-3n4o-5p6q-r7s8t9u0v1w2",
+  "tags": []
+}

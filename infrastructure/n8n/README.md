@@ -69,9 +69,23 @@ Aktív PuTTY kapcsolat mellett az editor címe:
 http://127.0.0.1:5678
 ```
 
-## Kelvin API Credential
+## Workflows
+
+### Kelvin API Credential
 
 See the [n8n Credential Setup Guide](../../docs/n8n-credential-setup.md) for instructions on how to connect n8n to the Kelvin API.
+
+### Researcher v1
+
+This workflow (`researcher_v1.json`) implements the first full research pipeline:
+
+1.  Fetches content from an RSS feed.
+2.  Uses an external AI API to summarize the text.
+3.  Performs a simplified sanitization of the summary.
+4.  Sends the summary to the Kelvin API for evaluation.
+5.  Formats the final output.
+
+This workflow requires a read-only Kelvin API token and a separate credential for the online AI summarization service.
 
 ## Ellenőrzés
 
