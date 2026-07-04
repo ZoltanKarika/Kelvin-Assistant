@@ -18,6 +18,7 @@ from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.chat import InvalidChatMessageError
+from kelvin_assistant.domain.input_guard import InputValidationStatus, validate_input
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
 from kelvin_assistant.ports.sessions import (
     SessionConflictError,
@@ -52,6 +53,13 @@ async def create_chat_turn(
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> ChatResponse:
     """Create one complete non-streaming conversation turn."""
+
+    validation_result = validate_input(request.message)
+    if validation_result.status == InputValidationStatus.BLOCK:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Input validation failed: {', '.join(validation_result.warnings)}",
+        )
 
     try:
         result = await chat_service.send_message(
@@ -109,6 +117,13 @@ async def stream_chat_turn(
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> StreamingResponse:
     """Stream one conversation turn as server-sent events."""
+
+    validation_result = validate_input(request.message)
+    if validation_result.status == InputValidationStatus.BLOCK:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Input validation failed: {', '.join(validation_result.warnings)}",
+        )
 
     try:
         result = await chat_service.stream_message(

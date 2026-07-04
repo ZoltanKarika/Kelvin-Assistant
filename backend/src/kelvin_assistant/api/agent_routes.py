@@ -47,6 +47,7 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
 )
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
+from kelvin_assistant.domain.input_guard import InputValidationStatus, validate_input
 from kelvin_assistant.domain.planner import ClarificationTurn, PlannerDomainError
 from kelvin_assistant.ports.agent_runs import (
     AgentProposalNotFoundError,
@@ -91,6 +92,13 @@ async def create_agent_run(
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Create and persist one received agent run."""
+
+    validation_result = validate_input(request.goal)
+    if validation_result.status == InputValidationStatus.BLOCK:
+        raise HTTPException(
+            status_code=UNPROCESSABLE_CONTENT,
+            detail=f"Input validation failed: {', '.join(validation_result.warnings)}",
+        )
 
     try:
         run = service.start_run(
