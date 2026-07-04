@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        48,
-        48
+        464,
+        -176
       ],
-      "id": "3f799801-fb19-44f6-8b3c-6e0a53dbc97f",
+      "id": "538224e2-f191-4ae4-b370-d0de659b50db",
       "name": "Manual Trigger"
     },
     {
@@ -18,7 +18,7 @@
           "assignments": [
             {
               "name": "api_url",
-              "value": "http://192.168.10.66:8000",
+              "value": "http://192.168.10.13:8000",
               "type": "string",
               "id": "47b169a3-dfdd-41a4-bfb5-36a21cfa65ad"
             },
@@ -35,10 +35,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        256,
-        48
+        672,
+        -176
       ],
-      "id": "3fd957da-c68e-4964-a2ef-bfb10e42dbbc",
+      "id": "b7ae4933-1992-49e0-8af8-db7ef3d477d7",
       "name": "Set URLs"
     },
     {
@@ -49,10 +49,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
       "position": [
-        448,
-        48
+        864,
+        -176
       ],
-      "id": "c61af18d-e753-4337-b8e4-2bae647d753c",
+      "id": "fb7b52b3-95c3-4634-8007-dcc46fff93db",
       "name": "RSS Feed Read",
       "settings": {
         "retryOnFail": true,
@@ -67,10 +67,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        680,
-        48
+        1104,
+        -176
       ],
-      "id": "af8fd5b1-688a-479e-aa25-7621f1d3f7e3",
+      "id": "67b9597a-d91d-4f52-8fc1-119fffbe6803",
       "name": "Merge Feed Items"
     },
     {
@@ -80,31 +80,62 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"goal\": \"Analyze the following n8n releases feed:\\n\\n{{ $json.feedContent }}\\n\\nDetermine if there is a new stable release that is newer than our currently installed version in 'infrastructure/n8n/compose.yaml'. If so, update the compose.yaml file to use the new stable version. Show the diff and ask for approval.\",\n  \"max_steps\": 10\n}",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "goal",
+              "value": "=Analyze the following n8n releases feed:  {{ $json.feedContent }}  Determine if there is a new stable release that is newer than our currently installed version in 'infrastructure/n8n/compose.yaml'. If so, update the compose.yaml file to use the new stable version. Show the diff and ask for approval."
+            }
+          ]
+        },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        950,
-        48
+        1376,
+        -176
       ],
-      "id": "fad5ed78-7b64-41aa-a7c7-9658c10f912e",
+      "id": "f9066a72-747e-40aa-974c-3650dc9de847",
       "name": "HTTP Request - Trigger Kelvin Agent Run",
+      "settings": {
+        "retryOnFail": true,
+        "maxTries": 3,
+        "retryInterval": 2000
+      },
       "credentials": {
         "httpHeaderAuth": {
           "id": "cZuE5eWPuh8TUSnX",
           "name": "Kelvin API"
         }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set URLs').item.json.api_url }}/api/v1/agent/runs/{{ $('HTTP Request - Trigger Kelvin Agent Run').item.json.id }}/plan",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": false,
+        "options": {}
       },
-      "settings": {
-        "retryOnFail": true,
-        "maxTries": 3,
-        "retryInterval": 2000
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1624,
+        -176
+      ],
+      "id": "a5b7c8d9-e0f1-4a2b-3c4d-5e6f7a8b9c0d",
+      "name": "HTTP Request - Begin Planning",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cZuE5eWPuh8TUSnX",
+          "name": "Kelvin API"
+        }
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Manual Trigger": {
       "main": [
@@ -149,6 +180,17 @@
           }
         ]
       ]
+    },
+    "HTTP Request - Trigger Kelvin Agent Run": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Begin Planning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -157,12 +199,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "4e7973ac-c210-421a-a39b-29c2a3910a46",
+  "versionId": "c207ba14-85c0-4a07-83d7-a369f56e832b",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "a771b1c24939a6dbba071abc213d67513e41b835b7691c799a772d5fb05819b5"
   },
   "nodeGroups": [],
-  "id": "iYZC7m3vGu9I9bp3",
+  "id": "e1opUxjDhYpaSU28",
   "tags": []
 }
