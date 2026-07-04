@@ -1,5 +1,7 @@
 """API contract tests for server-managed agent runs."""
 
+from __future__ import annotations
+
 from collections.abc import AsyncIterator, Sequence
 from uuid import UUID, uuid4
 
