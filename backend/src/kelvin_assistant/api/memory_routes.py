@@ -5,14 +5,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from kelvin_assistant.api.dependencies import RequireScope, get_memory_service
+from kelvin_assistant.api.dependencies import get_memory_service, require_scope
 from kelvin_assistant.api.schemas import (
     MemoryCreateRequest,
     MemoryListResponse,
     MemoryResponse,
 )
 from kelvin_assistant.application.memory import MemoryService
-from kelvin_assistant.domain.auth import ApiScope
+from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.memory import MemoryItem, MemoryKind, MemoryScope
 from kelvin_assistant.ports.memory import (
     MemoryRepositoryConfigurationError,
@@ -21,7 +21,6 @@ from kelvin_assistant.ports.memory import (
 
 router = APIRouter(prefix="/api/v1", tags=["memory"])
 RuntimeMemoryService = Annotated[MemoryService, Depends(get_memory_service)]
-ReadMemoryAccess = Annotated[None, Depends(RequireScope(ApiScope.MEMORY_READ))]
 UNPROCESSABLE_CONTENT = 422
 
 
@@ -30,6 +29,8 @@ UNPROCESSABLE_CONTENT = 422
     response_model=MemoryResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         UNPROCESSABLE_CONTENT: {"description": "Invalid memory item."},
         status.HTTP_503_SERVICE_UNAVAILABLE: {
             "description": "Memory repository unavailable.",
@@ -39,6 +40,7 @@ UNPROCESSABLE_CONTENT = 422
 async def create_memory(
     request: MemoryCreateRequest,
     memory_service: RuntimeMemoryService,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.MEMORY_WRITE))],
 ) -> MemoryResponse:
     """Store one typed memory item."""
 
@@ -73,6 +75,8 @@ async def create_memory(
     response_model=MemoryListResponse,
     status_code=status.HTTP_200_OK,
     responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         UNPROCESSABLE_CONTENT: {"description": "Invalid filters."},
         status.HTTP_503_SERVICE_UNAVAILABLE: {
             "description": "Memory repository unavailable.",
@@ -81,7 +85,7 @@ async def create_memory(
 )
 async def list_memories(
     memory_service: RuntimeMemoryService,
-    _: ReadMemoryAccess,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.MEMORY_READ))],
     scope: MemoryScope | None = None,
     kind: MemoryKind | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
@@ -117,6 +121,8 @@ async def list_memories(
     "/memory/{memory_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         status.HTTP_503_SERVICE_UNAVAILABLE: {
             "description": "Memory repository unavailable.",
         },
@@ -125,6 +131,7 @@ async def list_memories(
 async def delete_memory(
     memory_id: UUID,
     memory_service: RuntimeMemoryService,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.MEMORY_WRITE))],
 ) -> Response:
     """Soft-delete one memory item."""
 

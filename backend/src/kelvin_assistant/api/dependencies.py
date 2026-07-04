@@ -1,7 +1,7 @@
 """FastAPI dependencies."""
 
-from collections.abc import Callable, Coroutine
-from typing import Any, Annotated, cast
+from collections.abc import Callable
+from typing import Annotated, cast
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -18,10 +18,17 @@ from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
 from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 
-bearer_scheme = HTTPBearer(
-    scheme_name="Kelvin API Token",
-    description="A scope-limited API token for machine-to-machine authentication.",
+# A sentinel principal used when auth is disabled (development mode).
+# It has every scope so no route is inadvertently blocked.
+_ANON_PRINCIPAL = ApiPrincipal(
+    id="anonymous",
+    scopes=frozenset(ApiScope),
 )
+
+# FastAPI's built-in Bearer extractor. auto_error=False means we get None
+# instead of an automatic 403 when the header is absent — we produce our own
+# 401 with the correct WWW-Authenticate header below.
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_runtime_settings(request: Request) -> Settings:
@@ -114,45 +121,82 @@ def get_workspace_authorizer(request: Request) -> WorkspaceAuthorizer:
     return cast(WorkspaceAuthorizer, authorizer)
 
 
-def get_api_authenticator(request: Request) -> FileApiTokenAuthenticator:
-    """Return the API authenticator attached to the app state."""
+def get_api_token_authenticator(
+    request: Request,
+) -> FileApiTokenAuthenticator | None:
+    """Return the API token authenticator, or None when auth is disabled."""
 
-    authenticator = getattr(request.app.state, "api_authenticator", None)
-    if not isinstance(authenticator, FileApiTokenAuthenticator):
-        msg = "API authenticator is not configured."
-        raise RuntimeError(msg)
-    return authenticator
-
-
-async def get_current_principal(
-    token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
-    authenticator: Annotated[FileApiTokenAuthenticator, Depends(get_api_authenticator)],
-) -> ApiPrincipal:
-    """Authenticate a bearer token and return the resolved principal."""
-    principal = authenticator.authenticate(token.credentials)
-    if not principal:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return principal
+    return cast(
+        FileApiTokenAuthenticator | None,
+        getattr(request.app.state, "api_token_authenticator", None),
+    )
 
 
-class RequireScope:
-    """Dependency that requires a specific API scope."""
+# Type alias for the inner dependency function produced by require_scope.
+_ScopedDependency = Callable[
+    [HTTPAuthorizationCredentials | None, FileApiTokenAuthenticator | None],
+    ApiPrincipal,
+]
 
-    def __init__(self, scope: ApiScope) -> None:
-        self.scope = scope
 
-    async def __call__(
-        self,
-        principal: Annotated[ApiPrincipal, Depends(get_current_principal)],
+def require_scope(scope: ApiScope) -> _ScopedDependency:
+    """Return a FastAPI dependency that enforces one required API scope.
+
+    Usage::
+
+        @router.post("/chat")
+        async def create_chat(
+            principal: Annotated[
+                ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))
+            ],
+            ...
+        ) -> ...: ...
+
+    When ``KELVIN_API_AUTH_MODE=disabled`` (the development default) every
+    request is treated as the anonymous all-scopes principal and no token is
+    required.  When ``KELVIN_API_AUTH_MODE=required`` the caller **must**
+    supply a valid Bearer token with the named scope or receive 401/403.
+    """
+
+    def _check(
+        credentials: Annotated[
+            HTTPAuthorizationCredentials | None,
+            Depends(_bearer_scheme),
+        ],
+        authenticator: Annotated[
+            FileApiTokenAuthenticator | None,
+            Depends(get_api_token_authenticator),
+        ],
     ) -> ApiPrincipal:
-        """Return the principal if it has the required scope."""
-        if not principal.has_scope(self.scope):
+        # Auth is disabled: every caller is trusted with all scopes.
+        if authenticator is None:
+            return _ANON_PRINCIPAL
+
+        # Auth is enabled but the header is missing.
+        if credentials is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing Bearer token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        principal = authenticator.authenticate(credentials.credentials)
+
+        if principal is None:
+            # Token was present but rejected (bad hash).
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired Bearer token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        if not principal.has_scope(scope):
+            # Valid token but the principal lacks the required scope.
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Missing required scope: {self.scope.value}",
+                detail=f"Missing required scope: {scope.value}.",
             )
+
         return principal
+
+    return _check
