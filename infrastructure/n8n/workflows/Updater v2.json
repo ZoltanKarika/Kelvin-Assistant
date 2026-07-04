@@ -1,0 +1,168 @@
+{
+  "name": "Updater v2",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        48,
+        48
+      ],
+      "id": "3f799801-fb19-44f6-8b3c-6e0a53dbc97f",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "api_url",
+              "value": "http://192.168.10.66:8000",
+              "type": "string",
+              "id": "47b169a3-dfdd-41a4-bfb5-36a21cfa65ad"
+            },
+            {
+              "name": "rss_feed_url",
+              "value": "https://github.com/n8n-io/n8n/releases.atom",
+              "type": "string",
+              "id": "d6b1a765-54cb-475e-8c00-caf57b028635"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        48
+      ],
+      "id": "3fd957da-c68e-4964-a2ef-bfb10e42dbbc",
+      "name": "Set URLs"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_feed_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        448,
+        48
+      ],
+      "id": "c61af18d-e753-4337-b8e4-2bae647d753c",
+      "name": "RSS Feed Read",
+      "settings": {
+        "retryOnFail": true,
+        "maxTries": 3,
+        "retryInterval": 2000
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst feedText = items.map(item => `- Title: ${item.json.title}\\n  Link: ${item.json.link}\\n  Snippet: ${item.json.contentSnippet}`).join('\\n\\n');\nreturn [{ json: { feedContent: feedText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        48
+      ],
+      "id": "af8fd5b1-688a-479e-aa25-7621f1d3f7e3",
+      "name": "Merge Feed Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set URLs').item.json.api_url }}/api/v1/agent/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"goal\": \"Analyze the following n8n releases feed:\\n\\n{{ $json.feedContent }}\\n\\nDetermine if there is a new stable release that is newer than our currently installed version in 'infrastructure/n8n/compose.yaml'. If so, update the compose.yaml file to use the new stable version. Show the diff and ask for approval.\",\n  \"max_steps\": 10\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        950,
+        48
+      ],
+      "id": "fad5ed78-7b64-41aa-a7c7-9658c10f912e",
+      "name": "HTTP Request - Trigger Kelvin Agent Run",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cZuE5eWPuh8TUSnX",
+          "name": "Kelvin API"
+        }
+      },
+      "settings": {
+        "retryOnFail": true,
+        "maxTries": 3,
+        "retryInterval": 2000
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set URLs": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Read": {
+      "main": [
+        [
+          {
+            "node": "Merge Feed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Feed Items": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Trigger Kelvin Agent Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4e7973ac-c210-421a-a39b-29c2a3910a46",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a771b1c24939a6dbba071abc213d67513e41b835b7691c799a772d5fb05819b5"
+  },
+  "nodeGroups": [],
+  "id": "iYZC7m3vGu9I9bp3",
+  "tags": []
+}

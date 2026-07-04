@@ -84,3 +84,15 @@ def sanitize_external_content(
         source_url=source_url,
         fetched_at=fetched_at,
     )
+
+
+def is_source_allowed(url: str, allowlist: tuple[str, ...]) -> bool:
+    """Checks if a URL is allowed based on a list of approved prefixes."""
+    if not allowlist:
+        return False
+
+    for prefix in allowlist:
+        if url.startswith(prefix):
+            if len(url) == len(prefix) or url[len(prefix)] == "/":
+                return True
+    return False

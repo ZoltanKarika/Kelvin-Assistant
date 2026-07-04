@@ -69,9 +69,22 @@ Aktív PuTTY kapcsolat mellett az editor címe:
 http://127.0.0.1:5678
 ```
 
-## Kelvin API Credential
+## Workflows
+
+### Kelvin API Credential
 
 See the [n8n Credential Setup Guide](../../docs/n8n-credential-setup.md) for instructions on how to connect n8n to the Kelvin API.
+
+### Updater v1
+
+This workflow (`updater_v1.json`) implements the first codebase update pipeline:
+
+1.  Fetches content from an RSS feed.
+2.  Uses an external AI API via the **Information Extractor** node to extract structured update details (type, target component, and update details).
+3.  Sends a request to the Kelvin API (`POST /api/v1/agent/runs`) to start an agent run with the extracted details as the goal.
+4.  Allows Kelvin's policy-controlled agent loop to analyze and apply the codebase updates, while preserving human-in-the-loop approvals on the Windows host.
+
+This workflow requires a Kelvin API token with `agent:execute` scope and a separate credential for the Google Gemini API.
 
 ## Ellenőrzés
 

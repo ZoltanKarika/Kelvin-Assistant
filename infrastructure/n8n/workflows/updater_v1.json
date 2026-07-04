@@ -1,0 +1,203 @@
+{
+  "name": "Updater v1",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f5a7b3c9-9a2b-4e6a-8c5d-9f3e1a2b3c4d",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "api_url",
+              "value": "http://192.168.10.66:8000",
+              "type": "string"
+            },
+            {
+              "name": "rss_feed_url",
+              "value": "https://example.com/rss.xml",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ],
+      "id": "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
+      "name": "Set URLs"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_feed_url }}"
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "b2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7",
+      "name": "RSS Feed Read"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.content }}",
+        "schemaType": "manual",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "update_type",
+              "type": "string",
+              "description": "Category of the update: dependency_upgrade, bug_fix, feature, or security_patch"
+            },
+            {
+              "name": "target_component",
+              "type": "string",
+              "description": "The name of the library, script, module, or file to be updated"
+            },
+            {
+              "name": "update_details",
+              "type": "string",
+              "description": "Detailed explanation of what needs to be updated and how"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.informationExtractor",
+      "typeVersion": 1,
+      "position": [
+        600,
+        0
+      ],
+      "id": "c3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8",
+      "name": "Information Extractor - Update Details"
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-flash",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleGeminiChatModel",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ],
+      "id": "d4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8g9",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "placeholder_gemini_credential_id",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set URLs').item.json.api_url }}/api/v1/agent/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"goal\": \"Analyze and implement the following update for '{{ $json.target_component }}': {{ $json.update_details }}. Category: {{ $json.update_type }}.\",\n  \"max_steps\": 10\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        850,
+        0
+      ],
+      "id": "f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8g9h0i1",
+      "name": "HTTP Request - Trigger Kelvin Agent Run",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder_kelvin_agent_exec_credential_id",
+          "name": "Kelvin Agent Exec account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set URLs": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Read": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor - Update Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor - Update Details",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor - Update Details": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Trigger Kelvin Agent Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e9f0a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4",
+  "meta": {
+    "instanceId": "a771b1c24939a6dbba071abc213d67513e41b835b7691c799a772d5fb05819b5"
+  },
+  "id": "gH8i9j0k-1l2m-3n4o-5p6q-r7s8t9u0v1w2",
+  "tags": []
+}

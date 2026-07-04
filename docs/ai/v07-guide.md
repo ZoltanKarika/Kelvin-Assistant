@@ -8,8 +8,6 @@ Related documents:
 - `docs/roadmap.md` — milestone definitions and acceptance criteria.
 - `docs/n8n-integration.md` — architecture, security boundaries, credential
   rules, and the implementation order.
-- `docs/workflow-implementation-plan.md` — the first researcher workflow
-  design.
 - `docs/decisions/0013-self-hosted-n8n-automation.md` — ADR for n8n.
 - `docs/decisions/0014-scoped-api-tokens.md` — ADR for API scopes.
 
@@ -40,7 +38,7 @@ Related documents:
 | 12 | n8n credential setup guide | #11 merged | `docs/n8n-credential-setup` |
 | 13 | Minimum AI Firewall (input sanitizer) | — | `feat/v0.7-ai-firewall` |
 | 14 | Correlation ID for workflow ↔ agent tracing | — | `feat/v0.7-correlation-id` |
-| 15 | First researcher workflow (full pipeline) | #12, #13 | `feat/v0.7-researcher-workflow` |
+| 15 | First codebase updater workflow (full pipeline) | #12, #13 | `feat/v0.7-updater-workflow` |
 | 16 | Source allowlist and rate limiting | #13 | `feat/v0.7-source-allowlist` |
 | 17 | Backup/restore validation | #15 | `chore/v0.7-backup-validation` |
 | 18 | Update roadmap.md with v0.7 completion notes | #17 | `docs/v0.7-completion` |
@@ -56,7 +54,7 @@ Each step below is designed as a single PR. Work one step at a time.
 ### Step 12: n8n Credential Setup Guide
 
 **Goal:** Document how to create the Kelvin API token in n8n so that the
-read-only researcher workflow can authenticate with the Kelvin API.
+updater workflow can authenticate with the Kelvin API.
 
 **What to do:**
 
@@ -188,52 +186,44 @@ feat(api): add X-Correlation-ID header support
 
 ---
 
-### Step 15: First Researcher Workflow (Full Pipeline)
+### Step 15: First Codebase Updater Workflow (Full Pipeline)
 
-**Goal:** Build the complete researcher workflow in n8n as described in
-`docs/workflow-implementation-plan.md`.
+**Goal:** Build the complete updater workflow in n8n (`updater_v1.json`) to automatically fetch codebase updates from an RSS feed, extract structured details using Gemini, and trigger a Kelvin agent run to implement the changes.
 
 **Prerequisites:** Steps 12 and 13 must be completed first.
 
 **What to do:**
 
-1. Create `infrastructure/n8n/workflows/researcher_v1.json` with nodes:
+1. Create `infrastructure/n8n/workflows/updater_v1.json` with nodes:
    - Manual Trigger (later: Schedule Trigger)
-   - Set Kelvin URL (same pattern as chat/health workflows)
-   - RSS Feed Read or HTTP Request to fetch from one approved source
-   - Code node to normalize and extract text
-   - HTTP Request to an online AI API for summarization
-   - Code node to apply `sanitize_external_content` equivalent
-     (simplified version: wrap in data delimiters, strip obvious injections)
-   - HTTP Request to Kelvin `/api/v1/chat` (read-only token) for local
-     evaluation
-   - Set node to format the final structured output
+   - Set URLs (defines `api_url` and `rss_feed_url` dynamically)
+   - RSS Feed Read (fetches from the feed URL)
+   - Information Extractor (uses Google Gemini Chat Model to extract `update_type`, `target_component`, and `update_details` from the RSS content)
+   - HTTP Request - Trigger Kelvin Agent Run (POST to `{{ $('Set URLs').item.json.api_url }}/api/v1/agent/runs` using the `agent:execute` credential to trigger a new agent run)
 
 2. Update `infrastructure/n8n/README.md` to document the workflow.
 
 **Important constraints:**
 
-- The online AI API key goes into n8n credential store, NOT into the workflow
-  JSON. Use a placeholder credential reference in the exported JSON.
-- The Kelvin token uses the existing Header Auth credential.
+- The Google Gemini API key goes into n8n credential store, NOT into the workflow JSON. Use a placeholder credential reference in the exported JSON.
+- The Kelvin token uses the HTTP Header Auth credential with `agent:execute` scope.
 - All URLs use the Set node pattern (no `$env`).
 
 **Files to change:**
 
-- `infrastructure/n8n/workflows/researcher_v1.json` [NEW]
+- `infrastructure/n8n/workflows/updater_v1.json` [NEW]
 - `infrastructure/n8n/README.md` [MODIFY]
-- `docs/workflow-implementation-plan.md` [MODIFY — mark steps as done]
 
 **Testing:** Manual execution in n8n UI. Document results.
 
 **Commit message:**
 
 ```
-feat(n8n): add first researcher workflow v1
+feat(n8n): add first codebase updater workflow v1
 
-- RSS source → online AI summary → Kelvin evaluation pipeline.
+- RSS source -> Gemini information extraction -> Kelvin Agent execution pipeline.
 - Uses Set node pattern for configurable URLs.
-- Read-only Kelvin credential; AI key in n8n credential store.
+- Kelvin credential with agent:execute scope; Gemini key in n8n credential store.
 ```
 
 ---
@@ -241,7 +231,7 @@ feat(n8n): add first researcher workflow v1
 ### Step 16: Source Allowlist and Rate Limiting
 
 **Goal:** Add a configurable allowlist of approved source URLs and basic
-rate/cost limits for the researcher workflow.
+rate/cost limits for the updater workflow.
 
 **What to do:**
 

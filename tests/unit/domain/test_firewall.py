@@ -5,6 +5,7 @@ import pytest
 from kelvin_assistant.domain.firewall import (
     SanitizedContent,
     detect_injection,
+    is_source_allowed,
     mask_secrets,
     sanitize_external_content,
 )
@@ -89,3 +90,28 @@ def test_sanitize_clean_content() -> None:
     result = sanitize_external_content(raw_text)
     assert not result.injection_warnings
     assert "This is a normal sentence." in result.text
+
+
+@pytest.mark.parametrize(
+    "url, allowlist, expected",
+    [
+        (
+            "https://example.com/path",
+            ("https://example.com", "https://another.com"),
+            True,
+        ),
+        ("https://evil.com/path", ("https://example.com",), False),
+        ("http://example.com/path", ("https://example.com",), False),
+        ("https://example.com.evil.com", ("https://example.com",), False),
+        ("https://example.com", ("https://example.com/path",), False),
+        ("https://example.com/path", (), False),
+    ],
+)
+def test_is_source_allowed(
+    url: str, allowlist: tuple[str, ...], expected: bool
+) -> None:
+    assert is_source_allowed(url, allowlist) is expected
+
+
+def test_is_source_allowed_empty_allowlist_blocks_all() -> None:
+    assert is_source_allowed("https://example.com", allowlist=()) is False
