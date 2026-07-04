@@ -1,9 +1,12 @@
 """FastAPI application factory."""
 
 import logging
+import uuid
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from kelvin_assistant.adapters.file_api_tokens import FileApiTokenAuthenticator
@@ -196,4 +199,23 @@ def create_app(
     app.include_router(memory_router)
     app.include_router(agent_router)
     app.include_router(frontend_router)
+
+    @app.middleware("http")
+    async def dispatch_correlation_id(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """
+        Injects a correlation ID into the request state and response headers.
+        """
+        correlation_id = request.headers.get("X-Correlation-ID")
+        if correlation_id is None:
+            correlation_id = str(uuid.uuid4())
+
+        request.state.correlation_id = correlation_id
+
+        response = await call_next(request)
+        response.headers["X-Correlation-ID"] = correlation_id
+
+        return response
+
     return app

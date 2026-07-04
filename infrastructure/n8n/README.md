@@ -69,6 +69,10 @@ Aktív PuTTY kapcsolat mellett az editor címe:
 http://127.0.0.1:5678
 ```
 
+## Kelvin API Credential
+
+See the [n8n Credential Setup Guide](../../docs/n8n-credential-setup.md) for instructions on how to connect n8n to the Kelvin API.
+
 ## Ellenőrzés
 
 Konténerállapot:
