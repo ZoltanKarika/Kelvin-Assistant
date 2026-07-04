@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from kelvin_assistant.api.dependencies import (
@@ -45,6 +45,7 @@ RuntimeChatService = Annotated[ChatService, Depends(get_chat_service)]
     },
 )
 async def create_chat_turn(
+    fastapi_request: Request,
     request: ChatRequest,
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
@@ -82,6 +83,7 @@ async def create_chat_turn(
         session_id=result.session_id,
         message=result.message,
         model=settings.ollama_model,
+        correlation_id=fastapi_request.state.correlation_id,
     )
 
 
@@ -100,6 +102,7 @@ async def create_chat_turn(
     },
 )
 async def stream_chat_turn(
+    fastapi_request: Request,
     request: ChatRequest,
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
@@ -119,7 +122,12 @@ async def stream_chat_turn(
         ) from exc
 
     return StreamingResponse(
-        _stream_chat_events(result.session_id, result.chunks, settings.ollama_model),
+        _stream_chat_events(
+            result.session_id,
+            result.chunks,
+            settings.ollama_model,
+            fastapi_request.state.correlation_id,
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -136,6 +144,7 @@ async def _stream_chat_events(
     session_id: UUID,
     chunks: AsyncIterator[str],
     model: str,
+    correlation_id: UUID,
 ) -> AsyncIterator[str]:
     """Convert streamed model chunks into the public SSE contract."""
 
@@ -144,6 +153,7 @@ async def _stream_chat_events(
         {
             "session_id": str(session_id),
             "model": model,
+            "correlation_id": str(correlation_id),
         },
     )
     try:

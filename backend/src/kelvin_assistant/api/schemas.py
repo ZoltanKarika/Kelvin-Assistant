@@ -79,6 +79,7 @@ class ChatResponse(BaseModel):
     session_id: UUID
     message: str
     model: str
+    correlation_id: UUID
 
 
 class AgentRunCreateRequest(BaseModel):
