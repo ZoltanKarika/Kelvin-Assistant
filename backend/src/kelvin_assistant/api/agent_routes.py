@@ -11,6 +11,7 @@ from kelvin_assistant.api.dependencies import (
     get_agent_run_store,
     get_agent_service,
     get_workspace_authorizer,
+    require_scope,
 )
 from kelvin_assistant.api.schemas import (
     AgentNextClarificationResponse,
@@ -45,6 +46,7 @@ from kelvin_assistant.domain.agent import (
     ToolPolicyDecision,
     ToolProposal,
 )
+from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.planner import ClarificationTurn, PlannerDomainError
 from kelvin_assistant.ports.agent_runs import (
     AgentProposalNotFoundError,
@@ -86,6 +88,7 @@ async def create_agent_run(
     request: AgentRunCreateRequest,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Create and persist one received agent run."""
 
@@ -121,6 +124,7 @@ async def create_agent_run(
 async def get_agent_run(
     run_id: UUID,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Return the current server-managed state of one agent run."""
 
@@ -149,6 +153,7 @@ async def cancel_agent_run(
     run_id: UUID,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Cancel one active run and close its pending tool proposal."""
 
@@ -184,6 +189,7 @@ async def begin_agent_planning(
     run_id: UUID,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Move one received or clarified run into planning."""
 
@@ -231,6 +237,7 @@ async def plan_next_agent_step(
     planning_service: RuntimeAgentPlanningService,
     store: RuntimeAgentRunStore,
     workspace_authorizer: RuntimeWorkspaceAuthorizer,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentNextResponse:
     """Plan, validate, policy-check, and persist one next agent decision."""
 
@@ -349,6 +356,7 @@ async def propose_agent_tool(
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
     workspace_authorizer: RuntimeWorkspaceAuthorizer,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_WRITE))],
 ) -> AgentToolProposalResponse:
     """Evaluate and persist one structured tool proposal."""
 
@@ -413,6 +421,7 @@ async def resolve_agent_tool_approval(
     request: AgentToolApprovalRequest,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_APPROVE))],
 ) -> AgentToolProposalResponse:
     """Approve or reject the active server-managed tool proposal."""
 
@@ -457,6 +466,7 @@ async def resolve_agent_tool_approval(
 async def get_active_agent_tool(
     run_id: UUID,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentToolProposalResponse:
     """Return the active server-managed tool proposal for a client."""
 
@@ -489,6 +499,7 @@ async def submit_agent_tool_result(
     request: AgentToolResultRequest,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_WRITE))],
 ) -> AgentToolResultResponse:
     """Store one matching local tool result and advance the agent run."""
 

@@ -2,7 +2,6 @@
 
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
-from typing import cast
 from uuid import UUID
 
 from fastapi import FastAPI
@@ -110,7 +109,11 @@ def test_list_memory_returns_active_memories_with_filters() -> None:
 def test_list_memory_rejects_missing_token() -> None:
     """GET /memory returns 401 if the bearer token is missing."""
 
-    with TestClient(_app(FakeMemoryRepository())) as client:
+    # Reject-all authenticator: no token is valid, but auth IS enforced.
+    authenticator = FakeApiTokenAuthenticator(principal=None)
+    with TestClient(
+        _app(FakeMemoryRepository(), authenticator, auth_enabled=True)
+    ) as client:
         response = client.get("/api/v1/memory")
 
     assert response.status_code == 401
@@ -123,7 +126,9 @@ def test_list_memory_rejects_token_with_wrong_scope() -> None:
     authenticator = FakeApiTokenAuthenticator(
         principal=ApiPrincipal("test-client", frozenset({ApiScope.CHAT_USE}))
     )
-    with TestClient(_app(FakeMemoryRepository(), authenticator)) as client:
+    with TestClient(
+        _app(FakeMemoryRepository(), authenticator, auth_enabled=True)
+    ) as client:
         response = client.get(
             "/api/v1/memory", headers={"Authorization": "Bearer test-token"}
         )
@@ -170,19 +175,26 @@ def test_memory_repository_error_becomes_503() -> None:
 
 def _app(
     repository: "FakeMemoryRepository",
-    authenticator: "FakeApiTokenAuthenticator" | None = None,
+    authenticator: FileApiTokenAuthenticator | None = None,
+    *,
+    auth_enabled: bool = False,
 ) -> FastAPI:
+    """Build a test app.
+
+    By default auth is disabled so functional tests work without tokens.
+    Pass ``auth_enabled=True`` together with an ``authenticator`` to test
+    the 401/403 enforcement paths.
+    """
     return create_app(
         Settings(
             app_name="Kelvin Test",
             app_version="0.5.0-test",
             environment="test",
             log_format="console",
-            api_auth_mode="required",
         ),
         llm_provider=StubLLMProvider(),
         memory_service=MemoryService(repository),
-        api_authenticator=cast(FileApiTokenAuthenticator, authenticator),
+        api_authenticator=authenticator if auth_enabled else None,
     )
 
 

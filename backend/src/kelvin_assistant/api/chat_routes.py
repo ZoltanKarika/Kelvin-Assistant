@@ -11,10 +11,12 @@ from fastapi.responses import StreamingResponse
 from kelvin_assistant.api.dependencies import (
     get_chat_service,
     get_runtime_settings,
+    require_scope,
 )
 from kelvin_assistant.api.schemas import ChatRequest, ChatResponse
 from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.chat import InvalidChatMessageError
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
 from kelvin_assistant.ports.sessions import (
@@ -32,6 +34,8 @@ RuntimeChatService = Annotated[ChatService, Depends(get_chat_service)]
     response_model=ChatResponse,
     status_code=status.HTTP_200_OK,
     responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         status.HTTP_404_NOT_FOUND: {"description": "Session not found."},
         status.HTTP_409_CONFLICT: {"description": "Session changed concurrently."},
         status.HTTP_502_BAD_GATEWAY: {"description": "Invalid model response."},
@@ -44,6 +48,7 @@ async def create_chat_turn(
     request: ChatRequest,
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> ChatResponse:
     """Create one complete non-streaming conversation turn."""
 
@@ -88,6 +93,8 @@ async def create_chat_turn(
             "content": {"text/event-stream": {}},
             "description": "Server-sent events with streamed assistant text.",
         },
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         status.HTTP_404_NOT_FOUND: {"description": "Session not found."},
         422: {"description": "Invalid request."},
     },
@@ -96,6 +103,7 @@ async def stream_chat_turn(
     request: ChatRequest,
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> StreamingResponse:
     """Stream one conversation turn as server-sent events."""
 
