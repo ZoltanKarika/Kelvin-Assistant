@@ -29,19 +29,13 @@ Related documents:
 | 8 | `api-tokens.example.json` reference file | PR #54 | ✅ |
 | 9 | Auth dependency tests | PR #54 | ✅ |
 | 10 | Initial n8n workflows (health check, chat) | PR #56 | ✅ |
-| 11 | Hardcoded URL fix (Set node pattern) | `fix/n8n-hardcoded-url` (pending) | ✅ |
-
-### Remaining
-
-| # | Item | Depends on | Branch suggestion |
-|---|------|------------|-------------------|
-| 12 | n8n credential setup guide | #11 merged | `docs/n8n-credential-setup` |
-| 13 | Minimum AI Firewall (input sanitizer) | — | `feat/v0.7-ai-firewall` |
-| 14 | Correlation ID for workflow ↔ agent tracing | — | `feat/v0.7-correlation-id` |
-| 15 | First codebase updater workflow (full pipeline) | #12, #13 | `feat/v0.7-updater-workflow` |
-| 16 | Source allowlist and rate limiting | #13 | `feat/v0.7-source-allowlist` |
-| 17 | Backup/restore validation | #15 | `chore/v0.7-backup-validation` |
-| 18 | Update roadmap.md with v0.7 completion notes | #17 | `docs/v0.7-completion` |
+| 12 | n8n credential setup guide | #11 merged | ✅ |
+| 13 | Minimum AI Firewall (input sanitizer) | — | ✅ |
+| 14 | Correlation ID for workflow ↔ agent tracing | — | ✅ |
+| 15 | First codebase updater workflow (full pipeline) | #12, #13 | ✅ |
+| 16 | Source allowlist and rate limiting | #13 | ✅ |
+| 17 | Backup/restore validation | #15 | ✅ |
+| 18 | Update roadmap.md with v0.7 completion notes | #17 | ✅ |
 
 ---
 
