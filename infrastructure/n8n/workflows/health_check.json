@@ -1,0 +1,57 @@
+{
+  "name": "Kelvin Health Check",
+  "nodes": [
+    {
+      "parameters": {
+        "url": " http://192.168.10.66:8000/health",
+        "options": {}
+      },
+      "name": "Check Kelvin API Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b0dbc9e4-052c-449f-99ed-08c79527674f"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "886ac3db-1af6-4c7f-8817-034fc5d7676e",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Check Kelvin API Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "76bfb688-8d88-4e07-8048-9d623d8bcd6d",
+  "meta": {
+    "instanceId": "a771b1c24939a6dbba071abc213d67513e41b835b7691c799a772d5fb05819b5"
+  },
+  "nodeGroups": [],
+  "id": "nsXs5afJaWRBJs4q",
+  "tags": []
+}
