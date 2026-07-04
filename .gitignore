@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+api-tokens.json
 
 # Python
 __pycache__/

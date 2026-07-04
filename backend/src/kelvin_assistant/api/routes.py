@@ -8,6 +8,7 @@ from kelvin_assistant.api.dependencies import (
     get_database_client,
     get_llm_provider,
     get_runtime_settings,
+    require_scope,
 )
 from kelvin_assistant.api.schemas import (
     DatabaseReadinessResponse,
@@ -17,6 +18,7 @@ from kelvin_assistant.api.schemas import (
     VersionResponse,
 )
 from kelvin_assistant.config.settings import Settings
+from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.ports.database import DatabaseClient, DatabaseError
 from kelvin_assistant.ports.llm import LLMProvider, LLMProviderError
 
@@ -49,14 +51,17 @@ def read_health() -> HealthResponse:
     response_model=ReadinessResponse,
     tags=["system"],
     responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         status.HTTP_503_SERVICE_UNAVAILABLE: {
             "description": "The configured language model is not ready.",
-        }
+        },
     },
 )
 async def read_readiness(
     settings: RuntimeSettings,
     provider: LanguageModelProvider,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.SYSTEM_READ))],
 ) -> ReadinessResponse:
     """Report whether the configured language model can serve requests."""
 
@@ -80,13 +85,16 @@ async def read_readiness(
     response_model=DatabaseReadinessResponse,
     tags=["system"],
     responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Missing or invalid token."},
+        status.HTTP_403_FORBIDDEN: {"description": "Token lacks required scope."},
         status.HTTP_503_SERVICE_UNAVAILABLE: {
             "description": "The configured database is not ready.",
-        }
+        },
     },
 )
 async def read_database_readiness(
     database_client: RuntimeDatabaseClient,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.SYSTEM_READ))],
 ) -> DatabaseReadinessResponse:
     """Report whether the configured database can serve requests."""
 
