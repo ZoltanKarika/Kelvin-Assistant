@@ -14,8 +14,30 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "api_url",
+              "value": "http://192.168.10.66:8000",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ],
+      "id": "76d54cf8-518b-499a-8e2b-ee3c14a1c5d0",
+      "name": "Set Kelvin URL"
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "http://192.168.10.66:8000/api/v1/chat",
+        "url": "={{ $json.api_url }}/api/v1/chat",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -26,7 +48,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        208,
+        400,
         0
       ],
       "id": "be53918b-5ec2-4003-889b-ee62514917ea",
@@ -42,6 +64,17 @@
   "pinData": {},
   "connections": {
     "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Kelvin URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Kelvin URL": {
       "main": [
         [
           {
