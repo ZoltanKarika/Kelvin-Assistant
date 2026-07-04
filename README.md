@@ -52,7 +52,8 @@ Jelenleg működik:
 - PostgreSQL agent audit és szabályos `Ctrl+C` cancellation.
 
 A v0.6 agentfunkciói elkészültek és a Windows–Ubuntu production környezetben
-validálva lettek. Az n8n-integráció és az opcionális hangvezérlés még nincs
+validálva lettek. Az n8n-integráció elkezdődött, elkészültek a `health` és `chat`
+workflow-k a `infrastructure/n8n/workflows` könyvtárban. Az opcionális hangvezérlés még nincs
 kész. A DHCP-foglalás, az offline csomag-előkészítés és a mentési eljárás
 továbbra is hátralévő üzemeltetési feladat.
 
@@ -222,7 +223,7 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
-| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció | Tervezett |
+| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció. Elkészültek az első workflow-k (health check, chat). | Folyamatban |
 | v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
