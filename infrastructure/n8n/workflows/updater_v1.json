@@ -1,6 +1,5 @@
-
 {
-  "name": "Researcher v1",
+  "name": "Updater v1",
   "nodes": [
     {
       "parameters": {},
@@ -55,117 +54,82 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();
-return items.map(item => ({ json: { content: item.json.content } }));"
+        "text": "={{ $json.content }}",
+        "schemaType": "manual",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "update_type",
+              "type": "string",
+              "description": "Category of the update: dependency_upgrade, bug_fix, feature, or security_patch"
+            },
+            {
+              "name": "target_component",
+              "type": "string",
+              "description": "The name of the library, script, module, or file to be updated"
+            },
+            {
+              "name": "update_details",
+              "type": "string",
+              "description": "Detailed explanation of what needs to be updated and how"
+            }
+          ]
+        }
       },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.informationExtractor",
+      "typeVersion": 1,
       "position": [
         600,
         0
       ],
       "id": "c3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8",
-      "name": "Normalize and Extract"
+      "name": "Information Extractor - Update Details"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/summarize",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{
-  "text": "{{ $json.content }}"
-}",
+        "model": "gemini-1.5-flash",
         "options": {}
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "type": "n8n-nodes-base.googleGeminiChatModel",
+      "typeVersion": 1,
       "position": [
-        800,
-        0
+        600,
+        200
       ],
       "id": "d4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8g9",
-      "name": "Summarize with AI",
+      "name": "Google Gemini Chat Model",
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "placeholder_credential_id",
-          "name": "Online AI API account"
+        "googleGeminiApi": {
+          "id": "placeholder_gemini_credential_id",
+          "name": "Google Gemini account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();
-return items.map(item => {
-  const summary = item.json.summary;
-  const sanitizedContent = `--- BEGIN EXTERNAL DATA ---
-${summary}
---- END EXTERNAL DATA ---`;
-  return { json: { sanitizedContent } };
-});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2.1,
-      "position": [
-        1000,
-        0
-      ],
-      "id": "e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8g9h0",
-      "name": "Sanitize Content"
-    },
-    {
-      "parameters": {
         "method": "POST",
-        "url": "={{ $('Set URLs').item.json.api_url }}/api/v1/chat",
+        "url": "={{ $('Set URLs').item.json.api_url }}/api/v1/agent/runs",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{
-  "message": "Evaluate this summary:
-
-{{ $json.sanitizedContent }}"
-}",
+        "jsonBody": "{\n  \"goal\": \"Analyze and implement the following update for '{{ $json.target_component }}': {{ $json.update_details }}. Category: {{ $json.update_type }}.\",\n  \"max_steps\": 10\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1200,
+        850,
         0
       ],
       "id": "f6a7b8c9-d0e1-f2a3-b4c5-d6e7f8g9h0i1",
-      "name": "Kelvin Evaluation",
+      "name": "HTTP Request - Trigger Kelvin Agent Run",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "cZuE5eWPuh8TUSnX",
-          "name": "Header Auth account"
+          "id": "placeholder_kelvin_agent_exec_credential_id",
+          "name": "Kelvin Agent Exec account"
         }
       }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "name": "final_output",
-              "value": "{{ $('Kelvin Evaluation').item.json }}",
-              "type": "json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1400,
-        0
-      ],
-      "id": "g7b8c9d0-e1f2-a3b4-c5d6-e7f8g9h0i1j2",
-      "name": "Format Output"
     }
   ],
   "pinData": {},
@@ -196,51 +160,29 @@ ${summary}
       "main": [
         [
           {
-            "node": "Normalize and Extract",
+            "node": "Information Extractor - Update Details",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Normalize and Extract": {
-      "main": [
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
         [
           {
-            "node": "Summarize with AI",
-            "type": "main",
+            "node": "Information Extractor - Update Details",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Summarize with AI": {
+    "Information Extractor - Update Details": {
       "main": [
         [
           {
-            "node": "Sanitize Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sanitize Content": {
-      "main": [
-        [
-          {
-            "node": "Kelvin Evaluation",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Kelvin Evaluation": {
-      "main": [
-        [
-          {
-            "node": "Format Output",
+            "node": "HTTP Request - Trigger Kelvin Agent Run",
             "type": "main",
             "index": 0
           }
