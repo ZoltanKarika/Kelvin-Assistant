@@ -13,7 +13,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
-| v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Tervezett |
+| v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
 | v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Tervezett |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
@@ -271,10 +271,38 @@ agent-, policy- és jóváhagyási szabályok tulajdonosa. Az n8n nem kapja meg 
 online szolgáltatások nyers kulcsait továbbító Kelvin-végpontot, és nem
 kerülheti meg a Windows `kelvin` kliens helyi jóváhagyását.
 
-Elfogadási feltétel: egy helyi n8n kutató workflow read-only credentiallel
-meghívja Kelvin verziózott API-ját, hivatkozott fejlesztési javaslatot készít,
-és sem külső webes utasítás, sem read-only token nem tud állapotváltoztató
-Kelvin- vagy Windows-eszközt elindítani.
+Production validáció:
+
+- a külön automation VM-en futó n8n a `docs/ai/v07-guide.md` dokumentáció
+  szerint elkészült és a `health_check` workflow sikeresen futott;
+- az API-tokenek és a scope-alapú jogosultságkezelés a `v0.7-ai-firewall`
+  ágon validálva lett;
+- a `v0.7-updater-workflow` ágon elkészült a teljes v1 és v2 pipeline,
+  amely RSS-forrásból képes a Gemini API-n keresztül strukturált agent
+  feladatot létrehozni és azt a Kelvin API-nak átadni;
+- a `v0.7-correlation-id` bevezette a `X-Correlation-ID` fejlécet, amely
+  lehetővé teszi az n8n és a Kelvin közötti kérések összekapcsolását;
+- a `chore/v0.7-backup-validation` ágon a `docs/backup-restore.md` és
+  a `scripts/backup-kelvin-db.sh` mentési és visszaállítási eljárásokat
+  dokumentálja és teszteli.
+
+Elfogadási feltételek:
+
+- [x] külön automation VM fut Ubuntu Server 24.04 LTS rendszerrel;
+- [x] n8n és saját PostgreSQL-e Docker Compose alatt fut;
+- [x] egyik image sem használ `latest` taget;
+- [x] n8n felülete csak a megbízható helyi hálózatról érhető el;
+- [x] PostgreSQL port nem kerül publikálásra;
+- [x] encryption key és adatbázismentés külön visszaállítható;
+- [x] Kelvin API token- és scope-alapú hitelesítést használ;
+- [x] a kutató workflow csak read-only Kelvin credentialt kap;
+- [x] online AI-kulcs nem kerül Kelvinhez, Gitbe vagy workflow-exportba;
+- [x] egy hivatkozott fejlesztési javaslatot készítő workflow sikeresen lefut;
+- [x] webes prompt injection nem indíthat Kelvin toolt;
+- [x] n8n nem kerülheti meg a Windows agent jóváhagyását;
+- [x] n8n kiesése mellett Kelvin helyi funkciói működnek;
+- [x] reboot, backup és restore ellenőrzése sikeres;
+- [x] a telepítéshez használt ideiglenes checkpointok törlésre kerülnek.
 
 ## v0.8 AI Security & Integration Hardening
 

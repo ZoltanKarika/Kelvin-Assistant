@@ -290,21 +290,21 @@ Checkpointot futó adatbázis egyetlen hosszú távú mentéseként nem használ
 
 ## v0.7 elfogadási feltételek
 
-- [ ] külön automation VM fut Ubuntu Server 24.04 LTS rendszerrel;
-- [ ] n8n és saját PostgreSQL-e Docker Compose alatt fut;
-- [ ] egyik image sem használ `latest` taget;
-- [ ] n8n felülete csak a megbízható helyi hálózatról érhető el;
-- [ ] PostgreSQL port nem kerül publikálásra;
-- [ ] encryption key és adatbázismentés külön visszaállítható;
-- [ ] Kelvin API token- és scope-alapú hitelesítést használ;
-- [ ] a kutató workflow csak read-only Kelvin credentialt kap;
-- [ ] online AI-kulcs nem kerül Kelvinhez, Gitbe vagy workflow-exportba;
-- [ ] egy hivatkozott fejlesztési javaslatot készítő workflow sikeresen lefut;
-- [ ] webes prompt injection nem indíthat Kelvin toolt;
-- [ ] n8n nem kerülheti meg a Windows agent jóváhagyását;
-- [ ] n8n kiesése mellett Kelvin helyi funkciói működnek;
-- [ ] reboot, backup és restore ellenőrzése sikeres;
-- [ ] a telepítéshez használt ideiglenes checkpointok törlésre kerülnek.
+- [x] külön automation VM fut Ubuntu Server 24.04 LTS rendszerrel;
+- [x] n8n és saját PostgreSQL-e Docker Compose alatt fut;
+- [x] egyik image sem használ `latest` taget;
+- [x] n8n felülete csak a megbízható helyi hálózatról érhető el;
+- [x] PostgreSQL port nem kerül publikálásra;
+- [x] encryption key és adatbázismentés külön visszaállítható;
+- [x] Kelvin API token- és scope-alapú hitelesítést használ;
+- [x] a kutató workflow csak read-only Kelvin credentialt kap;
+- [x] online AI-kulcs nem kerül Kelvinhez, Gitbe vagy workflow-exportba;
+- [x] egy hivatkozott fejlesztési javaslatot készítő workflow sikeresen lefut;
+- [x] webes prompt injection nem indíthat Kelvin toolt;
+- [x] n8n nem kerülheti meg a Windows agent jóváhagyását;
+- [x] n8n kiesése mellett Kelvin helyi funkciói működnek;
+- [x] reboot, backup és restore ellenőrzése sikeres;
+- [x] a telepítéshez használt ideiglenes checkpointok törlésre kerülnek.
 
 ## Hivatalos hivatkozások
 
