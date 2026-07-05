@@ -25,6 +25,7 @@ from kelvin_assistant.domain.agent import (
     ToolPolicyDecision,
     ToolRisk,
 )
+from kelvin_assistant.domain.context_guard import ContextGuard, GuardedContent
 from kelvin_assistant.domain.planner import (
     ClarifyDecision,
     CompleteDecision,
@@ -33,6 +34,14 @@ from kelvin_assistant.domain.planner import (
     ToolDecision,
 )
 from kelvin_assistant.tools.registry import StaticToolRegistry
+
+
+class StubContextGuard(ContextGuard):
+    def __init__(self) -> None:
+        pass
+
+    def wrap(self, text: str, source: str = "unknown") -> GuardedContent:
+        return GuardedContent(text=f"wrapped: {text}", is_safe=True, warnings=[])
 
 
 def test_prepare_run_enters_planning_from_received() -> None:
@@ -256,6 +265,7 @@ def _service(
             planner=planner,
             registry=registry,
             agent_service=agent_service,
+            context_guard=StubContextGuard(),
         ),
         planner,
     )

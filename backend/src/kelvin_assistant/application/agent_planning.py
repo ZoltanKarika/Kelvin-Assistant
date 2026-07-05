@@ -19,6 +19,7 @@ from kelvin_assistant.domain.agent import (
     ToolDefinition,
     ToolProposal,
 )
+from kelvin_assistant.domain.context_guard import ContextGuard
 from kelvin_assistant.domain.planner import (
     ClarificationTurn,
     ClarifyDecision,
@@ -75,10 +76,12 @@ class AgentPlanningService:
         planner: AgentPlanner,
         registry: ToolRegistry,
         agent_service: AgentService,
+        context_guard: ContextGuard,
     ) -> None:
         self._planner = planner
         self._registry = registry
         self._agent_service = agent_service
+        self._context_guard = context_guard
 
     def prepare_run(self, run: AgentRun) -> AgentRun:
         """Move a runnable state into planning before calling the model."""
@@ -108,12 +111,21 @@ class AgentPlanningService:
         remaining_steps = run.max_steps - run.step_count
         if remaining_steps < 1:
             raise AgentPlanningError("Agent run has no remaining execution steps")
+
+        guarded_observation = None
+        if observation is not None:
+            guarded_observation_result = self._context_guard.wrap(
+                observation, source="tool_observation"
+            )
+            if guarded_observation_result.is_safe:
+                guarded_observation = guarded_observation_result.text
+
         request = PlannerRequest.create(
             run.goal,
             self._registry.list_all(),
             remaining_steps=remaining_steps,
             clarifications=clarifications,
-            observation=observation,
+            observation=guarded_observation,
         )
         decision = await self._planner.plan(request)
         return self.apply_decision(
