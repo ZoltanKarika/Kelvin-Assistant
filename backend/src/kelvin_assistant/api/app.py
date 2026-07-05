@@ -34,6 +34,8 @@ from kelvin_assistant.application.memory import (
 )
 from kelvin_assistant.application.tool_policy import DefaultToolPolicy
 from kelvin_assistant.config.settings import Settings, get_settings
+from kelvin_assistant.domain.context_guard import ContextGuard
+from kelvin_assistant.domain.input_guard import InputGuard
 from kelvin_assistant.observability.logging import configure_logging
 from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.database import DatabaseClient
@@ -140,10 +142,13 @@ def create_app(
         if agent_planner is not None
         else StructuredLLMAgentPlanner(active_llm_provider)
     )
+    active_input_guard = InputGuard()
+    active_context_guard = ContextGuard(active_input_guard)
     active_agent_planning_service = AgentPlanningService(
         planner=active_agent_planner,
         registry=active_tool_registry,
         agent_service=active_agent_service,
+        context_guard=active_context_guard,
     )
     active_agent_run_store = (
         agent_run_store
@@ -162,6 +167,7 @@ def create_app(
     active_chat_service = ChatService(
         llm_provider=active_llm_provider,
         session_store=active_session_store,
+        context_guard=active_context_guard,
         system_prompt=active_settings.system_prompt,
         knowledge_context_provider=knowledge_context_provider,
         memory_context_provider=(

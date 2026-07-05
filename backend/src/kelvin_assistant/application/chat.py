@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from kelvin_assistant.domain.chat import ChatMessage, ChatRole, ChatSession
+from kelvin_assistant.domain.context_guard import ContextGuard
 from kelvin_assistant.ports.knowledge import KnowledgeContextProvider
 from kelvin_assistant.ports.llm import LLMProvider
 from kelvin_assistant.ports.memory import MemoryContextProvider
@@ -45,6 +46,7 @@ class ChatService:
         self,
         llm_provider: LLMProvider,
         session_store: SessionStore,
+        context_guard: ContextGuard,
         history_turn_limit: int = 10,
         system_prompt: str | None = None,
         knowledge_context_provider: KnowledgeContextProvider | None = None,
@@ -55,6 +57,7 @@ class ChatService:
             raise ValueError(msg)
         self._llm_provider = llm_provider
         self._session_store = session_store
+        self._context_guard = context_guard
         self._history_message_limit = history_turn_limit * 2
         self._system_message = (
             ChatMessage(role=ChatRole.SYSTEM, content=system_prompt)
@@ -168,24 +171,36 @@ class ChatService:
                 user_content
             )
             if knowledge_context is not None:
-                messages.append(
-                    ChatMessage(
-                        role=ChatRole.SYSTEM,
-                        content=RAG_CONTEXT_TEMPLATE.format(context=knowledge_context),
-                    )
+                guarded_knowledge = self._context_guard.wrap(
+                    knowledge_context, source="knowledge"
                 )
+                if guarded_knowledge.is_safe:
+                    messages.append(
+                        ChatMessage(
+                            role=ChatRole.SYSTEM,
+                            content=RAG_CONTEXT_TEMPLATE.format(
+                                context=guarded_knowledge.text
+                            ),
+                        )
+                    )
 
         if self._memory_context_provider is not None:
             memory_context = await self._memory_context_provider.get_context(
                 user_content
             )
             if memory_context is not None:
-                messages.append(
-                    ChatMessage(
-                        role=ChatRole.SYSTEM,
-                        content=MEMORY_CONTEXT_TEMPLATE.format(context=memory_context),
-                    )
+                guarded_memory = self._context_guard.wrap(
+                    memory_context, source="memory"
                 )
+                if guarded_memory.is_safe:
+                    messages.append(
+                        ChatMessage(
+                            role=ChatRole.SYSTEM,
+                            content=MEMORY_CONTEXT_TEMPLATE.format(
+                                context=guarded_memory.text
+                            ),
+                        )
+                    )
 
         messages.extend(conversation_context)
         return tuple(messages)
