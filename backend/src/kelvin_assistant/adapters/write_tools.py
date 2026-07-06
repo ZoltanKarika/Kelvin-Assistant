@@ -11,6 +11,7 @@ from pathlib import Path
 from time import perf_counter
 from uuid import UUID
 
+from kelvin_assistant.adapters.read_tools import should_ignore_path
 from kelvin_assistant.domain.agent import (
     MAX_TOOL_OUTPUT_LENGTH,
     ToolCall,
@@ -158,6 +159,8 @@ def _resolve_file(workspace_root: Path, relative_path: str) -> Path:
         raise ToolExecutionError("Patch target file does not exist") from exc
     if workspace_root not in candidate.parents:
         raise ToolExecutionError("Tool path escapes the workspace")
+    if should_ignore_path(candidate, workspace_root):
+        raise ToolExecutionError("Tool path is ignored by workspace rules")
     if not candidate.is_file():
         raise ToolExecutionError("Patch target must be a regular file")
     try:
