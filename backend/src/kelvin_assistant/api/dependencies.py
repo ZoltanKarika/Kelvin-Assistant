@@ -17,6 +17,7 @@ from kelvin_assistant.domain.input_guard import InputGuard
 from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
+from kelvin_assistant.ports.security_audit import SecurityAuditLogger
 from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 
 # A sentinel principal used when auth is disabled (development mode).
@@ -139,6 +140,16 @@ def get_input_guard(request: Request) -> InputGuard:
     service = getattr(request.app.state, "input_guard", None)
     if not isinstance(service, InputGuard):
         msg = "Input guard is not configured."
+        raise RuntimeError(msg)
+    return service
+
+
+def get_security_audit_logger(request: Request) -> SecurityAuditLogger:
+    """Return the security audit logger attached to the app state."""
+
+    service = getattr(request.app.state, "security_audit_logger", None)
+    if not isinstance(service, SecurityAuditLogger):
+        msg = "Security audit logger is not configured."
         raise RuntimeError(msg)
     return service
 

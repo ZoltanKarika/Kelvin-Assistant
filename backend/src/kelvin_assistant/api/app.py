@@ -12,12 +12,16 @@ from fastapi.staticfiles import StaticFiles
 from kelvin_assistant.adapters.file_api_tokens import FileApiTokenAuthenticator
 from kelvin_assistant.adapters.llm_planner import StructuredLLMAgentPlanner
 from kelvin_assistant.adapters.memory_agent_runs import InMemoryAgentRunStore
+from kelvin_assistant.adapters.memory_security_audit import InMemorySecurityAuditLogger
 from kelvin_assistant.adapters.memory_sessions import InMemorySessionStore
 from kelvin_assistant.adapters.ollama import OllamaEmbeddingProvider, OllamaProvider
 from kelvin_assistant.adapters.postgres import PostgresDatabaseClient
 from kelvin_assistant.adapters.postgres_agent_runs import PostgresAgentRunStore
 from kelvin_assistant.adapters.postgres_knowledge import PostgresKnowledgeRepository
 from kelvin_assistant.adapters.postgres_memory import PostgresMemoryRepository
+from kelvin_assistant.adapters.postgres_security_audit import (
+    PostgresSecurityAuditLogger,
+)
 from kelvin_assistant.api.agent_routes import router as agent_router
 from kelvin_assistant.api.chat_routes import router as chat_router
 from kelvin_assistant.api.frontend_routes import FRONTEND_DIR
@@ -144,6 +148,11 @@ def create_app(
     )
     active_input_guard = InputGuard()
     active_context_guard = ContextGuard(active_input_guard)
+    active_security_audit_logger = (
+        PostgresSecurityAuditLogger(active_settings)
+        if active_settings.database_url is not None
+        else InMemorySecurityAuditLogger()
+    )
     active_agent_planning_service = AgentPlanningService(
         planner=active_agent_planner,
         registry=active_tool_registry,
@@ -196,6 +205,7 @@ def create_app(
     app.state.workspace_authorizer = active_workspace_authorizer
     app.state.api_token_authenticator = active_api_authenticator
     app.state.input_guard = active_input_guard
+    app.state.security_audit_logger = active_security_audit_logger
     app.mount(
         "/static",
         StaticFiles(directory=FRONTEND_DIR),

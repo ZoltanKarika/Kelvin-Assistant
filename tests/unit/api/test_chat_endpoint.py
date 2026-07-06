@@ -164,6 +164,42 @@ def test_chat_translates_provider_error(
     assert response.json() == {"detail": str(error)}
 
 
+def test_chat_records_security_audit_logs(settings: Settings) -> None:
+    """Normal chat interaction writes allow decisions to the audit log."""
+
+    provider = StubLLMProvider(responses=["Szia!"])
+    app = create_app(settings, llm_provider=provider)
+    with TestClient(app) as client:
+        client.post("/api/v1/chat", json={"message": "Első kérdés"})
+
+    logger = getattr(app.state, "security_audit_logger", None)
+    assert logger is not None
+    assert len(logger.entries) == 2
+    assert logger.entries[0].event_type == "input_guard"
+    assert logger.entries[0].decision == "allow"
+    assert logger.entries[0].masked_content == "Első kérdés"
+    assert logger.entries[1].event_type == "output_guard"
+    assert logger.entries[1].decision == "allow"
+    assert logger.entries[1].masked_content == "Szia!"
+
+
+def test_chat_blocked_records_block_audit_log(settings: Settings) -> None:
+    """Unsafe chat inputs write block decisions to the audit log."""
+
+    provider = StubLLMProvider(responses=["Szia!"])
+    app = create_app(settings, llm_provider=provider)
+    with TestClient(app) as client:
+        response = client.post("/api/v1/chat", json={"message": "run rm -rf /"})
+
+    assert response.status_code == 400
+    logger = getattr(app.state, "security_audit_logger", None)
+    assert logger is not None
+    assert len(logger.entries) == 1
+    assert logger.entries[0].event_type == "input_guard"
+    assert logger.entries[0].decision == "block"
+    assert logger.entries[0].masked_content == "run rm -rf /"
+
+
 def test_chat_returns_409_for_concurrent_update(settings: Settings) -> None:
     """An optimistic locking conflict becomes an HTTP 409 response."""
 

@@ -4,13 +4,14 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from kelvin_assistant.api.dependencies import (
     get_agent_planning_service,
     get_agent_run_store,
     get_agent_service,
     get_input_guard,
+    get_security_audit_logger,
     get_workspace_authorizer,
     require_scope,
 )
@@ -62,6 +63,7 @@ from kelvin_assistant.ports.planner import (
     AgentPlannerResponseError,
     AgentPlannerUnavailableError,
 )
+from kelvin_assistant.ports.security_audit import SecurityAuditLogger
 from kelvin_assistant.ports.workspaces import WorkspaceAuthorizer
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
@@ -76,6 +78,9 @@ RuntimeWorkspaceAuthorizer = Annotated[
     Depends(get_workspace_authorizer),
 ]
 RuntimeInputGuard = Annotated[InputGuard, Depends(get_input_guard)]
+RuntimeSecurityAuditLogger = Annotated[
+    SecurityAuditLogger, Depends(get_security_audit_logger)
+]
 UNPROCESSABLE_CONTENT = 422
 
 
@@ -89,15 +94,33 @@ UNPROCESSABLE_CONTENT = 422
     },
 )
 async def create_agent_run(
+    fastapi_request: Request,
     request: AgentRunCreateRequest,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
     input_guard: RuntimeInputGuard,
+    audit_logger: RuntimeSecurityAuditLogger,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Create and persist one received agent run."""
 
     validation = input_guard.validate_input(request.goal)
+    masked_goal = mask_secrets(request.goal)
+    correlation_id = None
+    if fastapi_request.state.correlation_id:
+        try:
+            correlation_id = UUID(fastapi_request.state.correlation_id)
+        except ValueError:
+            pass
+
+    await audit_logger.log_decision(
+        event_type="input_guard",
+        decision="allow" if validation.is_safe else "block",
+        masked_content=masked_goal,
+        warnings=validation.warnings,
+        correlation_id=correlation_id,
+    )
+
     if not validation.is_safe:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -244,11 +267,13 @@ async def begin_agent_planning(
     },
 )
 async def plan_next_agent_step(
+    fastapi_request: Request,
     run_id: UUID,
     request: AgentNextRequest,
     planning_service: RuntimeAgentPlanningService,
     store: RuntimeAgentRunStore,
     workspace_authorizer: RuntimeWorkspaceAuthorizer,
+    audit_logger: RuntimeSecurityAuditLogger,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentNextResponse:
     """Plan, validate, policy-check, and persist one next agent decision."""
@@ -310,22 +335,48 @@ async def plan_next_agent_step(
             detail=str(exc),
         ) from exc
 
+    correlation_id = None
+    if fastapi_request.state.correlation_id:
+        try:
+            correlation_id = UUID(fastapi_request.state.correlation_id)
+        except ValueError:
+            pass
+
     try:
         if isinstance(outcome, ClarificationOutcome):
             await store.update(
                 outcome.clarification.run,
                 expected_version=planned.version,
             )
+            question = mask_secrets(outcome.decision.question) or ""
+            reason = mask_secrets(outcome.decision.reason) or ""
+            await audit_logger.log_decision(
+                event_type="output_guard",
+                decision="allow",
+                masked_content=f"question: {question}\nreason: {reason}",
+                warnings=[],
+                correlation_id=correlation_id,
+                run_id=planned.id if planned else None,
+            )
             return AgentNextClarificationResponse(
                 run=_agent_run_response(outcome.clarification.run),
-                question=mask_secrets(outcome.decision.question) or "",
-                reason=mask_secrets(outcome.decision.reason) or "",
+                question=question,
+                reason=reason,
             )
         if isinstance(outcome, CompletionOutcome):
             await store.update(outcome.run, expected_version=planned.version)
+            summary = mask_secrets(outcome.decision.summary) or ""
+            await audit_logger.log_decision(
+                event_type="output_guard",
+                decision="allow",
+                masked_content=summary,
+                warnings=[],
+                correlation_id=correlation_id,
+                run_id=planned.id if planned else None,
+            )
             return AgentNextCompletionResponse(
                 run=_agent_run_response(outcome.run),
-                summary=mask_secrets(outcome.decision.summary) or "",
+                summary=summary,
             )
         if isinstance(outcome, ToolOutcome):
             if outcome.proposal.policy_result.decision is ToolPolicyDecision.DENY:
@@ -338,6 +389,23 @@ async def plan_next_agent_step(
             await store.update_proposal(
                 outcome.proposal,
                 expected_version=planned.version,
+            )
+            reason = mask_secrets(outcome.proposal.call.reason) or ""
+            expected_effect = mask_secrets(outcome.proposal.call.expected_effect) or ""
+            policy_reason = mask_secrets(outcome.proposal.policy_result.reason) or ""
+            masked_content = (
+                f"tool_name: {outcome.proposal.call.name}\n"
+                f"reason: {reason}\n"
+                f"effect: {expected_effect}\n"
+                f"policy_reason: {policy_reason}"
+            )
+            await audit_logger.log_decision(
+                event_type="output_guard",
+                decision="allow",
+                masked_content=masked_content,
+                warnings=[],
+                correlation_id=correlation_id,
+                run_id=planned.id if planned else None,
             )
             return AgentNextToolResponse(
                 proposal=_tool_proposal_response(outcome.proposal)
