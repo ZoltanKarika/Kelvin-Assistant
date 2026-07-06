@@ -47,6 +47,7 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
 )
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
+from kelvin_assistant.domain.output_guard import mask_secrets
 from kelvin_assistant.domain.planner import ClarificationTurn, PlannerDomainError
 from kelvin_assistant.ports.agent_runs import (
     AgentProposalNotFoundError,
@@ -306,14 +307,14 @@ async def plan_next_agent_step(
             )
             return AgentNextClarificationResponse(
                 run=_agent_run_response(outcome.clarification.run),
-                question=outcome.decision.question,
-                reason=outcome.decision.reason,
+                question=mask_secrets(outcome.decision.question) or "",
+                reason=mask_secrets(outcome.decision.reason) or "",
             )
         if isinstance(outcome, CompletionOutcome):
             await store.update(outcome.run, expected_version=planned.version)
             return AgentNextCompletionResponse(
                 run=_agent_run_response(outcome.run),
-                summary=outcome.decision.summary,
+                summary=mask_secrets(outcome.decision.summary) or "",
             )
         if isinstance(outcome, ToolOutcome):
             if outcome.proposal.policy_result.decision is ToolPolicyDecision.DENY:
@@ -549,7 +550,7 @@ def _agent_run_response(run: AgentRun) -> AgentRunResponse:
 
     return AgentRunResponse(
         id=run.id,
-        goal=run.goal,
+        goal=mask_secrets(run.goal) or "",
         status=run.status,
         step_count=run.step_count,
         max_steps=run.max_steps,
@@ -584,11 +585,11 @@ def _tool_proposal_response(
         tool_call_id=proposal.call.id,
         tool_name=proposal.call.name,
         arguments=dict(proposal.call.arguments),
-        reason=proposal.call.reason,
-        expected_effect=proposal.call.expected_effect,
+        reason=mask_secrets(proposal.call.reason) or "",
+        expected_effect=mask_secrets(proposal.call.expected_effect) or "",
         risk=proposal.call.risk,
         policy_decision=proposal.policy_result.decision,
-        policy_reason=proposal.policy_result.reason,
+        policy_reason=mask_secrets(proposal.policy_result.reason) or "",
         approval_status=(
             proposal.approval.decision if proposal.approval is not None else None
         ),
@@ -606,8 +607,8 @@ def _tool_result_response(
         tool_call_id=result.tool_call_id,
         tool_name=result.tool_name,
         succeeded=result.succeeded,
-        output=result.output,
-        error=result.error,
+        output=mask_secrets(result.output) or "",
+        error=mask_secrets(result.error),
         truncated=result.truncated,
         duration_ms=result.duration_ms,
     )
