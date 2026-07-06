@@ -109,3 +109,70 @@ def test_policy_denies_risk_mismatch() -> None:
 
     assert result.decision is ToolPolicyDecision.DENY
     assert "risk" in result.reason
+
+
+def test_policy_allows_valid_relative_path_for_write_tool() -> None:
+    """A write tool with a valid relative path requires approval."""
+
+    call = ToolCall(
+        name="file.patch",
+        arguments={"workspace": "C:\\project", "path": "src/utils.py"},
+        reason="Update code.",
+        expected_effect="Patch file.",
+        risk=ToolRisk.WRITE,
+    )
+    result = _policy(_definition("file.patch", ToolRisk.WRITE)).evaluate(
+        call,
+        context=ToolPolicyContext(workspace_authorized=True),
+    )
+
+    assert result.decision is ToolPolicyDecision.REQUIRE_APPROVAL
+
+
+@pytest.mark.parametrize(
+    "invalid_path",
+    [
+        "/etc/passwd",
+        "\\absolute\\path",
+        "C:\\absolute\\path",
+        "d:\\project\\file.txt",
+        "../outside.txt",
+        "src/../../outside.txt",
+    ],
+)
+def test_policy_denies_invalid_path_for_write_tool(invalid_path: str) -> None:
+    """A write tool with an absolute or traversing path is denied."""
+
+    call = ToolCall(
+        name="file.patch",
+        arguments={"workspace": "C:\\project", "path": invalid_path},
+        reason="Update code.",
+        expected_effect="Patch file.",
+        risk=ToolRisk.WRITE,
+    )
+    result = _policy(_definition("file.patch", ToolRisk.WRITE)).evaluate(
+        call,
+        context=ToolPolicyContext(workspace_authorized=True),
+    )
+
+    assert result.decision is ToolPolicyDecision.DENY
+    assert "path" in result.reason
+
+
+def test_policy_denies_non_string_path_for_write_tool() -> None:
+    """A write tool with a non-string path argument is denied."""
+
+    call = ToolCall(
+        name="file.patch",
+        arguments={"workspace": "C:\\project", "path": 123},
+        reason="Update code.",
+        expected_effect="Patch file.",
+        risk=ToolRisk.WRITE,
+    )
+    result = _policy(_definition("file.patch", ToolRisk.WRITE)).evaluate(
+        call,
+        context=ToolPolicyContext(workspace_authorized=True),
+    )
+
+    assert result.decision is ToolPolicyDecision.DENY
+    assert "must be a string" in result.reason
