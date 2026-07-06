@@ -195,6 +195,7 @@ def create_app(
     app.state.agent_run_store = active_agent_run_store
     app.state.workspace_authorizer = active_workspace_authorizer
     app.state.api_token_authenticator = active_api_authenticator
+    app.state.input_guard = active_input_guard
     app.mount(
         "/static",
         StaticFiles(directory=FRONTEND_DIR),

@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 
 from kelvin_assistant.api.dependencies import (
     get_chat_service,
+    get_input_guard,
     get_runtime_settings,
     require_scope,
 )
@@ -18,6 +19,7 @@ from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.chat import InvalidChatMessageError
+from kelvin_assistant.domain.input_guard import InputGuard
 from kelvin_assistant.domain.output_guard import mask_secrets
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
 from kelvin_assistant.ports.sessions import (
@@ -28,6 +30,7 @@ from kelvin_assistant.ports.sessions import (
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 RuntimeSettings = Annotated[Settings, Depends(get_runtime_settings)]
 RuntimeChatService = Annotated[ChatService, Depends(get_chat_service)]
+RuntimeInputGuard = Annotated[InputGuard, Depends(get_input_guard)]
 
 
 @router.post(
@@ -50,9 +53,17 @@ async def create_chat_turn(
     request: ChatRequest,
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
+    input_guard: RuntimeInputGuard,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> ChatResponse:
     """Create one complete non-streaming conversation turn."""
+
+    validation = input_guard.validate_input(request.message)
+    if not validation.is_safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Blocked due to: {', '.join(validation.warnings)}",
+        )
 
     try:
         result = await chat_service.send_message(
@@ -107,9 +118,17 @@ async def stream_chat_turn(
     request: ChatRequest,
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
+    input_guard: RuntimeInputGuard,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> StreamingResponse:
     """Stream one conversation turn as server-sent events."""
+
+    validation = input_guard.validate_input(request.message)
+    if not validation.is_safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Blocked due to: {', '.join(validation.warnings)}",
+        )
 
     try:
         result = await chat_service.stream_message(

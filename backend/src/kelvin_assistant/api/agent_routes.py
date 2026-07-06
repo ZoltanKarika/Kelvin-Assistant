@@ -10,6 +10,7 @@ from kelvin_assistant.api.dependencies import (
     get_agent_planning_service,
     get_agent_run_store,
     get_agent_service,
+    get_input_guard,
     get_workspace_authorizer,
     require_scope,
 )
@@ -47,6 +48,7 @@ from kelvin_assistant.domain.agent import (
     ToolProposal,
 )
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
+from kelvin_assistant.domain.input_guard import InputGuard
 from kelvin_assistant.domain.output_guard import mask_secrets
 from kelvin_assistant.domain.planner import ClarificationTurn, PlannerDomainError
 from kelvin_assistant.ports.agent_runs import (
@@ -73,6 +75,7 @@ RuntimeWorkspaceAuthorizer = Annotated[
     WorkspaceAuthorizer,
     Depends(get_workspace_authorizer),
 ]
+RuntimeInputGuard = Annotated[InputGuard, Depends(get_input_guard)]
 UNPROCESSABLE_CONTENT = 422
 
 
@@ -89,9 +92,17 @@ async def create_agent_run(
     request: AgentRunCreateRequest,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    input_guard: RuntimeInputGuard,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentRunResponse:
     """Create and persist one received agent run."""
+
+    validation = input_guard.validate_input(request.goal)
+    if not validation.is_safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Blocked due to: {', '.join(validation.warnings)}",
+        )
 
     try:
         run = service.start_run(

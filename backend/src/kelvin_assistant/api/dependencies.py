@@ -13,6 +13,7 @@ from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.application.memory import MemoryService
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
+from kelvin_assistant.domain.input_guard import InputGuard
 from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.database import DatabaseClient
 from kelvin_assistant.ports.llm import LLMProvider
@@ -130,6 +131,16 @@ def get_api_token_authenticator(
         FileApiTokenAuthenticator | None,
         getattr(request.app.state, "api_token_authenticator", None),
     )
+
+
+def get_input_guard(request: Request) -> InputGuard:
+    """Return the input guard attached to the app state."""
+
+    service = getattr(request.app.state, "input_guard", None)
+    if not isinstance(service, InputGuard):
+        msg = "Input guard is not configured."
+        raise RuntimeError(msg)
+    return service
 
 
 # Type alias for the inner dependency function produced by require_scope.
