@@ -18,6 +18,7 @@ from kelvin_assistant.application.chat import ChatService
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
 from kelvin_assistant.domain.chat import InvalidChatMessageError
+from kelvin_assistant.domain.output_guard import mask_secrets
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
 from kelvin_assistant.ports.sessions import (
     SessionConflictError,
@@ -81,7 +82,7 @@ async def create_chat_turn(
 
     return ChatResponse(
         session_id=result.session_id,
-        message=result.message,
+        message=mask_secrets(result.message) or "",
         model=settings.ollama_model,
         correlation_id=fastapi_request.state.correlation_id,
     )
@@ -158,7 +159,7 @@ async def _stream_chat_events(
     )
     try:
         async for chunk in chunks:
-            yield _sse_event("token", {"text": chunk})
+            yield _sse_event("token", {"text": mask_secrets(chunk)})
     except (SessionConflictError, LLMUnavailableError) as exc:
         yield _sse_event("error", {"detail": str(exc), "retryable": True})
     except (LLMResponseError, InvalidChatMessageError) as exc:

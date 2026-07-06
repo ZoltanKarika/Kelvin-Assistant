@@ -36,4 +36,4 @@ Imported instruction modules
 @./docs/ai/git-workflow.md
 @./docs/ai/implementation-rules.md
 @./docs/ai/pr-review.md
-@./docs/ai/v07-guide.md
+@./docs/ai/v08-guide.md
