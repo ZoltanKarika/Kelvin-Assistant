@@ -213,3 +213,15 @@ def test_require_scope_returns_matching_principal(
     body = response.json()
     assert "session_id" in body
     assert "message" in body
+
+
+def test_returns_500_when_auth_required_but_not_configured() -> None:
+    """If auth mode is required but no authenticator is set, returns 500."""
+    settings = _make_settings(auth_mode="required")
+    app = create_app(settings, llm_provider=StubLLMProvider(), api_authenticator=None)
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/chat", json={"message": "Hi"})
+
+    assert response.status_code == 500
+    assert "Authentication is required but not configured" in response.json()["detail"]
