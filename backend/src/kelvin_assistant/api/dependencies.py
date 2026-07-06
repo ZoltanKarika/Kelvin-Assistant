@@ -156,7 +156,7 @@ def get_security_audit_logger(request: Request) -> SecurityAuditLogger:
 
 # Type alias for the inner dependency function produced by require_scope.
 _ScopedDependency = Callable[
-    [HTTPAuthorizationCredentials | None, FileApiTokenAuthenticator | None],
+    [HTTPAuthorizationCredentials | None, FileApiTokenAuthenticator | None, Settings],
     ApiPrincipal,
 ]
 
@@ -189,7 +189,14 @@ def require_scope(scope: ApiScope) -> _ScopedDependency:
             FileApiTokenAuthenticator | None,
             Depends(get_api_token_authenticator),
         ],
+        settings: Annotated[Settings, Depends(get_runtime_settings)],
     ) -> ApiPrincipal:
+        if settings.api_auth_mode == "required" and authenticator is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Authentication is required but not configured on the server.",
+            )
+
         # Auth is disabled: every caller is trusted with all scopes.
         if authenticator is None:
             return _ANON_PRINCIPAL
