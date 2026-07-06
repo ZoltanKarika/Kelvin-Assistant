@@ -293,7 +293,7 @@ Checkpointot futó adatbázis egyetlen hosszú távú mentéseként nem használ
 - [x] külön automation VM fut Ubuntu Server 24.04 LTS rendszerrel;
 - [x] n8n és saját PostgreSQL-e Docker Compose alatt fut;
 - [x] egyik image sem használ `latest` taget;
-- [x] n8n felülete csak a megbízható helyi hálózatról érhető el;
+- [x] n8n felülete csak the megbízható helyi hálózatról érhető el;
 - [x] PostgreSQL port nem kerül publikálásra;
 - [x] encryption key és adatbázismentés külön visszaállítható;
 - [x] Kelvin API token- és scope-alapú hitelesítést használ;
@@ -306,6 +306,20 @@ Checkpointot futó adatbázis egyetlen hosszú távú mentéseként nem használ
 - [x] reboot, backup és restore ellenőrzése sikeres;
 - [x] a telepítéshez használt ideiglenes checkpointok törlésre kerülnek.
 
+---
+
+## v0.8 AI Security & Integration Hardening (Kész)
+
+A v0.8 mérföldkő megerősítette Kelvin és n8n biztonsági integrációját az alábbi funkciókkal:
+1. **AI Security Gateway (Firewall for AI)**:
+   - **Input Guard**: Prompt injection, veszélyes kérések és credential lopási kísérletek szűrése.
+   - **Context Guard**: RAG és memória adatok biztonságos, delimitált elhatárolása a prompt kontextusban.
+   - **Output Guard**: Véletlenül generált titkok (kulcsok, tokenek) maszkolása.
+2. **IP és Hálózati Tűzfal**: CIDR-alapú ügyfél IP-ellenőrzés a webhookokon és a REST API-n.
+3. **Idempotens Kérések**: POST webhookok idempotens kezelése in-memory gyorsítótárazással.
+4. **Munkamenet Kontextus Tisztítás (Pruning)**: Az ágens eszközhívások (File Search, Git Status, Patch) szűrése a `.gitignore` és beépített feketelistás minták alapján.
+5. **Konténerizációs Vizsgálat**: Sikeres tesztkörnyezet kiépítése Docker és Docker Compose segítségével az Ubuntu VM-en.
+
 ## Hivatalos hivatkozások
 
 - [n8n Docker telepítés](https://docs.n8n.io/hosting/installation/docker/)
@@ -315,3 +329,4 @@ Checkpointot futó adatbázis egyetlen hosszú távú mentéseként nem használ
 - [Security audit](https://docs.n8n.io/hosting/securing/security-audit/)
 - [Community Edition képességek](https://docs.n8n.io/hosting/community-edition-features/)
 - [Sustainable Use License](https://docs.n8n.io/sustainable-use-license/)
+

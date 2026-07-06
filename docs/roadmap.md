@@ -14,7 +14,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
 | v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
-| v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Tervezett |
+| v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Kész |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
@@ -306,30 +306,32 @@ Elfogadási feltételek:
 
 ## v0.8 AI Security & Integration Hardening
 
-- teljes AI Security Gateway, közérthető nevén „Firewall for AI”;
-- input guard veszélyes szándék, credential-kérés és prompt injection
+Elkészült:
+
+- [x] teljes AI Security Gateway, közérthető nevén „Firewall for AI”;
+- [x] input guard veszélyes szándék, credential-kérés és prompt injection
   felismerésére;
-- context guard webes, RAG- és memóriaforrások megbízhatósági határainak
+- [x] context guard webes, RAG- és memóriaforrások megbízhatósági határainak
   megőrzésére;
-- output guard jelszavak, API-kulcsok, privát kulcsok és connection stringek
+- [x] output guard jelszavak, API-kulcsok, privát kulcsok és connection stringek
   maszkolására;
-- determinisztikus tool guard és emberi jóváhagyás megtartása minden író
+- [x] determinisztikus tool guard és emberi jóváhagyás megtartása minden író
   művelet előtt;
-- biztonsági döntések auditja a tiltott titok naplózása nélkül;
-- n8n és Kelvin közötti kulcsrotáció, scope-vizsgálat és visszavonás;
-- idempotens kérések, timeout, retry és dokumentált hibautak;
-- workflow-, agent- és eszközfutások összekapcsolt auditja;
-- engedélyezett workflow-k, források és webhookok allowlistje;
-- online kódoló AI csak minimalizált és megtisztított projektkontextussal;
-- opcionális képgeneráló és további szöveges AI-szolgáltatók külön,
+- [x] biztonsági döntések auditja a tiltott titok naplózása nélkül;
+- [x] n8n és Kelvin közötti kulcsrotáció, scope-vizsgálat és visszavonás;
+- [x] idempotens kérések, timeout, retry és dokumentált hibautak;
+- [x] workflow-, agent- és eszközfutások összekapcsolt auditja;
+- [x] engedélyezett workflow-k, források és webhookok allowlistje;
+- [x] online kódoló AI csak minimalizált és megtisztított projektkontextussal;
+- [x] opcionális képgeneráló és további szöveges AI-szolgáltatók külön,
   minimális jogosultságú credentialökkel;
-- saját Kelvin n8n node csak legalább két stabil HTTP-alapú workflow után;
-- Kelvin FastAPI konténerizálási próba külön tesztkörnyezetben, a működő
+- [x] saját Kelvin n8n node csak legalább két stabil HTTP-alapú workflow után;
+- [x] Kelvin FastAPI konténerizálási próba külön tesztkörnyezetben, a működő
   systemd telepítés megtartása mellett;
-- n8n workflow-k exportja és verziózott mentése titkok nélkül;
-- PostgreSQL-, Kelvin-, n8n-adatok és az encryption key dokumentált,
+- [x] n8n workflow-k exportja és verziózott mentése titkok nélkül;
+- [x] PostgreSQL-, Kelvin-, n8n-adatok és az encryption key dokumentált,
   elkülönített mentési és visszaállítási eljárása;
-- health check, naplózás és üzemeltetési hibakeresési útmutató.
+- [x] health check, naplózás és üzemeltetési hibakeresési útmutató.
 
 Elfogadási feltétel: egy rosszindulatú forrásba ágyazott, `.env`, jelszó vagy
 API-kulcs kiolvasását kérő utasítás nem válthat ki tool-hívást, a titok nem
