@@ -12,6 +12,7 @@ from kelvin_assistant.api.dependencies import (
     get_chat_service,
     get_input_guard,
     get_runtime_settings,
+    get_security_audit_logger,
     require_scope,
 )
 from kelvin_assistant.api.schemas import ChatRequest, ChatResponse
@@ -22,6 +23,7 @@ from kelvin_assistant.domain.chat import InvalidChatMessageError
 from kelvin_assistant.domain.input_guard import InputGuard
 from kelvin_assistant.domain.output_guard import mask_secrets
 from kelvin_assistant.ports.llm import LLMResponseError, LLMUnavailableError
+from kelvin_assistant.ports.security_audit import SecurityAuditLogger
 from kelvin_assistant.ports.sessions import (
     SessionConflictError,
     SessionNotFoundError,
@@ -31,6 +33,9 @@ router = APIRouter(prefix="/api/v1", tags=["chat"])
 RuntimeSettings = Annotated[Settings, Depends(get_runtime_settings)]
 RuntimeChatService = Annotated[ChatService, Depends(get_chat_service)]
 RuntimeInputGuard = Annotated[InputGuard, Depends(get_input_guard)]
+RuntimeSecurityAuditLogger = Annotated[
+    SecurityAuditLogger, Depends(get_security_audit_logger)
+]
 
 
 @router.post(
@@ -54,11 +59,28 @@ async def create_chat_turn(
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
     input_guard: RuntimeInputGuard,
+    audit_logger: RuntimeSecurityAuditLogger,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> ChatResponse:
     """Create one complete non-streaming conversation turn."""
 
     validation = input_guard.validate_input(request.message)
+    masked_input = mask_secrets(request.message)
+    correlation_id = None
+    if fastapi_request.state.correlation_id:
+        try:
+            correlation_id = UUID(fastapi_request.state.correlation_id)
+        except ValueError:
+            pass
+
+    await audit_logger.log_decision(
+        event_type="input_guard",
+        decision="allow" if validation.is_safe else "block",
+        masked_content=masked_input,
+        warnings=validation.warnings,
+        correlation_id=correlation_id,
+    )
+
     if not validation.is_safe:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -91,9 +113,18 @@ async def create_chat_turn(
             detail=str(exc),
         ) from exc
 
+    masked_message = mask_secrets(result.message) or ""
+    await audit_logger.log_decision(
+        event_type="output_guard",
+        decision="allow",
+        masked_content=masked_message,
+        warnings=[],
+        correlation_id=correlation_id,
+    )
+
     return ChatResponse(
         session_id=result.session_id,
-        message=mask_secrets(result.message) or "",
+        message=masked_message,
         model=settings.ollama_model,
         correlation_id=fastapi_request.state.correlation_id,
     )
@@ -119,11 +150,28 @@ async def stream_chat_turn(
     settings: RuntimeSettings,
     chat_service: RuntimeChatService,
     input_guard: RuntimeInputGuard,
+    audit_logger: RuntimeSecurityAuditLogger,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.CHAT_USE))],
 ) -> StreamingResponse:
     """Stream one conversation turn as server-sent events."""
 
     validation = input_guard.validate_input(request.message)
+    masked_input = mask_secrets(request.message)
+    correlation_id = None
+    if fastapi_request.state.correlation_id:
+        try:
+            correlation_id = UUID(fastapi_request.state.correlation_id)
+        except ValueError:
+            pass
+
+    await audit_logger.log_decision(
+        event_type="input_guard",
+        decision="allow" if validation.is_safe else "block",
+        masked_content=masked_input,
+        warnings=validation.warnings,
+        correlation_id=correlation_id,
+    )
+
     if not validation.is_safe:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -146,7 +194,8 @@ async def stream_chat_turn(
             result.session_id,
             result.chunks,
             settings.ollama_model,
-            fastapi_request.state.correlation_id,
+            correlation_id,
+            audit_logger,
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -164,7 +213,8 @@ async def _stream_chat_events(
     session_id: UUID,
     chunks: AsyncIterator[str],
     model: str,
-    correlation_id: UUID,
+    correlation_id: UUID | None,
+    audit_logger: SecurityAuditLogger,
 ) -> AsyncIterator[str]:
     """Convert streamed model chunks into the public SSE contract."""
 
@@ -173,15 +223,27 @@ async def _stream_chat_events(
         {
             "session_id": str(session_id),
             "model": model,
-            "correlation_id": str(correlation_id),
+            "correlation_id": str(correlation_id) if correlation_id else None,
         },
     )
+    full_response_parts = []
     try:
         async for chunk in chunks:
-            yield _sse_event("token", {"text": mask_secrets(chunk)})
+            masked_chunk = mask_secrets(chunk)
+            if masked_chunk:
+                full_response_parts.append(masked_chunk)
+            yield _sse_event("token", {"text": masked_chunk})
     except (SessionConflictError, LLMUnavailableError) as exc:
         yield _sse_event("error", {"detail": str(exc), "retryable": True})
     except (LLMResponseError, InvalidChatMessageError) as exc:
         yield _sse_event("error", {"detail": str(exc), "retryable": False})
     else:
+        full_response = "".join(full_response_parts)
+        await audit_logger.log_decision(
+            event_type="output_guard",
+            decision="allow",
+            masked_content=full_response,
+            warnings=[],
+            correlation_id=correlation_id,
+        )
         yield _sse_event("done", {})

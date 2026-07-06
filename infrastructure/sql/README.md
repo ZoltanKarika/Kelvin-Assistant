@@ -17,6 +17,8 @@ Later, the project may move these migrations behind Alembic.
 - `002_create_memory_schema.sql`: creates the initial v0.5 memory tables.
 - `003_create_agent_audit_schema.sql`: creates persistent v0.6 agent run,
   proposal, approval, and tool result tables.
+- `004_create_security_audit_schema.sql`: creates v0.8 security audit logging
+  tables for InputGuard and OutputGuard decisions.
 
 ## Running manually on the Ubuntu VM
 
