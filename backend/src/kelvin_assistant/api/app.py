@@ -5,10 +5,10 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict, cast
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from kelvin_assistant.adapters.file_api_tokens import FileApiTokenAuthenticator
@@ -271,7 +271,7 @@ def create_app(
                 if response.status_code < 500:
                     response_body = b""
                     if hasattr(response, "body_iterator"):
-                        async for chunk in getattr(response, "body_iterator"):
+                        async for chunk in cast(Any, response).body_iterator:
                             if isinstance(chunk, str):
                                 response_body += chunk.encode("utf-8")
                             else:
