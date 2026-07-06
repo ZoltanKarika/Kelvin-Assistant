@@ -89,6 +89,26 @@ class DefaultToolPolicy:
             )
 
         if definition.risk is ToolRisk.WRITE:
+            path = call.arguments.get("path")
+            if path is not None:
+                if not isinstance(path, str):
+                    return ToolPolicyResult(
+                        decision=ToolPolicyDecision.DENY,
+                        reason="Argument 'path' must be a string.",
+                    )
+                import re
+
+                if (
+                    ".." in path
+                    or path.startswith("/")
+                    or path.startswith("\\")
+                    or re.match(r"^[a-zA-Z]:", path)
+                ):
+                    return ToolPolicyResult(
+                        decision=ToolPolicyDecision.DENY,
+                        reason="path must be relative and without traversal.",
+                    )
+
             return ToolPolicyResult(
                 decision=ToolPolicyDecision.REQUIRE_APPROVAL,
                 reason="State-changing tools require explicit user approval.",

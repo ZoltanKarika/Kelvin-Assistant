@@ -334,8 +334,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         command = parse_command(parser, argv)
         return asyncio.run(execute_command(command))
     except ToolApprovalRejectedError:
-        LOGGER.info("Tool change was not applied")
-        return 0
+        LOGGER.error("Tool change was rejected; execution aborted.")
+        return 1
     except KeyboardInterrupt:
         LOGGER.info("Agent run cancelled by user")
         return 130
