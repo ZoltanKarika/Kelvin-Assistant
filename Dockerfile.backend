@@ -26,7 +26,7 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy package source code
 COPY backend /app/backend
-COPY pyproject.toml README.md /app/
+COPY pyproject.toml uv.lock README.md /app/
 
 # Re-run uv sync to install the project package itself into the virtualenv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
