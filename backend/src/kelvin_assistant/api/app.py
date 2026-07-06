@@ -1,12 +1,14 @@
 """FastAPI application factory."""
 
+import ipaddress
 import logging
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
+from typing import TypedDict
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from kelvin_assistant.adapters.file_api_tokens import FileApiTokenAuthenticator
@@ -57,6 +59,13 @@ LOGGER = logging.getLogger(__name__)
 # Sentinel that distinguishes "caller passed no authenticator" (use settings)
 # from "caller explicitly passed None" (disable auth for this app instance).
 _NOT_PROVIDED: FileApiTokenAuthenticator | None = object()  # type: ignore[assignment]
+
+
+class CachedResponse(TypedDict):
+    content: bytes
+    status_code: int
+    media_type: str | None
+    headers: dict[str, str]
 
 
 def create_app(
@@ -217,6 +226,79 @@ def create_app(
     app.include_router(agent_router)
     app.include_router(frontend_router)
 
+    idempotency_store: dict[str, CachedResponse] = {}
+
+    @app.middleware("http")
+    async def enforce_network_and_idempotency(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        # 1. Enforce Client IP Allowlist
+        settings = request.app.state.settings
+        client_host = None
+        x_forwarded_for = request.headers.get("X-Forwarded-For")
+        if x_forwarded_for:
+            client_host = x_forwarded_for.split(",")[0].strip()
+        else:
+            client_host = request.headers.get("X-Real-IP")
+
+        if not client_host:
+            client_host = request.client.host if request.client else None
+
+        if settings.allowed_clients:
+            if not client_host or not _is_ip_allowed(
+                client_host, settings.allowed_clients
+            ):
+                return Response(
+                    content="Forbidden: client IP not allowed.",
+                    status_code=403,
+                )
+
+        # 2. Enforce Idempotency for POST runs endpoints
+        if request.method == "POST" and "/runs" in request.url.path:
+            key = request.headers.get("X-Idempotency-Key")
+            if key:
+                if key in idempotency_store:
+                    cached = idempotency_store[key]
+                    return Response(
+                        content=cached["content"],
+                        status_code=cached["status_code"],
+                        media_type=cached["media_type"],
+                        headers=cached["headers"],
+                    )
+
+                response = await call_next(request)
+
+                if response.status_code < 500:
+                    response_body = b""
+                    if hasattr(response, "body_iterator"):
+                        async for chunk in getattr(response, "body_iterator"):
+                            if isinstance(chunk, str):
+                                response_body += chunk.encode("utf-8")
+                            else:
+                                response_body += bytes(chunk)
+                    else:
+                        response_body = bytes(response.body)
+
+                    idempotency_store[key] = {
+                        "content": response_body,
+                        "status_code": response.status_code,
+                        "media_type": response.media_type,
+                        "headers": {
+                            k: v
+                            for k, v in response.headers.items()
+                            if k.lower() != "content-length"
+                        },
+                    }
+                    return Response(
+                        content=response_body,
+                        status_code=response.status_code,
+                        media_type=response.media_type,
+                        headers=idempotency_store[key]["headers"],
+                    )
+                return response
+
+        return await call_next(request)
+
     @app.middleware("http")
     async def dispatch_correlation_id(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -236,3 +318,27 @@ def create_app(
         return response
 
     return app
+
+
+def _is_ip_allowed(client_ip_str: str, allowed_clients: Sequence[str]) -> bool:
+    if not allowed_clients:
+        return True
+    try:
+        client_ip = ipaddress.ip_address(client_ip_str)
+    except ValueError:
+        return False
+
+    for pattern in allowed_clients:
+        try:
+            if "/" in pattern:
+                network = ipaddress.ip_network(pattern, strict=False)
+                if client_ip in network:
+                    return True
+            else:
+                addr = ipaddress.ip_address(pattern)
+                if client_ip == addr:
+                    return True
+        except ValueError:
+            if client_ip_str == pattern:
+                return True
+    return False

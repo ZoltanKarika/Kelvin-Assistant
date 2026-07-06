@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     rag_result_limit: int = Field(default=3, gt=0)
     agent_workspace_ids: tuple[str, ...] = Field(default=())
     allowed_sources: tuple[str, ...] = Field(default=())
+    allowed_clients: tuple[str, ...] = Field(
+        default=(), validation_alias="kelvin_allowed_clients"
+    )
     max_external_requests_per_hour: int = Field(default=100)
     max_ai_cost_per_day_usd: float = Field(default=1.0)
 
