@@ -1,0 +1,46 @@
+# Multi-stage build for Kelvin Assistant FastAPI backend
+FROM python:3.12-slim AS builder
+
+# Install uv package manager
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy dependency definition files
+COPY pyproject.toml uv.lock README.md ./
+
+# Install python dependencies without the project package itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
+# Second stage: minimal runtime environment
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy virtualenv and dependencies from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy package source code
+COPY backend /app/backend
+COPY pyproject.toml README.md /app/
+
+# Re-run uv sync to install the project package itself into the virtualenv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN uv sync --frozen --no-dev
+
+# Expose default port
+EXPOSE 8000
+
+# Set virtualenv in PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Default runtime configuration
+ENV KELVIN_API_HOST=0.0.0.0
+ENV KELVIN_API_PORT=8000
+ENV KELVIN_ENVIRONMENT=development
+
+CMD ["kelvin-api"]

@@ -17,16 +17,16 @@ Related documents:
 
 | Step | Item | Depends on | Branch suggestion | Status |
 |---|---|---|---|---|
-| **1** | Input Guard & Prompt Injection Defense | — | `feat/v0.8-input-guard` | ⬜ |
-| **2** | Context Guard & Source Trust Boundaries | #1 | `feat/v0.8-context-guard` | ⬜ |
-| **3** | Output Guard & Secret Masking | #1 | `feat/v0.8-output-guard` | ⬜ |
-| **4** | Tool Guard & Secure Write Approvals | — | `feat/v0.8-tool-guard` | ⬜ |
-| **5** | Connected Audit Logs & Security Decisions | #1, #3 | `feat/v0.8-security-audit` | ⬜ |
-| **6** | API Hardening (Scope validation, Token rotation, Revocation) | — | `feat/v0.8-api-hardening` | ⬜ |
-| **7** | Network Resilience & Webhook/Source Allowlists | — | `feat/v0.8-network-resilience` | ⬜ |
-| **8** | Context Pruning & Secondary Credentials | — | `feat/v0.8-context-pruning` | ⬜ |
-| **9** | Kelvin Containerization Trial | — | `chore/v0.8-container-trial` | ⬜ |
-| **10** | Secretless Workflow Exports & Backup Verification | #9 | `chore/v0.8-completion` | ⬜ |
+| **1** | Input Guard & Prompt Injection Defense | — | `feat/v0.8-input-guard` | ✅ |
+| **2** | Context Guard & Source Trust Boundaries | #1 | `feat/v0.8-context-guard` | ✅ |
+| **3** | Output Guard & Secret Masking | #1 | `feat/v0.8-output-guard` | ✅ |
+| **4** | Tool Guard & Secure Write Approvals | — | `feat/v0.8-tool-guard` | ✅ |
+| **5** | Connected Audit Logs & Security Decisions | #1, #3 | `feat/v0.8-security-audit` | ✅ |
+| **6** | API Hardening (Scope validation, Token rotation, Revocation) | — | `feat/v0.8-api-hardening` | ✅ |
+| **7** | Network Resilience & Webhook/Source Allowlists | — | `feat/v0.8-network-resilience` | ✅ |
+| **8** | Context Pruning & Secondary Credentials | — | `feat/v0.8-context-pruning` | ✅ |
+| **9** | Kelvin Containerization Trial | — | `chore/v0.8-container-trial` | ✅ |
+| **10** | Secretless Workflow Exports & Backup Verification | #9 | `chore/v0.8-completion` | ✅ |
 
 ---
 

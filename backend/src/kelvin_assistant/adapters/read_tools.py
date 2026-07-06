@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -23,6 +24,101 @@ from kelvin_assistant.ports.tools import ToolExecutionError
 from kelvin_assistant.tools.read_definitions import read_tool_definitions
 
 _DEFINITIONS = {definition.name: definition for definition in read_tool_definitions()}
+
+
+def should_ignore_path(path: Path, workspace_root: Path) -> bool:
+    """Return whether a path matches standard or workspace-defined ignore patterns."""
+    try:
+        abs_path = path.resolve()
+        abs_root = workspace_root.resolve()
+    except OSError:
+        abs_path = path.absolute()
+        abs_root = workspace_root.absolute()
+
+    if abs_path == abs_root:
+        return False
+
+    try:
+        rel_path = abs_path.relative_to(abs_root)
+    except ValueError:
+        return True
+
+    # Standard patterns that are always ignored
+    standard_ignored_names = {
+        ".git",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".coverage",
+        "htmlcov",
+        ".idea",
+        ".vscode",
+        "logs",
+        "models",
+        "chroma",
+        ".uv-cache",
+        ".sandbox-pytest-temp",
+    }
+
+    standard_ignored_globs = {
+        "*.pyc",
+        "*.pyo",
+        "*.pyd",
+        "*.so",
+        "*.log",
+        "*.tmp",
+        "*.bak",
+        "*~",
+        ".env",
+        ".env.*",
+        "api-tokens.json",
+    }
+
+    for part in rel_path.parts:
+        if part in standard_ignored_names:
+            return True
+        for pattern in standard_ignored_globs:
+            if fnmatch.fnmatch(part, pattern):
+                return True
+
+    # Check if any part matches custom patterns from workspace .gitignore
+    gitignore_file = abs_root / ".gitignore"
+    if gitignore_file.is_file():
+        try:
+            lines = gitignore_file.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            lines = []
+
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("!"):
+                continue
+
+            pattern = line
+            if pattern.endswith("/"):
+                pattern = pattern[:-1]
+
+            if pattern.startswith("/"):
+                pattern_sub = pattern[1:]
+                if fnmatch.fnmatch(rel_path.as_posix(), pattern_sub) or fnmatch.fnmatch(
+                    rel_path.as_posix(), f"{pattern_sub}/*"
+                ):
+                    return True
+            else:
+                for part in rel_path.parts:
+                    if fnmatch.fnmatch(part, pattern):
+                        return True
+                if fnmatch.fnmatch(
+                    rel_path.as_posix(), f"**/{pattern}/**"
+                ) or fnmatch.fnmatch(rel_path.as_posix(), pattern):
+                    return True
+
+    return False
 
 
 class GitStatusExecutor:
@@ -51,7 +147,7 @@ class GitStatusExecutor:
         arguments = ["status", "--short", "--branch"]
         if not include_untracked:
             arguments.append("--untracked-files=no")
-        return await _run_tool(
+        result = await _run_tool(
             runner=self._runner,
             call=call,
             definition=self.definition,
@@ -61,6 +157,27 @@ class GitStatusExecutor:
                 cwd=root,
                 timeout_seconds=self.definition.timeout_seconds,
             ),
+        )
+        if not result.succeeded or not result.output:
+            return result
+
+        filtered_lines = []
+        for line in result.output.splitlines():
+            if len(line) > 3:
+                status_path = line[3:].strip()
+                if " -> " in status_path:
+                    status_path = status_path.split(" -> ", 1)[-1].strip()
+                if should_ignore_path(root / status_path, root):
+                    continue
+            filtered_lines.append(line)
+
+        return ToolExecutionResult(
+            tool_call_id=result.tool_call_id,
+            tool_name=result.tool_name,
+            succeeded=True,
+            output="\n".join(filtered_lines),
+            truncated=result.truncated,
+            duration_ms=result.duration_ms,
         )
 
 
@@ -157,8 +274,17 @@ class FileSearchExecutor:
             return result
 
         lines = result.output.splitlines()
-        limited_output = "\n".join(lines[:max_results])
-        was_truncated = result.truncated or len(lines) > max_results
+        filtered_lines = []
+        for line in lines:
+            parts = line.split(":", 2)
+            if len(parts) >= 2:
+                file_rel_path = parts[0]
+                if should_ignore_path(root / file_rel_path, root):
+                    continue
+            filtered_lines.append(line)
+
+        limited_output = "\n".join(filtered_lines[:max_results])
+        was_truncated = result.truncated or len(filtered_lines) > max_results
         return ToolExecutionResult(
             tool_call_id=result.tool_call_id,
             tool_name=result.tool_name,
@@ -251,6 +377,8 @@ def _optional_path(
     candidate = (workspace_root / candidate_input).resolve(strict=False)
     if candidate != workspace_root and workspace_root not in candidate.parents:
         raise ToolExecutionError("Tool path escapes the workspace")
+    if should_ignore_path(candidate, workspace_root):
+        raise ToolExecutionError("Tool path is ignored by workspace rules")
     return candidate.relative_to(workspace_root).as_posix()
 
 

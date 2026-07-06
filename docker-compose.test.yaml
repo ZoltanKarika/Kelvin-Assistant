@@ -1,0 +1,23 @@
+name: kelvin-backend-test
+
+services:
+  backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: kelvin-backend-test
+    ports:
+      - "127.0.0.1:8080:8000"
+    environment:
+      - KELVIN_ENVIRONMENT=development
+      - KELVIN_API_HOST=0.0.0.0
+      - KELVIN_API_PORT=8000
+      - KELVIN_LOG_LEVEL=DEBUG
+      # Allow connection to the host's services (like PostgreSQL or Ollama)
+      - KELVIN_DATABASE_URL=postgresql://kelvin:kelvin@host.docker.internal:5432/kelvin
+      - KELVIN_OLLAMA_BASE_URL=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
