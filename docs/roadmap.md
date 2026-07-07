@@ -15,7 +15,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
 | v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
 | v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Kész |
-| v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
+| v0.9 UI & Email Notifications | Helyi kezelőfelület és email értesítések | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 ## v0.1 Foundation
@@ -338,25 +338,30 @@ API-kulcs kiolvasását kérő utasítás nem válthat ki tool-hívást, a titok
 jelenhet meg válaszban vagy naplóban, a workflow pedig biztonságosan
 újrapróbálható és Kelvin auditadataiig visszakövethető.
 
-## v0.9 Messaging
+## v0.9 UI & Email Notifications
 
-- elsődlegesen n8n kommunikációs node-ok használata külön Kelvin-adapterek
-  helyett;
-- bejövő üzenetek normalizálása Kelvin verziózott API-kérésre;
-- chatcsatorna, beszélgetésszál és felhasználó Kelvin sessionhöz rendelése;
-- engedélyezett felhasználók és csatornák allowlistje;
-- üzenetazonosítók deduplikálása és újrapróbálható feldolgozás;
-- első felhős workflow Slackhez;
-- opcionális WhatsApp Business Platform workflow;
-- első helyi workflow Matrix vagy Mattermost rendszerhez;
-- hozzáférési tokenek kizárólag az n8n credential store-ban;
-- auditkapcsolat a külső üzenet, az n8n workflow és a Kelvin agentfutás között;
-- távoli chatből indított állapotváltoztatás továbbra is helyi jóváhagyást
-  igényel a Windows `kelvin` kliensben.
+- használható helyi Kelvin UI futások, jóváhagyások, audit, beállítások és n8n
+  állapot megjelenítésére;
+- agentfutások listázása státusszal, idővonallal, részletekkel és biztonságosan
+  maszkolt tool-kimenetekkel;
+- helyi jóváhagyási sor író vagy magas kockázatú műveletekhez;
+- auditnapló-keresés és auditbejegyzések összekapcsolása futásokkal,
+  korrelációs azonosítókkal és jóváhagyási eseményekkel;
+- beállítási felület runtime-, biztonsági, email- és n8n-konfigurációhoz nyers
+  titkok megjelenítése nélkül;
+- n8n állapotpanel, amely láthatóvá teszi az automation réteg egészségét, de
+  n8n kiesése esetén nem blokkolja a helyi Kelvin használatát;
+- email értesítés függő jóváhagyásról;
+- email értesítés sikeresen befejezett vagy hibával lezárt futásokról;
+- napi email összefoglaló futásszámokkal, függő jóváhagyásokkal, fontos audit
+  eseményekkel és n8n állapottal;
+- Slack, WhatsApp, Matrix és Mattermost chat-integrációk nem részei a v0.9
+  mérföldkőnek.
 
-Elfogadási feltétel: egy engedélyezett felhasználó a kiválasztott n8n
-üzenetküldő workflow-n keresztül kommunikál Kelvinnel, és a külső szolgáltatás
-kiesése nem akadályozza a helyi chat vagy agent működését.
+Elfogadási feltétel: Kelvin a helyi UI-ban átláthatóan kezelhető, a felhasználó
+látja a futásokat, jóváhagyásokat, auditot, beállításokat és n8n állapotot,
+valamint biztonságos email értesítést kap függő jóváhagyásokról, futási
+eredményekről és napi összefoglalóról.
 
 ## Post-1.0 opcionális Voice
 
