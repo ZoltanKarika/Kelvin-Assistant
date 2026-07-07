@@ -1,6 +1,6 @@
 # v0.9 Messaging — Implementation Guide
 
-This document tracks the progress of v0.9 and provides step-by-step instructions for implementing two-way messaging workflows through n8n.
+This document tracks the progress of v0.9 and provides step-by-step instructions for implementing two-way messaging integrations via n8n workflows.
 
 Related documents:
 
@@ -16,17 +16,17 @@ Related documents:
 
 | Step | Item | Depends on | Branch suggestion | Status |
 |---|---|---|---|---|
-| **1** | Message Domain Model & Channel Policy | — | `feat/v0.9-message-domain` | ⏳ |
-| **2** | Inbound Message Route & Normalizer | #1 | `feat/v0.9-inbound-route` | ⏳ |
-| **3** | Message Deduplication Middleware | #2 | `feat/v0.9-message-dedup` | ⏳ |
-| **4** | Session Binding (Thread-to-Session Resolver) | #2 | `feat/v0.9-session-binding` | ⏳ |
-| **5** | Rate Limiting for Messaging | #2 | `feat/v0.9-rate-limiting` | ⏳ |
-| **6** | Extended Audit Logs for Messaging | #4 | `feat/v0.9-messaging-audit` | ⏳ |
-| **7** | First n8n Slack Workflow (Incoming & Reply) | #1–#6 | `feat/v0.9-slack-workflow` | ⏳ |
-| **8** | Optional WhatsApp Business Workflow | #7 | `feat/v0.9-whatsapp-workflow` | ⏳ |
-| **9** | First Local Workflow (Matrix or Mattermost) | #7 | `feat/v0.9-local-messaging` | ⏳ |
-| **10** | Error Handling & Fallback Replies | #7 | `feat/v0.9-messaging-resilience` | ⏳ |
-| **11** | End-to-End Testing & Roadmap Verification | #7–#10 | `chore/v0.9-completion` | ⏳ |
+| **1** | Database Schema & Domain Model for Sessions & Logging | — | `feat/v0.9-database-schema` | ⏳ |
+| **2** | Message Deduplication & Idempotency Logic | #1 | `feat/v0.9-deduplication` | ⏳ |
+| **3** | User and Channel Allowlist Enforcement | — | `feat/v0.9-allowlist` | ⏳ |
+| **4** | Normalized Incoming Message API Endpoint | #1, #2, #3 | `feat/v0.9-incoming-api` | ⏳ |
+| **5** | Rate Limiting for Messaging | #4 | `feat/v0.9-rate-limiting` | ⏳ |
+| **6** | Connected Audit Logs (Chat -> n8n -> Agent Run) | #4 | `feat/v0.9-audit-logs` | ⏳ |
+| **7** | Windows CLI Local Write Approval Safeguard | — | `feat/v0.9-local-approval` | ⏳ |
+| **8** | Matrix/Mattermost Local Integration Workflow | #4 | `feat/v0.9-matrix-workflow` | ⏳ |
+| **9** | Slack Cloud Integration Workflow | #4 | `feat/v0.9-slack-workflow` | ⏳ |
+| **10** | WhatsApp Business Workflow & Credential Auditing | #9 | `feat/v0.9-whatsapp-credentials` | ⏳ |
+| **11** | Error Handling, Fallbacks & Full E2E Verification | #1–#10 | `feat/v0.9-verification` | ⏳ |
 
 ---
 
@@ -36,97 +36,100 @@ Each step below is designed as a single PR. Work one step at a time.
 
 ---
 
-### Step 1: Message Domain Model & Channel Policy
+### Step 1: Database Schema & Domain Model for Sessions & Logging
 
-**Goal:** Create domain models for external messaging, and enforce user/channel allowlists to restrict access to trusted platforms and users.
+**Goal:** Create database tables and domain models under hexagonal architecture to map external chat conversations (platform, channel, thread, user) to Kelvin sessions and store incoming message IDs.
 
 **What to do:**
 
-1. Create `backend/src/kelvin_assistant/domain/messaging.py` with:
-   - `ExternalMessage` value object containing: `platform`, `channel_id`, `thread_id`, `user_id`, `message_id`, `text`.
-   - `ChannelPolicy` configuration mapping platforms to lists of allowed channel/user IDs.
-   - `is_authorized(platform: str, channel_id: str, user_id: str) -> bool` check against configured lists.
-2. Load messaging configuration in `backend/src/kelvin_assistant/config/` (add `KELVIN_ALLOWED_CHANNELS` and `KELVIN_ALLOWED_USERS` as environment configurations or JSON config files).
-3. Create unit tests in `tests/unit/domain/test_messaging.py`.
+1. Create a migration or schema update adding a `chat_sessions` table mapping `(platform, external_channel_id, external_user_id)` to a Kelvin `session_id`.
+2. Create an `incoming_messages` log table containing columns: `id` (UUID), `platform`, `external_message_id`, `received_at`.
+3. Create `backend/src/kelvin_assistant/domain/messaging.py` containing value objects: `ExternalMessage`, `ChannelIdentity`, `ThreadIdentity`.
+4. Update database adapters in `backend/src/kelvin_assistant/adapters/` to query and write to these tables.
+5. Create unit tests in `tests/unit/domain/test_messaging.py`.
 
 **Commit message:**
 
 ```text
-feat(domain): implement message domain model and channel policy allowlists
+feat(db): add chat_sessions and incoming_messages tables and domain models
 ```
 
 ---
 
-### Step 2: Inbound Message Route & Normalizer
+### Step 2: Message Deduplication & Idempotency Logic
 
-**Goal:** Add a dedicated REST API endpoint that receives, validates, and normalizes incoming message payloads from n8n.
-
-**What to do:**
-
-1. Create a new router `backend/src/kelvin_assistant/api/messaging_routes.py`:
-   - POST `/api/v1/messages/inbound` route accepting `InboundMessageRequest` schema.
-   - Inject the messaging dependency and scope validate (must have `kelvin:read` or a new `messaging:inbound` scope).
-   - Use `ChannelPolicy` to authorize the incoming message source.
-2. Register the router in `backend/src/kelvin_assistant/api/app.py`.
-3. Create integration tests in `tests/integration/api/test_messaging_routes.py`.
-
-**Commit message:**
-
-```text
-feat(api): add inbound message route and payload normalization
-```
-
----
-
-### Step 3: Message Deduplication Middleware
-
-**Goal:** Implement a deduplication check to prevent replay attacks or duplicate processing of external events (especially Slack retries).
+**Goal:** Implement robust logic to ignore duplicate webhook triggers sent by messaging platforms (e.g., Slack retry attempts).
 
 **What to do:**
 
 1. Create `backend/src/kelvin_assistant/application/message_dedup.py`:
-   - `MessageDeduplicator` utilizing PostgreSQL or an in-memory/Redis cache to track processed `(platform, message_id)` keys.
-   - Save successful processing tokens with an expiration window (e.g., 24 hours).
-2. Integrate this validator in the inbound message route before parsing the request or as a specialized check inside `messaging_routes.py`.
-3. Create unit tests in `tests/unit/application/test_message_dedup.py`.
+   - `MessageDeduplicator` checking if a `(platform, external_message_id)` pair already exists in the `incoming_messages` table.
+   - If it exists, return/skip processing immediately.
+   - If it does not exist, log it and proceed.
+2. Create unit tests in `tests/unit/application/test_message_dedup.py`.
 
 **Commit message:**
 
 ```text
-feat(application): implement message deduplication logic for external events
+feat(messaging): implement message deduplication logic
 ```
 
 ---
 
-### Step 4: Session Binding (Thread-to-Session Resolver)
+### Step 3: User and Channel Allowlist Enforcement
 
-**Goal:** Resolve or bind an external platform channel and thread ID to a unique Kelvin `Session`.
+**Goal:** Guard the messaging interface by ensuring only authorized users and channels can interact with Kelvin.
 
 **What to do:**
 
-1. Create `backend/src/kelvin_assistant/application/session_resolver.py`:
-   - `resolve_session(platform: str, channel_id: str, thread_id: str | None) -> UUID`
-   - Maps the unique external channel/thread coordinates to a persistent `SessionID`. If no session exists, it creates one.
-   - Apply configurable idle session timeout (after which a new session is initialized).
-2. Update the chat dispatch in `messaging_routes.py` to forward normalized messages to the respective resolved session.
-3. Write unit tests in `tests/unit/application/test_session_resolver.py`.
+1. Add settings configuration for `allowed_chat_users: tuple[str, ...]` and `allowed_chat_channels: tuple[str, ...]`.
+2. Build middleware or a dependency check/policy rejecting requests originating from non-allowlisted users or channels.
+3. Write unit tests in `tests/unit/domain/test_channel_policy.py`.
 
 **Commit message:**
 
 ```text
-feat(application): implement thread-to-session resolution logic
+feat(security): enforce user and channel allowlist for chat incoming webhook
+```
+
+---
+
+### Step 4: Normalized Incoming Message API Endpoint
+
+**Goal:** Implement the FastAPI entrypoint that receives normalized requests from n8n.
+
+**What to do:**
+
+1. Add `/api/v1/messaging/incoming` handling payload:
+   ```json
+   {
+     "platform": "slack|matrix|mattermost|whatsapp",
+     "message_id": "string",
+     "channel_id": "string",
+     "user_id": "string",
+     "text": "string"
+   }
+   ```
+2. Integrate allowlist checks, deduplication, and map it to a session.
+3. Respond with a normalized Kelvin message response structure.
+4. Create integration tests in `tests/integration/api/test_messaging_routes.py`.
+
+**Commit message:**
+
+```text
+feat(api): implement normalized incoming messaging endpoint
 ```
 
 ---
 
 ### Step 5: Rate Limiting for Messaging
 
-**Goal:** Add rate-limiting capabilities on a per-user and per-channel basis to prevent DoS attacks via external platforms.
+**Goal:** Implement rate-limiting capabilities on a per-user and per-channel basis to prevent DoS attacks via external platforms.
 
 **What to do:**
 
-1. Create `backend/src/kelvin_assistant/api/messaging_rate_limiter.py` that checks requests per user/channel within window limits.
-2. Integrate the rate limiter with `/api/v1/messages/inbound`.
+1. Create `backend/src/kelvin_assistant/api/messaging_rate_limiter.py` checking requests per user/channel within window limits.
+2. Integrate the rate limiter with `/api/v1/messaging/incoming`.
 3. Create unit tests verifying rate limits are enforced and return standard HTTP 429 errors.
 
 **Commit message:**
@@ -137,113 +140,111 @@ feat(api): implement message rate limiting for inbound events
 
 ---
 
-### Step 6: Extended Audit Logs for Messaging
+### Step 6: Connected Audit Logs (Chat -> n8n -> Agent Run)
 
-**Goal:** Extend the PostgreSQL audit log schema to link the external message metadata, n8n run identifier, and the Kelvin agent session execution.
+**Goal:** Keep audit logs traceable from the external message down to the agent run.
 
 **What to do:**
 
-1. Update audit schemas and models in `backend/src/kelvin_assistant/ports/` and `domain/` to support external platform audit fields: `external_message_id`, `n8n_run_id`, `channel_id`.
-2. Ensure `InputGuard` and `OutputGuard` decisions are tied into these audit structures without logging the masked sensitive secrets.
+1. Update the security audit database model to link `external_message_id` and `n8n_execution_id` (via headers/payload) to any agent runs triggered by a message.
+2. Ensure audit logs are fully queryable and that sensitive content masked by `OutputGuard` is not stored in plaintext logs.
 3. Write database integration tests in `tests/integration/test_messaging_audit.py`.
 
 **Commit message:**
 
 ```text
-feat(observability): extend audit logs to track external messaging identifiers
+feat(audit): connect chat message and n8n execution IDs to agent runs
 ```
 
 ---
 
-### Step 7: First n8n Slack Workflow (Incoming & Reply)
+### Step 7: Windows CLI Local Write Approval Safeguard
 
-**Goal:** Build and export the first cloud-integrated n8n workflow for Slack that normalizes payloads, handles slack retries (3-second rules), sends payloads to Kelvin, and relays responses.
+**Goal:** Enforce that write operations proposed via external chat trigger a local validation prompt on the Windows client and cannot execute silently.
 
 **What to do:**
 
-1. Construct the Slack workflow in the self-hosted n8n editor.
-2. Setup immediate Slack acknowledgment (to satisfy the 3-second reply limit).
-3. Call the normalized `/api/v1/messages/inbound` endpoint.
-4. Export the n8n workflow JSON, strip credentials, and save it in `infrastructure/n8n/workflows/slack_messaging.json`.
-5. Add configuration instructions to `docs/n8n-credential-setup.md`.
+1. Harden tool execution policies: any write operation proposed in a session initiated via an external messaging platform must mark the status as "Awaiting local approval".
+2. The local `kelvin` CLI client must retrieve and prompt for manual review on these runs.
+3. Update `backend/src/kelvin_assistant/application/tool_policy.py` to assert this constraint.
 
 **Commit message:**
 
 ```text
-chore(n8n): add secretless slack messaging workflow configuration
+feat(cli): require local user approval for write tools triggered via chat
 ```
 
 ---
 
-### Step 8: Optional WhatsApp Business Workflow
+### Step 8: Matrix/Mattermost Local Integration Workflow
 
-**Goal:** Implement a WhatsApp Business Platform workflow for remote interaction.
+**Goal:** Build the n8n workflow for local, self-hosted chat platforms.
 
 **What to do:**
 
-1. Design the n8n WhatsApp workflow mapping user incoming text to Kelvin.
-2. Handle the Meta webhook verification request challenge.
-3. Export the workflow JSON to `infrastructure/n8n/workflows/whatsapp_messaging.json`.
-4. Document Meta API and phone number registration details.
+1. Create `infrastructure/n8n/workflows/chat_matrix.json` (or Mattermost equivalent).
+2. Ensure webhook handles incoming user text, normalizes it, sends it to `/api/v1/messaging/incoming` (with header authentication), and posts the response back.
+3. Save configurations in `docs/n8n-credential-setup.md`.
 
 **Commit message:**
 
 ```text
-chore(n8n): add optional whatsapp business platform workflow
+chore(n8n): add Matrix integration workflow
 ```
 
 ---
 
-### Step 9: First Local Workflow (Matrix or Mattermost)
+### Step 9: Slack Cloud Integration Workflow
 
-**Goal:** Build a local self-hosted messaging workflow using Matrix or Mattermost to support local, offline-first operation.
+**Goal:** Build the n8n workflow for Slack integration.
 
 **What to do:**
 
-1. Create a Matrix or Mattermost n8n integration workflow.
-2. Export the workflow to `infrastructure/n8n/workflows/local_messaging.json`.
-3. Document local setup configuration parameters in `docs/n8n-credential-setup.md`.
+1. Create `infrastructure/n8n/workflows/chat_slack.json`.
+2. Connect Slack Events API to n8n, handle URL verification, normalize messages, and invoke the Kelvin API.
 
 **Commit message:**
 
 ```text
-chore(n8n): add local matrix/mattermost offline messaging workflow
+chore(n8n): add Slack integration workflow
 ```
 
 ---
 
-### Step 10: Error Handling & Fallback Replies
+### Step 10: WhatsApp Business Workflow & Credential Auditing
 
-**Goal:** Ensure external messaging failures do not block Kelvin, and configure n8n error workflows to reply gracefully on target platforms.
+**Goal:** Implement the WhatsApp Business Platform workflow and verify credentials security configuration.
+
+**What to do:**
+
+1. Create `infrastructure/n8n/workflows/chat_whatsapp.json`.
+2. Connect Meta webhooks to n8n, handle verification requests, and route payloads.
+3. Audit workflow files to ensure Slack OAuth, WhatsApp tokens, Matrix logins, and other external credentials exist solely inside n8n's encrypted store, never inside the Kelvin codebase.
+
+**Commit message:**
+
+```text
+chore(n8n): add WhatsApp workflow and verify credentials store configuration
+```
+
+---
+
+### Step 11: Error Handling, Fallbacks & Full E2E Verification
+
+**Goal:** Configure error handling fallback flows and run full end-to-end flow checks under simulated messaging inputs.
 
 **What to do:**
 
 1. Setup an n8n Error Trigger workflow that replies with a standard "Kelvin is currently offline or did not respond in time" message when Kelvin backend returns errors or times out.
 2. Implement fallback paths to guarantee local Windows CLI/API functionality works unaffected during external messaging service outages.
-3. Document troubleshooting steps.
+3. Mock n8n payloads to `/api/v1/messaging/incoming` and verify deduplication, allowlist blocks, and session routing under simulated inputs.
+4. Perform mock prompt injection attacks over external messaging to ensure they are blocked by `InputGuard` and audited safely.
+5. Update `docs/roadmap.md` and mark v0.9 as complete.
 
 **Commit message:**
 
 ```text
-docs: document messaging resilience guidelines and configure n8n error triggers
-```
-
----
-
-### Step 11: End-to-End Testing & Roadmap Verification
-
-**Goal:** Validate all acceptance criteria, verify backup/restore compatibility for messaging configurations, and finalize the roadmap.
-
-**What to do:**
-
-1. Run full end-to-end flow checks (Slack/Matrix message -> n8n -> Kelvin -> response).
-2. Perform mock prompt injection attacks over Slack to ensure they are blocked by `InputGuard` and audited safely.
-3. Update `docs/roadmap.md` and mark v0.9 as complete.
-
-**Commit message:**
-
-```text
-docs: finalize v0.9 milestone and update development roadmap
+test(integration): verify two-way messaging pipeline and resilience fallbacks
 ```
 
 ---
@@ -252,15 +253,15 @@ docs: finalize v0.9 milestone and update development roadmap
 
 | Acceptance Criterion | Step |
 |---|---|
-| elsődlegesen n8n kommunikációs node-ok használata | #7, #8, #9 |
-| bejövő üzenetek normalizálása Kelvin API-kérésre | #2 |
-| chatcsatorna, beszélgetésszál és felhasználó Kelvin sessionhöz rendelése | #4 |
-| engedélyezett felhasználók és csatornák allowlistje | #1, #2 |
-| üzenetazonosítók deduplikálása és újrapróbálható feldolgozás | #3 |
-| első felhős workflow Slackhez | #7 |
-| opcionális WhatsApp Business Platform workflow | #8 |
-| első helyi workflow Matrix vagy Mattermost rendszerhez | #9 |
-| hozzáférési tokenek kizárólag az n8n credential store-ban | #7, #8, #9 |
+| elsődlegesen n8n kommunikációs node-ok használata külön Kelvin-adapterek helyett | #8, #9, #10 |
+| bejövő üzenetek normalizálása Kelvin verziózott API-kérésre | #4 |
+| chatcsatorna, beszélgetésszál és felhasználó Kelvin sessionhöz rendelése | #1, #4 |
+| engedélyezett felhasználók és csatornák allowlistje | #3, #4 |
+| üzenetazonosítók deduplikálása és újrapróbálható feldolgozás | #2 |
+| első felhős workflow Slackhez | #9 |
+| opcionális WhatsApp Business Platform workflow | #10 |
+| első helyi workflow Matrix vagy Mattermost rendszerhez | #8 |
+| hozzáférési tokenek kizárólag az n8n credential store-ban | #10 |
 | auditkapcsolat a külső üzenet, az n8n workflow és a Kelvin agentfutás között | #6 |
-| távoli chatből indított állapotváltoztatás helyi jóváhagyást igényel | #11 |
-| a külső szolgáltatás kiesése nem akadályozza a helyi chat működését | #10 |
+| távoli chatből indított állapotváltoztatás továbbra is helyi jóváhagyást igényel | #7 |
+| a külső szolgáltatás kiesése nem akadályozza a helyi chat vagy agent működését | #11 |

@@ -7,10 +7,10 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt a **v0.5 Memory** mérföldkőnél tart. A FastAPI
+A projekt a **v0.8 AI Security & Integration Hardening** mérföldkőnél tart. A FastAPI
 backend Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
 automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések
-helyileg, a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12
+helyileg, a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12/3.13
 környezetben is sikeresek.
 
 Jelenleg működik:
@@ -49,12 +49,16 @@ Jelenleg működik:
 - policy-ellenőrzött Git-, keresési és fájleszközök;
 - Windows `kelvin` kliens helyi végrehajtással;
 - diff-előnézet és jóváhagyás fájlmódosítás előtt;
-- PostgreSQL agent audit és szabályos `Ctrl+C` cancellation.
+- PostgreSQL agent audit és szabályos `Ctrl+C` cancellation;
+- **AI Security Gateway (Firewall for AI)**: input guard prompt injection ellen, context guard a memóriahatárok megtartására, és output guard a titkok maszkolására;
+- **IP allowlist és hálózati korlátozások**: webhookok és endpointok CIDR-alapú ügyfélszűréssel és in-memory idempotencia védelemmel;
+- **Munkamenet kontextus szűrés (Pruning)**: a workspace read/write eszközök (ripgrep, git status, patch) szűrése `.gitignore` és beépített minták alapján;
+- **Konténerizációs tesztkörnyezet**: `Dockerfile.backend` és `docker-compose.test.yaml` a különálló tesztüzemhez;
+- **Biztonságos credential-kezelés**: dokumentált n8n credential store használat külső LLM és képgenerálók számára.
 
-A v0.6 agentfunkciói elkészültek és a Windows–Ubuntu production környezetben
-validálva lettek. Az n8n-integráció elkezdődött, elkészültek a `health` és `chat`
-workflow-k a `infrastructure/n8n/workflows` könyvtárban. Az opcionális hangvezérlés még nincs
-kész. A DHCP-foglalás, az offline csomag-előkészítés és a mentési eljárás
+A v0.8 funkciói elkészültek és a Windows–Ubuntu production környezetben
+validálva lettek. Az n8n-integráció és a mentési eljárás ellenőrzése sikeres.
+Az opcionális hangvezérlés még nincs kész. A DHCP-foglalás és az offline csomag-előkészítés
 továbbra is hátralévő üzemeltetési feladat.
 
 ## Projektcél
@@ -223,8 +227,8 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
-| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció. Elkészültek az első workflow-k (health check, chat). | Folyamatban |
-| v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Tervezett |
+| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció. Elkészültek az első workflow-k (health check, chat). | Kész |
+| v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Kész |
 | v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
