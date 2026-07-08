@@ -163,14 +163,19 @@ Ellenőrzés egy másik PowerShell-ablakból:
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/
 Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/status
 Invoke-RestMethod http://127.0.0.1:8000/ready
 Invoke-RestMethod http://127.0.0.1:8000/ready/database
 Invoke-RestMethod http://127.0.0.1:8000/version
 ```
 
-Az `/health` csak a FastAPI folyamat állapotát jelzi. A `/ready` az Ollama
-elérhetőségét és a konfigurált modell telepítettségét is ellenőrzi. Ha ezek
-nem állnak rendelkezésre, a végpont HTTP 503 választ ad.
+Az `/health` csak a FastAPI folyamat állapotát jelzi. A `/status` mindig HTTP
+200 választ ad, és összesíti az API, auth, LLM, database és n8n komponensek
+állapotát `ready`, `degraded` vagy `unavailable` státusszal. Ez az operátori
+áttekintéshez használható.
+
+Az `/ready` az Ollama elérhetőségét és a konfigurált modell telepítettségét is
+ellenőrzi. Ha ezek nem állnak rendelkezésre, a végpont HTTP 503 választ ad.
 
 Az `/ready/database` a PostgreSQL kapcsolatot ellenőrzi egy egyszerű `select 1`
 lekérdezéssel. Ha a `KELVIN_DATABASE_URL` nincs beállítva, vagy az adatbázis nem
@@ -532,6 +537,7 @@ Külső health ellenőrzés Windows PowerShellből:
 
 ```powershell
 Invoke-RestMethod http://<VM_IP>:8000/health
+Invoke-RestMethod http://<VM_IP>:8000/status
 Invoke-RestMethod http://<VM_IP>:8000/ready
 Invoke-RestMethod http://<VM_IP>:8000/ready/database
 Invoke-RestMethod http://<VM_IP>:8000/version
@@ -540,7 +546,7 @@ Invoke-RestMethod http://<VM_IP>:8000/version
 Friss telepítés v1.0 smoke check:
 
 1. `systemctl status kelvin-api --no-pager` aktív állapotot mutat.
-2. A fenti négy endpoint elérhető a megbízható helyi hálózatról.
+2. A fenti öt endpoint elérhető a megbízható helyi hálózatról.
 3. A `http://<VM_IP>:8000/ui` betölt, és a Runs, Approvals, Audit, Settings és
    n8n oldalak nem adnak szerverhibát.
 4. Production konfigurációban token nélküli védett API-hívás `401` választ ad.
