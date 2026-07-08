@@ -53,6 +53,62 @@ def test_ui_returns_bundled_html() -> None:
     assert 'id="chat-form"' in response.text
     assert 'id="message-input"' in response.text
     assert 'id="new-chat-button"' in response.text
+    assert 'href="/ui/runs"' in response.text
+
+
+def test_runs_ui_returns_html() -> None:
+    """The runs UI route returns its HTML page."""
+
+    with create_test_client() as client:
+        response = client.get("/ui/runs")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<h1>Runs</h1>" in response.text
+
+
+def test_approvals_ui_returns_html() -> None:
+    """The approvals UI route returns its HTML page."""
+
+    with create_test_client() as client:
+        response = client.get("/ui/approvals")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<h1>Approvals</h1>" in response.text
+
+
+def test_audit_ui_returns_html() -> None:
+    """The audit UI route returns its HTML page."""
+
+    with create_test_client() as client:
+        response = client.get("/ui/audit")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<h1>Audit</h1>" in response.text
+
+
+def test_settings_ui_returns_html() -> None:
+    """The settings UI route returns its HTML page."""
+
+    with create_test_client() as client:
+        response = client.get("/ui/settings")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<h1>Settings</h1>" in response.text
+
+
+def test_n8n_ui_returns_html() -> None:
+    """The n8n UI route returns its HTML page."""
+
+    with create_test_client() as client:
+        response = client.get("/ui/n8n")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<h1>n8n</h1>" in response.text
 
 
 def test_static_assets_are_available() -> None:

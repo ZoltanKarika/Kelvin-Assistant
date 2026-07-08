@@ -33,52 +33,65 @@
         </div>
       </header>
 
-      <main class="chat-panel">
-        <section
-          id="messages"
-          class="messages"
-          aria-label="Beszélgetés"
-          aria-live="polite"
-        >
-          <div id="welcome" class="welcome">
-            <div class="welcome-mark" aria-hidden="true">K</div>
-            <p class="eyebrow">Teljesen helyben fut</p>
-            <h1>Miben gondolkodjunk együtt?</h1>
-            <p>
-              A beszélgetés az otthoni infrastruktúrádon marad.
-              Kelvin jelenleg a helyi Gemma modellt használja.
-            </p>
-          </div>
-        </section>
+      <div class="app-body">
+        <nav class="app-nav">
+          <ul>
+            <li><a href="/ui" class="active" aria-current="page">Chat</a></li>
+            <li><a href="/ui/runs">Runs</a></li>
+            <li><a href="/ui/approvals">Approvals</a></li>
+            <li><a href="/ui/audit">Audit</a></li>
+            <li><a href="/ui/settings">Settings</a></li>
+            <li><a href="/ui/n8n">n8n</a></li>
+          </ul>
+        </nav>
 
-        <div id="error-banner" class="error-banner" role="alert" hidden></div>
-
-        <form id="chat-form" class="composer">
-          <label class="visually-hidden" for="message-input">Üzenet</label>
-          <textarea
-            id="message-input"
-            name="message"
-            rows="1"
-            maxlength="32768"
-            placeholder="Írj egy üzenetet…"
-            autocomplete="off"
-            required
-          ></textarea>
-          <button
-            id="send-button"
-            class="send-button"
-            type="submit"
-            aria-label="Üzenet küldése"
+        <main class="chat-panel">
+          <section
+            id="messages"
+            class="messages"
+            aria-label="Beszélgetés"
+            aria-live="polite"
           >
-            <span>Küldés</span>
-            <span aria-hidden="true">↑</span>
-          </button>
-        </form>
+            <div id="welcome" class="welcome">
+              <div class="welcome-mark" aria-hidden="true">K</div>
+              <p class="eyebrow">Teljesen helyben fut</p>
+              <h1>Miben gondolkodjunk együtt?</h1>
+              <p>
+                A beszélgetés az otthoni infrastruktúrádon marad.
+                Kelvin jelenleg a helyi Gemma modellt használja.
+              </p>
+            </div>
+          </section>
 
-        <p class="composer-hint">
-          Enter: küldés · Shift + Enter: új sor
-        </p>
-      </main>
+          <div id="error-banner" class="error-banner" role="alert" hidden></div>
+
+          <form id="chat-form" class="composer">
+            <label class="visually-hidden" for="message-input">Üzenet</label>
+            <textarea
+              id="message-input"
+              name="message"
+              rows="1"
+              maxlength="32768"
+              placeholder="Írj egy üzenetet…"
+              autocomplete="off"
+              required
+            ></textarea>
+            <button
+              id="send-button"
+              class="send-button"
+              type="submit"
+              aria-label="Üzenet küldése"
+            >
+              <span>Küldés</span>
+              <span aria-hidden="true">↑</span>
+            </button>
+          </form>
+
+          <p class="composer-hint">
+            Enter: küldés · Shift + Enter: új sor
+          </p>
+        </main>
+      </div>
     </div>
   </body>
 </html>

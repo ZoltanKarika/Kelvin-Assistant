@@ -16,7 +16,7 @@ Related documents:
 
 | Step | Item | Depends on | Branch suggestion | Status |
 |---|---|---|---|---|
-| **1** | UI Shell & Navigation Foundation | - | `feat/v0.9-ui-shell` | pending |
+| **1** | UI Shell & Navigation Foundation | - | `feat/v0.9-ui-shell` | ✅ |
 | **2** | Agent Runs Dashboard | #1 | `feat/v0.9-runs-dashboard` | pending |
 | **3** | Local Approval Queue | #1, #2 | `feat/v0.9-approval-queue` | pending |
 | **4** | Audit Log Viewer | #1, #2, #3 | `feat/v0.9-audit-viewer` | pending |
