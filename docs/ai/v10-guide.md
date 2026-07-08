@@ -22,7 +22,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 
 | Step | Item | Depends on | Branch suggestion | Status |
 |---|---|---|---|---|
-| **1** | Release Readiness Gap Audit | - | `feat/v1.0-readiness-audit` | pending |
+| **1** | Release Readiness Gap Audit | - | `feat/v1.0-readiness-audit` | done |
 | **2** | Installation & Upgrade Runbook | #1 | `feat/v1.0-install-runbook` | pending |
 | **3** | Runtime & Service Hardening | #1, #2 | `feat/v1.0-runtime-hardening` | pending |
 | **4** | Backup, Restore & Data Retention Verification | #1, #2 | `feat/v1.0-backup-restore` | pending |
@@ -65,6 +65,9 @@ Each step should be one PR unless the implementation discovers a smaller split.
 
 **Goal:** Produce a factual inventory of what is already stable and what still
 blocks v1.0.
+
+**Result:** Completed in
+[`docs/ai/v10-readiness-audit.md`](v10-readiness-audit.md).
 
 **What to do:**
 

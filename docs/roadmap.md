@@ -392,7 +392,7 @@ Tervezett cél:
 
 Elfogadási feltételek:
 
-- [ ] a v1.0 readiness audit feltárja a dokumentációs, üzemeltetési és tesztelési
+- [x] a v1.0 readiness audit feltárja a dokumentációs, üzemeltetési és tesztelési
   hiányokat;
 - [ ] a telepítési és frissítési runbook friss lokális telepítésen végigfuttatható;
 - [ ] a szolgáltatások újraindítás után kiszámíthatóan indulnak, és a `/health`,
