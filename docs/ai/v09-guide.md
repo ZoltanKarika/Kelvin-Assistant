@@ -12,21 +12,24 @@ Related documents:
 
 ## Current Progress
 
+v0.9 is complete. The table below is retained as the implementation history and
+is aligned with `docs/roadmap.md`.
+
 ### Steps Table
 
 | Step | Item | Depends on | Branch suggestion | Status |
 |---|---|---|---|---|
-| **1** | UI Shell & Navigation Foundation | - | `feat/v0.9-ui-shell` | ✅ |
-| **2** | Agent Runs Dashboard | #1 | `feat/v0.9-runs-dashboard` | pending |
-| **3** | Local Approval Queue | #1, #2 | `feat/v0.9-approval-queue` | pending |
-| **4** | Audit Log Viewer | #1, #2, #3 | `feat/v0.9-audit-viewer` | pending |
-| **5** | Settings & Safety Controls | #1 | `feat/v0.9-settings` | pending |
-| **6** | n8n Status Panel | #1 | `feat/v0.9-n8n-status` | pending |
-| **7** | Email Notification Settings | #5 | `feat/v0.9-email-settings` | pending |
-| **8** | Approval Pending Email Notifications | #3, #7 | `feat/v0.9-approval-emails` | pending |
-| **9** | Run Completed/Failed Email Notifications | #2, #7 | `feat/v0.9-run-emails` | pending |
-| **10** | Daily Summary Email | #2, #4, #7 | `feat/v0.9-daily-summary` | pending |
-| **11** | UI & Email End-to-End Verification | #1-#10 | `feat/v0.9-ui-email-verification` | pending |
+| **1** | UI Shell & Navigation Foundation | - | `feat/v0.9-ui-shell` | done |
+| **2** | Agent Runs Dashboard | #1 | `feat/v0.9-runs-dashboard` | done |
+| **3** | Local Approval Queue | #1, #2 | `feat/v0.9-approval-queue` | done |
+| **4** | Audit Log Viewer | #1, #2, #3 | `feat/v0.9-audit-viewer` | done |
+| **5** | Settings & Safety Controls | #1 | `feat/v0.9-settings` | done |
+| **6** | n8n Status Panel | #1 | `feat/v0.9-n8n-status` | done |
+| **7** | Email Notification Settings | #5 | `feat/v0.9-email-settings` | done |
+| **8** | Approval Pending Email Notifications | #3, #7 | `feat/v0.9-approval-emails` | done |
+| **9** | Run Completed/Failed Email Notifications | #2, #7 | `feat/v0.9-run-emails` | done |
+| **10** | Daily Summary Email | #2, #4, #7 | `feat/v0.9-daily-summary` | done |
+| **11** | UI & Email End-to-End Verification | #1-#10 | `feat/v0.9-ui-email-verification` | done |
 
 ---
 
