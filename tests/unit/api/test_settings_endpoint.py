@@ -24,6 +24,7 @@ def _app() -> FastAPI:
         email_smtp_port=587,
         email_smtp_username="mock-user",
         email_smtp_password="mock-smtp-password",
+        email_smtp_use_tls=True,
         email_sender="mock-sender@test.local",
         email_recipient="mock-recipient@test.local",
         agent_workspace_ids=("test-workspace-1", "test-workspace-2"),
@@ -118,3 +119,39 @@ def test_update_settings_validation_errors() -> None:
         # Empty system prompt
         response = client.put("/api/v1/settings", json={"system_prompt": "   "})
         assert response.status_code == 422
+
+
+def test_send_test_email_disabled() -> None:
+    """POST /api/v1/settings/test-email fails if email notifications are disabled."""
+
+    app = _app()
+    # Disable email
+    app.state.settings.email_notifications_enabled = False
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/settings/test-email")
+        assert response.status_code == 400
+        assert "disabled" in response.json()["detail"].lower()
+
+
+@patch("smtplib.SMTP")
+def test_send_test_email_success(mock_smtp_class: MagicMock) -> None:
+    """POST /api/v1/settings/test-email sends email using smtplib when enabled."""
+
+    app = _app()
+    app.state.settings.email_notifications_enabled = True
+
+    # Setup mock SMTP server instance
+    mock_server = MagicMock()
+    mock_smtp_class.return_value.__enter__.return_value = mock_server
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/settings/test-email")
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+
+        # Verify SMTP server lifecycle was called correctly
+        mock_smtp_class.assert_called_once_with("mock-smtp", 587, timeout=10)
+        mock_server.starttls.assert_called_once()
+        mock_server.login.assert_called_once_with("mock-user", "mock-smtp-password")
+        mock_server.sendmail.assert_called_once()

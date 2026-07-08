@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     email_smtp_use_tls: bool = Field(default=False)
     email_sender: str = Field(default="kelvin@localhost")
     email_recipient: str | None = Field(default=None)
+    email_provider_mode: Literal["smtp", "n8n"] = Field(default="smtp")
+    email_daily_summary_time: str = Field(default="18:00")
+    email_on_approval_required: bool = Field(default=True)
+    email_on_run_completed: bool = Field(default=True)
+    email_on_run_failed: bool = Field(default=True)
+    email_on_daily_summary: bool = Field(default=True)
 
 
 @lru_cache(maxsize=1)

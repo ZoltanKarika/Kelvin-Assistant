@@ -24,6 +24,16 @@ const emailUseTlsInput = document.querySelector("#email-use-tls");
 const emailSenderInput = document.querySelector("#email-sender");
 const emailRecipientInput = document.querySelector("#email-recipient");
 
+// Advanced email fields
+const emailProviderModeSelect = document.querySelector("#email-provider-mode");
+const emailDailySummaryTimeInput = document.querySelector("#email-daily-summary-time");
+const emailOnApprovalInput = document.querySelector("#email-on-approval");
+const emailOnCompletedInput = document.querySelector("#email-on-completed");
+const emailOnFailedInput = document.querySelector("#email-on-failed");
+const emailOnDailyInput = document.querySelector("#email-on-daily");
+
+const testEmailBtn = document.querySelector("#test-email-btn");
+
 // Policy items
 const policyToolSummary = document.querySelector("#policy-tool-summary");
 const policyScopesList = document.querySelector("#policy-scopes-list");
@@ -117,6 +127,14 @@ async function loadSettings() {
     emailSenderInput.value = settings.email_sender || "";
     emailRecipientInput.value = settings.email_recipient || "";
 
+    // Advanced email fields
+    emailProviderModeSelect.value = settings.email_provider_mode || "smtp";
+    emailDailySummaryTimeInput.value = settings.email_daily_summary_time || "18:00";
+    emailOnApprovalInput.checked = settings.email_on_approval_required !== false;
+    emailOnCompletedInput.checked = settings.email_on_run_completed !== false;
+    emailOnFailedInput.checked = settings.email_on_run_failed !== false;
+    emailOnDailyInput.checked = settings.email_on_daily_summary !== false;
+
     // Toggle SMTP subfields display
     toggleSmtpFields();
 
@@ -173,6 +191,12 @@ settingsForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  const dailyTimeVal = emailDailySummaryTimeInput.value.trim();
+  if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/.test(dailyTimeVal)) {
+    showToast("A napi összefoglaló idejének HH:MM formátumban kell lennie (pl. 18:00)!", true);
+    return;
+  }
+
   // Construct request payload
   const payload = {
     ollama_base_url: ollamaBaseUrlInput.value.trim(),
@@ -186,7 +210,13 @@ settingsForm.addEventListener("submit", async (e) => {
     email_smtp_username: emailSmtpUsernameInput.value.trim() || null,
     email_smtp_use_tls: emailUseTlsInput.checked,
     email_sender: emailSenderInput.value.trim() || "kelvin@localhost",
-    email_recipient: emailRecipientInput.value.trim() || null
+    email_recipient: emailRecipientInput.value.trim() || null,
+    email_provider_mode: emailProviderModeSelect.value,
+    email_daily_summary_time: dailyTimeVal,
+    email_on_approval_required: emailOnApprovalInput.checked,
+    email_on_run_completed: emailOnCompletedInput.checked,
+    email_on_run_failed: emailOnFailedInput.checked,
+    email_on_daily_summary: emailOnDailyInput.checked
   };
 
   // Handle secrets
@@ -239,6 +269,34 @@ settingsForm.addEventListener("submit", async (e) => {
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = "Módosítások mentése";
+  }
+});
+
+// Test Email button listener
+testEmailBtn.addEventListener("click", async () => {
+  if (!emailEnabledInput.checked) {
+    showToast("Kérjük, előbb engedélyezze és mentse el a beállításokat a teszt küldéséhez!", true);
+    return;
+  }
+
+  testEmailBtn.disabled = true;
+  const originalText = testEmailBtn.textContent;
+  testEmailBtn.textContent = "Küldés…";
+
+  try {
+    const response = await fetch("/api/v1/settings/test-email", {
+      method: "POST"
+    });
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.detail || "Sikertelen kapcsolódás");
+    }
+    showToast("Teszt e-mail sikeresen elküldve a megadott címzettnek!");
+  } catch (error) {
+    showToast(`Hiba a küldés során: ${error.message}`, true);
+  } finally {
+    testEmailBtn.disabled = false;
+    testEmailBtn.textContent = originalText;
   }
 });
 

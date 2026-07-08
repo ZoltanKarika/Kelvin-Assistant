@@ -182,6 +182,12 @@ class SettingsResponse(BaseModel):
     email_smtp_use_tls: bool
     email_sender: str
     email_recipient: str | None
+    email_provider_mode: str
+    email_daily_summary_time: str
+    email_on_approval_required: bool
+    email_on_run_completed: bool
+    email_on_run_failed: bool
+    email_on_daily_summary: bool
     tool_policy_summary: str
     allowed_scopes: list[str]
     workspace_ids: list[str]
@@ -204,6 +210,22 @@ class SettingsUpdateRequest(BaseModel):
     email_smtp_use_tls: bool | None = None
     email_sender: str | None = None
     email_recipient: str | None = None
+    email_provider_mode: str | None = None
+    email_daily_summary_time: str | None = None
+    email_on_approval_required: bool | None = None
+    email_on_run_completed: bool | None = None
+    email_on_run_failed: bool | None = None
+    email_on_daily_summary: bool | None = None
+
+    @field_validator("email_daily_summary_time")
+    @classmethod
+    def validate_time_format(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        import re
+        if not re.match(r"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$", v):
+            raise ValueError("Daily summary time must be in HH:MM format (e.g. 18:00)")
+        return v
 
 
 class N8NHealthResponse(BaseModel):
