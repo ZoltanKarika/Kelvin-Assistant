@@ -277,6 +277,14 @@ filterButtons.forEach(btn => {
 
 // Initial load
 void checkRuntime();
+
+const urlParams = new URLSearchParams(window.location.search);
+const selectParam = urlParams.get("select");
+if (selectParam) {
+  selectedRunId = selectParam;
+  void fetchRunDetails(selectParam);
+}
+
 void fetchRuns();
 
 // Start polling to keep dashboard live
