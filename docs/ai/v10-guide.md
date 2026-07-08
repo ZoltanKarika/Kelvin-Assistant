@@ -26,7 +26,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 | **2** | Installation & Upgrade Runbook | #1 | `feat/v1.0-install-runbook` | done |
 | **3** | Runtime & Service Hardening | #1, #2 | `feat/v1.0-runtime-hardening` | done |
 | **4** | Backup, Restore & Data Retention Verification | #1, #2 | `feat/v1.0-backup-restore` | done |
-| **5** | Security & Permission Baseline Verification | #1 | `feat/v1.0-security-baseline` | pending |
+| **5** | Security & Permission Baseline Verification | #1 | `feat/v1.0-security-baseline` | done |
 | **6** | Operational UI, Email & n8n Runbooks | #1, #3, #5 | `feat/v1.0-ops-runbooks` | pending |
 | **7** | API, Client & Configuration Contract Freeze | #1, #3, #5 | `feat/v1.0-contract-freeze` | pending |
 | **8** | Offline Release, Licensing & Version Package | #2, #4, #7 | `feat/v1.0-release-package` | pending |
@@ -164,6 +164,9 @@ docs: verify v1.0 backup and restore process
 ### Step 5: Security & Permission Baseline Verification
 
 **Goal:** Reconfirm that v1.0 preserves Kelvin's local safety model.
+
+**Result:** Added `docs/security-baseline.md` and tightened notification body
+redaction so SMTP and n8n notifications mask known secret patterns.
 
 **What to do:**
 
