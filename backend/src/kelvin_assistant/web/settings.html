@@ -131,12 +131,48 @@
                       <input type="email" id="email-recipient" placeholder="user@example.com">
                     </div>
                   </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="email-provider-mode">Értesítési Mód (Provider)</label>
+                      <select id="email-provider-mode">
+                        <option value="smtp">Helyi SMTP Kiszolgáló</option>
+                        <option value="n8n">n8n Automációs webhook</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="email-daily-summary-time">Napi összefoglaló ideje</label>
+                      <input type="text" id="email-daily-summary-time" placeholder="18:00">
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin-top: 1rem;">
+                    <label>Küldendő értesítések típusai</label>
+                    <div class="checkbox-subgroup" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                      <label class="checkbox-label">
+                        <input type="checkbox" id="email-on-approval">
+                        <span>Jóváhagyásra váró feladatok</span>
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" id="email-on-completed">
+                        <span>Sikeresen befejezett futások</span>
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" id="email-on-failed">
+                        <span>Meghiúsult / elakadt futások</span>
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" id="email-on-daily">
+                        <span>Napi biztonsági összefoglaló jelentés</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <!-- Save Actions -->
-              <div class="settings-actions">
+              <div class="settings-actions" style="display: flex; gap: 1rem;">
                 <button type="submit" id="save-settings-btn" class="approve-button">Módosítások mentése</button>
+                <button type="button" id="test-email-btn" class="secondary-button" style="background: rgb(255 255 255 / 5%); border: 1px solid rgb(255 255 255 / 10%);">Teszt e-mail küldése</button>
               </div>
 
             </div>

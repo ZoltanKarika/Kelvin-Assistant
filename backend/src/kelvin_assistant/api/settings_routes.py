@@ -84,6 +84,12 @@ async def get_settings_endpoint(
         email_smtp_use_tls=settings.email_smtp_use_tls,
         email_sender=settings.email_sender,
         email_recipient=settings.email_recipient,
+        email_provider_mode=settings.email_provider_mode,
+        email_daily_summary_time=settings.email_daily_summary_time,
+        email_on_approval_required=settings.email_on_approval_required,
+        email_on_run_completed=settings.email_on_run_completed,
+        email_on_run_failed=settings.email_on_run_failed,
+        email_on_daily_summary=settings.email_on_daily_summary,
         tool_policy_summary=tool_policy_summary,
         allowed_scopes=allowed_scopes,
         workspace_ids=workspace_ids,
@@ -193,6 +199,45 @@ async def update_settings_endpoint(
         env_updates["KELVIN_EMAIL_RECIPIENT"] = payload.email_recipient
         in_memory_updates["email_recipient"] = payload.email_recipient
 
+    if payload.email_provider_mode is not None:
+        if payload.email_provider_mode not in ("smtp", "n8n"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Provider mode must be 'smtp' or 'n8n'",
+            )
+        env_updates["KELVIN_EMAIL_PROVIDER_MODE"] = payload.email_provider_mode
+        in_memory_updates["email_provider_mode"] = payload.email_provider_mode
+
+    if payload.email_daily_summary_time is not None:
+        env_updates["KELVIN_EMAIL_DAILY_SUMMARY_TIME"] = (
+            payload.email_daily_summary_time
+        )
+        in_memory_updates["email_daily_summary_time"] = payload.email_daily_summary_time
+
+    if payload.email_on_approval_required is not None:
+        env_updates["KELVIN_EMAIL_ON_APPROVAL_REQUIRED"] = str(
+            payload.email_on_approval_required
+        )
+        in_memory_updates["email_on_approval_required"] = (
+            payload.email_on_approval_required
+        )
+
+    if payload.email_on_run_completed is not None:
+        env_updates["KELVIN_EMAIL_ON_RUN_COMPLETED"] = str(
+            payload.email_on_run_completed
+        )
+        in_memory_updates["email_on_run_completed"] = payload.email_on_run_completed
+
+    if payload.email_on_run_failed is not None:
+        env_updates["KELVIN_EMAIL_ON_RUN_FAILED"] = str(payload.email_on_run_failed)
+        in_memory_updates["email_on_run_failed"] = payload.email_on_run_failed
+
+    if payload.email_on_daily_summary is not None:
+        env_updates["KELVIN_EMAIL_ON_DAILY_SUMMARY"] = str(
+            payload.email_on_daily_summary
+        )
+        in_memory_updates["email_on_daily_summary"] = payload.email_on_daily_summary
+
     # Apply to .env file
     if env_updates:
         update_env_file(env_updates)
@@ -224,7 +269,73 @@ async def update_settings_endpoint(
         email_smtp_use_tls=settings.email_smtp_use_tls,
         email_sender=settings.email_sender,
         email_recipient=settings.email_recipient,
+        email_provider_mode=settings.email_provider_mode,
+        email_daily_summary_time=settings.email_daily_summary_time,
+        email_on_approval_required=settings.email_on_approval_required,
+        email_on_run_completed=settings.email_on_run_completed,
+        email_on_run_failed=settings.email_on_run_failed,
+        email_on_daily_summary=settings.email_on_daily_summary,
         tool_policy_summary=tool_policy_summary,
         allowed_scopes=allowed_scopes,
         workspace_ids=workspace_ids,
     )
+
+
+@router.post(
+    "/test-email",
+    status_code=status.HTTP_200_OK,
+)
+async def send_test_email_endpoint(
+    settings: RuntimeSettings,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_APPROVE))],
+) -> dict[str, str]:
+    """Send a minimal non-sensitive test message to verify SMTP connectivity."""
+
+    if not settings.email_notifications_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email notifications are currently disabled in settings.",
+        )
+
+    recipient = settings.email_recipient
+    if not recipient:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No email recipient configured.",
+        )
+
+    import asyncio
+    import smtplib
+    from email.mime.text import MIMEText
+
+    def send_email() -> None:
+        msg = MIMEText(
+            "Ez egy automatikus tesztüzenet a Kelvin Assistant-től a hálózati "
+            "SMTP kapcsolat ellenőrzésére. Kérjük, ne válaszoljon erre az e-mailre."
+        )
+        msg["Subject"] = "Kelvin Assistant SMTP Kapcsolat Teszt"
+        msg["From"] = settings.email_sender
+        msg["To"] = recipient
+
+        with smtplib.SMTP(
+            settings.email_smtp_host, settings.email_smtp_port, timeout=10
+        ) as server:
+            if settings.email_smtp_use_tls:
+                server.starttls()
+            if settings.email_smtp_username and settings.email_smtp_password:
+                server.login(settings.email_smtp_username, settings.email_smtp_password)
+            server.sendmail(
+                settings.email_sender,
+                [recipient],
+                msg.as_string(),
+            )
+
+    try:
+        await asyncio.to_thread(send_email)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to send email: {exc}",
+        ) from exc
+
+    return {"status": "success", "message": "Test email sent successfully."}
