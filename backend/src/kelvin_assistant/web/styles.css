@@ -430,3 +430,54 @@ button {
     animation-iteration-count: 1 !important;
   }
 }
+
+.app-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  height: calc(100vh - 4.75rem);
+}
+
+.app-nav {
+  padding: 1rem;
+  border-right: 1px solid rgb(255 255 255 / 8%);
+}
+
+.app-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.app-nav li a {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: #edf5f2;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  transition: background-color 160ms ease;
+}
+
+.app-nav li a:hover {
+  background-color: rgb(255 255 255 / 5%);
+}
+
+.app-nav li a.active {
+  background-color: rgb(141 231 196 / 20%);
+  font-weight: 600;
+}
+
+.main-panel {
+  padding: 2rem;
+}
+
+@media (max-width: 768px) {
+  .app-body {
+    grid-template-columns: 1fr;
+  }
+
+  .app-nav {
+    border-right: none;
+    border-bottom: 1px solid rgb(255 255 255 / 8%);
+  }
+}
+
