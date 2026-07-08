@@ -130,12 +130,8 @@ async def update_settings_endpoint(
         in_memory_updates["ollama_model"] = payload.ollama_model
 
     if payload.ollama_embedding_model is not None:
-        env_updates["KELVIN_OLLAMA_EMBEDDING_MODEL"] = (
-            payload.ollama_embedding_model
-        )
-        in_memory_updates["ollama_embedding_model"] = (
-            payload.ollama_embedding_model
-        )
+        env_updates["KELVIN_OLLAMA_EMBEDDING_MODEL"] = payload.ollama_embedding_model
+        in_memory_updates["ollama_embedding_model"] = payload.ollama_embedding_model
 
     # 2. System Prompt
     if payload.system_prompt is not None:
@@ -188,17 +184,11 @@ async def update_settings_endpoint(
             env_updates["KELVIN_EMAIL_SMTP_PASSWORD"] = ""
             in_memory_updates["email_smtp_password"] = None
         elif payload.email_smtp_password not in ("keep", "***"):
-            env_updates["KELVIN_EMAIL_SMTP_PASSWORD"] = (
-                payload.email_smtp_password
-            )
-            in_memory_updates["email_smtp_password"] = (
-                payload.email_smtp_password
-            )
+            env_updates["KELVIN_EMAIL_SMTP_PASSWORD"] = payload.email_smtp_password
+            in_memory_updates["email_smtp_password"] = payload.email_smtp_password
 
     if payload.email_smtp_use_tls is not None:
-        env_updates["KELVIN_EMAIL_SMTP_USE_TLS"] = str(
-            payload.email_smtp_use_tls
-        )
+        env_updates["KELVIN_EMAIL_SMTP_USE_TLS"] = str(payload.email_smtp_use_tls)
         in_memory_updates["email_smtp_use_tls"] = payload.email_smtp_use_tls
 
     if payload.email_sender is not None:
@@ -222,9 +212,7 @@ async def update_settings_endpoint(
         env_updates["KELVIN_EMAIL_DAILY_SUMMARY_TIME"] = (
             payload.email_daily_summary_time
         )
-        in_memory_updates["email_daily_summary_time"] = (
-            payload.email_daily_summary_time
-        )
+        in_memory_updates["email_daily_summary_time"] = payload.email_daily_summary_time
 
     if payload.email_on_approval_required is not None:
         env_updates["KELVIN_EMAIL_ON_APPROVAL_REQUIRED"] = str(
@@ -238,23 +226,17 @@ async def update_settings_endpoint(
         env_updates["KELVIN_EMAIL_ON_RUN_COMPLETED"] = str(
             payload.email_on_run_completed
         )
-        in_memory_updates["email_on_run_completed"] = (
-            payload.email_on_run_completed
-        )
+        in_memory_updates["email_on_run_completed"] = payload.email_on_run_completed
 
     if payload.email_on_run_failed is not None:
-        env_updates["KELVIN_EMAIL_ON_RUN_FAILED"] = str(
-            payload.email_on_run_failed
-        )
+        env_updates["KELVIN_EMAIL_ON_RUN_FAILED"] = str(payload.email_on_run_failed)
         in_memory_updates["email_on_run_failed"] = payload.email_on_run_failed
 
     if payload.email_on_daily_summary is not None:
         env_updates["KELVIN_EMAIL_ON_DAILY_SUMMARY"] = str(
             payload.email_on_daily_summary
         )
-        in_memory_updates["email_on_daily_summary"] = (
-            payload.email_on_daily_summary
-        )
+        in_memory_updates["email_on_daily_summary"] = payload.email_on_daily_summary
 
     # Apply to .env file
     if env_updates:
@@ -341,9 +323,7 @@ async def send_test_email_endpoint(
             if settings.email_smtp_use_tls:
                 server.starttls()
             if settings.email_smtp_username and settings.email_smtp_password:
-                server.login(
-                    settings.email_smtp_username, settings.email_smtp_password
-                )
+                server.login(settings.email_smtp_username, settings.email_smtp_password)
             server.sendmail(
                 settings.email_sender,
                 [recipient],

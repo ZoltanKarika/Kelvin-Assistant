@@ -223,6 +223,7 @@ class SettingsUpdateRequest(BaseModel):
         if v is None:
             return v
         import re
+
         if not re.match(r"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$", v):
             raise ValueError("Daily summary time must be in HH:MM format (e.g. 18:00)")
         return v
