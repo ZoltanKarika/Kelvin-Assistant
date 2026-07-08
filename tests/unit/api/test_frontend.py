@@ -108,7 +108,7 @@ def test_n8n_ui_returns_html() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "<h1>n8n</h1>" in response.text
+    assert "<h1>n8n Automációs Állapot</h1>" in response.text
 
 
 def test_static_assets_are_available() -> None:
@@ -121,6 +121,7 @@ def test_static_assets_are_available() -> None:
         approvals_script_response = client.get("/static/approvals.js")
         audit_script_response = client.get("/static/audit.js")
         settings_script_response = client.get("/static/settings.js")
+        n8n_script_response = client.get("/static/n8n.js")
 
     assert css_response.status_code == 200
     assert css_response.headers["content-type"].startswith("text/css")
@@ -140,3 +141,6 @@ def test_static_assets_are_available() -> None:
     assert settings_script_response.status_code == 200
     assert "javascript" in settings_script_response.headers["content-type"]
     assert "loadSettings" in settings_script_response.text
+    assert n8n_script_response.status_code == 200
+    assert "javascript" in n8n_script_response.headers["content-type"]
+    assert "fetchN8NHealth" in n8n_script_response.text

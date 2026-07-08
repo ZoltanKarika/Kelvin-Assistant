@@ -206,6 +206,16 @@ class SettingsUpdateRequest(BaseModel):
     email_recipient: str | None = None
 
 
+class N8NHealthResponse(BaseModel):
+    """Health check state of the n8n automation layer."""
+
+    status: str
+    configured: bool
+    base_url: str | None
+    last_checked: datetime
+    error_message: str | None = None
+
+
 class AgentToolCallRequest(BaseModel):
     """Request payload for proposing one structured agent tool call."""
 
