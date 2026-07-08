@@ -353,7 +353,16 @@ def _settings() -> Settings:
     )
 
 
-def _run(status: AgentStatus, *, version: int) -> AgentRun:
+MOCK_NOW = datetime(2026, 7, 8, 12, 0, 0, tzinfo=UTC)
+
+
+def _run(
+    status: AgentStatus,
+    *,
+    version: int,
+    created_at: datetime | None = MOCK_NOW,
+    updated_at: datetime | None = MOCK_NOW,
+) -> AgentRun:
     return AgentRun(
         id=RUN_ID,
         goal="Inspect the project.",
@@ -361,11 +370,19 @@ def _run(status: AgentStatus, *, version: int) -> AgentRun:
         step_count=1 if status in {AgentStatus.EXECUTING, AgentStatus.OBSERVING} else 0,
         version=version,
         workspace_id="kelvin-assistant",
+        created_at=created_at,
+        updated_at=updated_at,
     )
 
 
-def _run_row(status: AgentStatus, *, version: int) -> tuple[object, ...]:
-    run = _run(status, version=version)
+def _run_row(
+    status: AgentStatus,
+    *,
+    version: int,
+    created_at: datetime | None = MOCK_NOW,
+    updated_at: datetime | None = MOCK_NOW,
+) -> tuple[object, ...]:
+    run = _run(status, version=version, created_at=created_at, updated_at=updated_at)
     return (
         run.id,
         run.goal,
@@ -374,6 +391,8 @@ def _run_row(status: AgentStatus, *, version: int) -> tuple[object, ...]:
         run.max_steps,
         run.version,
         run.workspace_id,
+        run.created_at,
+        run.updated_at,
     )
 
 

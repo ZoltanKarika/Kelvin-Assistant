@@ -1,5 +1,6 @@
 """Persistence port for versioned agent runs."""
 
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -108,4 +109,14 @@ class AgentRunStore(Protocol):
 
     async def get_result(self, run_id: UUID) -> ToolExecutionResult:
         """Return the latest stored tool result or raise not-found."""
+        ...
+
+    async def list_runs(self) -> Sequence[AgentRun]:
+        """List all stored agent runs sorted by creation time descending."""
+        ...
+
+    async def get_run_steps(
+        self, run_id: UUID
+    ) -> Sequence[tuple[ToolProposal, ToolExecutionResult | None]]:
+        """Return all proposals and results for a run, sorted by creation time."""
         ...

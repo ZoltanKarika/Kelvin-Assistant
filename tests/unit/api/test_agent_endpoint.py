@@ -50,8 +50,15 @@ def test_create_agent_run_persists_server_managed_state() -> None:
         stored = client.get(f"/api/v1/agent/runs/{response.json()['id']}")
 
     assert response.status_code == 201
-    assert response.json() == stored.json()
-    assert response.json() == {
+    stored_data = stored.json()
+    stored_data.pop("steps", None)
+    assert response.json() == stored_data
+    data = response.json()
+    assert data["created_at"] is not None
+    assert data["updated_at"] is not None
+    del data["created_at"]
+    del data["updated_at"]
+    assert data == {
         "id": response.json()["id"],
         "goal": "Inspect the repository.",
         "status": "received",
@@ -61,6 +68,34 @@ def test_create_agent_run_persists_server_managed_state() -> None:
         "workspace_id": None,
     }
     assert UUID(response.json()["id"])
+
+
+def test_list_agent_runs() -> None:
+    """GET /agent/runs returns a list of recent runs."""
+
+    with TestClient(_app()) as client:
+        # Initial list should be empty
+        response_empty = client.get("/api/v1/agent/runs")
+        assert response_empty.status_code == 200
+        assert response_empty.json() == []
+
+        # Create two runs
+        run1 = client.post(
+            "/api/v1/agent/runs",
+            json={"goal": "First Goal", "max_steps": 5},
+        )
+        run2 = client.post(
+            "/api/v1/agent/runs",
+            json={"goal": "Second Goal", "max_steps": 5},
+        )
+
+        response_list = client.get("/api/v1/agent/runs")
+        assert response_list.status_code == 200
+        runs = response_list.json()
+        assert len(runs) == 2
+        # Order should be creation time descending, so run2 then run1
+        assert runs[0]["id"] == run2.json()["id"]
+        assert runs[1]["id"] == run1.json()["id"]
 
 
 def test_create_agent_run_rejects_invalid_input() -> None:
@@ -106,7 +141,9 @@ def test_begin_planning_updates_status_and_version() -> None:
     assert planned.status_code == 200
     assert planned.json()["status"] == "planning"
     assert planned.json()["version"] == 1
-    assert stored.json() == planned.json()
+    stored_data = stored.json()
+    stored_data.pop("steps", None)
+    assert stored_data == planned.json()
 
 
 def test_begin_planning_rejects_repeated_transition() -> None:
@@ -198,7 +235,9 @@ def test_propose_read_tool_enters_execution_without_approval() -> None:
     assert response.json()["approval_status"] is None
     assert response.json()["run"]["status"] == "executing"
     assert response.json()["run"]["version"] == 2
-    assert stored.json() == response.json()["run"]
+    stored_data = stored.json()
+    stored_data.pop("steps", None)
+    assert stored_data == response.json()["run"]
 
 
 def test_propose_write_tool_waits_for_approval() -> None:
@@ -283,6 +322,33 @@ def test_approval_rejects_mismatched_tool_call_id() -> None:
 
     assert response.status_code == 409
     assert "does not match" in response.json()["detail"]
+
+
+def test_submit_result_for_unapproved_tool_fails() -> None:
+    """A client cannot submit a result for a write tool before it is approved."""
+
+    with TestClient(_app(agent_service=_tool_service())) as client:
+        run_id = _create_planned_run(client)
+        # Propose a write tool call
+        proposed = client.post(
+            f"/api/v1/agent/runs/{run_id}/tools",
+            json=_tool_request("file.patch", "write"),
+        )
+        assert proposed.json()["run"]["status"] == "awaiting_approval"
+
+        # Attempt to submit execution result directly without approval
+        response = client.post(
+            f"/api/v1/agent/runs/{run_id}/result",
+            json={
+                "tool_call_id": proposed.json()["tool_call_id"],
+                "succeeded": True,
+                "output": "patch applied",
+                "truncated": False,
+                "duration_ms": 12,
+            },
+        )
+        assert response.status_code == 409
+        assert "must be executing" in response.json()["detail"]
 
 
 def test_unknown_tool_is_denied_without_changing_run() -> None:

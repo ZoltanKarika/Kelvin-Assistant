@@ -64,7 +64,7 @@ def test_runs_ui_returns_html() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "<h1>Runs</h1>" in response.text
+    assert "<h1>Futások</h1>" in response.text
 
 
 def test_approvals_ui_returns_html() -> None:
@@ -75,7 +75,7 @@ def test_approvals_ui_returns_html() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "<h1>Approvals</h1>" in response.text
+    assert "<h1>Jóváhagyások</h1>" in response.text
 
 
 def test_audit_ui_returns_html() -> None:
@@ -117,6 +117,8 @@ def test_static_assets_are_available() -> None:
     with create_test_client() as client:
         css_response = client.get("/static/styles.css")
         script_response = client.get("/static/app.js")
+        runs_script_response = client.get("/static/runs.js")
+        approvals_script_response = client.get("/static/approvals.js")
 
     assert css_response.status_code == 200
     assert css_response.headers["content-type"].startswith("text/css")
@@ -124,3 +126,9 @@ def test_static_assets_are_available() -> None:
     assert "javascript" in script_response.headers["content-type"]
     assert 'fetch("/api/v1/chat/stream"' in script_response.text
     assert "readStreamingResponse" in script_response.text
+    assert runs_script_response.status_code == 200
+    assert "javascript" in runs_script_response.headers["content-type"]
+    assert "fetchRuns" in runs_script_response.text
+    assert approvals_script_response.status_code == 200
+    assert "javascript" in approvals_script_response.headers["content-type"]
+    assert "fetchPendingApprovals" in approvals_script_response.text

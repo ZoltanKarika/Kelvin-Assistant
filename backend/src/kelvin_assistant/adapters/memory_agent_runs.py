@@ -1,6 +1,9 @@
 """In-memory storage adapter for versioned agent runs."""
 
 import asyncio
+from collections.abc import Sequence
+from dataclasses import replace
+from datetime import datetime
 from uuid import UUID
 
 from kelvin_assistant.domain.agent import (
@@ -24,6 +27,8 @@ class InMemoryAgentRunStore(AgentRunStore):
         self._runs: dict[UUID, AgentRun] = {}
         self._proposals: dict[UUID, ToolProposal] = {}
         self._results: dict[UUID, ToolExecutionResult] = {}
+        self._proposals_history: dict[UUID, list[ToolProposal]] = {}
+        self._results_history: dict[UUID, list[ToolExecutionResult]] = {}
         self._lock = asyncio.Lock()
 
     async def add(self, run: AgentRun) -> None:
@@ -82,6 +87,12 @@ class InMemoryAgentRunStore(AgentRunStore):
             self._runs[run.id] = run
             self._proposals.pop(run.id, None)
 
+            # Update history proposals for this run
+            history = self._proposals_history.get(run.id, [])
+            for i, p in enumerate(history):
+                if run.status.is_terminal:
+                    history[i] = replace(p, run=run)
+
     async def update_proposal(
         self,
         proposal: ToolProposal,
@@ -101,6 +112,15 @@ class InMemoryAgentRunStore(AgentRunStore):
                 raise AgentRunConflictError(proposal.run.id)
             self._runs[proposal.run.id] = proposal.run
             self._proposals[proposal.run.id] = proposal
+
+            # Update proposal history
+            history = self._proposals_history.setdefault(proposal.run.id, [])
+            for i, p in enumerate(history):
+                if p.call.id == proposal.call.id:
+                    history[i] = proposal
+                    break
+            else:
+                history.append(proposal)
 
     async def get_proposal(self, run_id: UUID) -> ToolProposal:
         """Return the active server-managed proposal for a run."""
@@ -140,6 +160,16 @@ class InMemoryAgentRunStore(AgentRunStore):
             self._results[run.id] = result
             del self._proposals[run.id]
 
+            # In history, find the proposal and close it
+            history = self._proposals_history.get(run.id, [])
+            for i, p in enumerate(history):
+                if p.call.id == result.tool_call_id:
+                    history[i] = replace(p, run=run)
+                    break
+
+            # Append to result history
+            self._results_history.setdefault(run.id, []).append(result)
+
     async def get_result(self, run_id: UUID) -> ToolExecutionResult:
         """Return the latest stored tool execution result."""
 
@@ -150,3 +180,23 @@ class InMemoryAgentRunStore(AgentRunStore):
             if result is None:
                 raise AgentResultNotFoundError(run_id)
             return result
+
+    async def list_runs(self) -> Sequence[AgentRun]:
+        """List all stored agent runs sorted by creation time descending."""
+
+        async with self._lock:
+            return sorted(
+                self._runs.values(),
+                key=lambda r: r.created_at or datetime.min,
+                reverse=True,
+            )
+
+    async def get_run_steps(
+        self, run_id: UUID
+    ) -> Sequence[tuple[ToolProposal, ToolExecutionResult | None]]:
+        """Return all proposals and results for a run, sorted by creation time."""
+
+        async with self._lock:
+            proposals = self._proposals_history.get(run_id, [])
+            results = {r.tool_call_id: r for r in self._results_history.get(run_id, [])}
+            return [(p, results.get(p.call.id)) for p in proposals]

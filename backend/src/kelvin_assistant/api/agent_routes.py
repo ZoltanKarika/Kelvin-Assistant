@@ -22,7 +22,9 @@ from kelvin_assistant.api.schemas import (
     AgentNextResponse,
     AgentNextToolResponse,
     AgentRunCreateRequest,
+    AgentRunDetailResponse,
     AgentRunResponse,
+    AgentStepResponse,
     AgentToolApprovalRequest,
     AgentToolCallRequest,
     AgentToolProposalResponse,
@@ -149,8 +151,23 @@ async def create_agent_run(
 
 
 @router.get(
+    "/runs",
+    response_model=list[AgentRunResponse],
+    status_code=status.HTTP_200_OK,
+)
+async def list_agent_runs(
+    store: RuntimeAgentRunStore,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
+) -> list[AgentRunResponse]:
+    """Return a list of all server-managed agent runs."""
+
+    runs = await store.list_runs()
+    return [_agent_run_response(run) for run in runs]
+
+
+@router.get(
     "/runs/{run_id}",
-    response_model=AgentRunResponse,
+    response_model=AgentRunDetailResponse,
     status_code=status.HTTP_200_OK,
     responses={
         status.HTTP_404_NOT_FOUND: {"description": "Agent run not found."},
@@ -160,17 +177,68 @@ async def get_agent_run(
     run_id: UUID,
     store: RuntimeAgentRunStore,
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
-) -> AgentRunResponse:
-    """Return the current server-managed state of one agent run."""
+) -> AgentRunDetailResponse:
+    """Return the current server-managed state of one agent run with its steps."""
 
     try:
         run = await store.get(run_id)
+        steps = await store.get_run_steps(run_id)
     except AgentRunNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    return _agent_run_response(run)
+
+    step_responses = []
+    for proposal, result in steps:
+        approval = proposal.approval
+        step_responses.append(
+            AgentStepResponse(
+                tool_call_id=proposal.call.id,
+                tool_name=proposal.call.name,
+                arguments=dict(proposal.call.arguments),
+                reason=mask_secrets(proposal.call.reason) or "",
+                expected_effect=mask_secrets(proposal.call.expected_effect) or "",
+                risk=proposal.call.risk.value,
+                policy_decision=proposal.policy_result.decision.value,
+                policy_reason=proposal.policy_result.reason,
+                approval_status=approval.decision.value
+                if approval is not None
+                else None,
+                approval_decided_by=approval.decided_by
+                if approval is not None
+                else None,
+                approval_decided_at=approval.decided_at
+                if approval is not None
+                else None,
+                created_at=proposal.run.created_at or datetime.now(UTC),
+                updated_at=proposal.run.updated_at or datetime.now(UTC),
+                closed_at=None,
+                succeeded=result.succeeded if result is not None else None,
+                output=mask_secrets(result.output)
+                if (result is not None and result.output)
+                else None,
+                error=mask_secrets(result.error)
+                if (result is not None and result.error)
+                else None,
+                truncated=result.truncated if result is not None else None,
+                duration_ms=result.duration_ms if result is not None else None,
+            )
+        )
+
+    base_response = _agent_run_response(run)
+    return AgentRunDetailResponse(
+        id=base_response.id,
+        goal=base_response.goal,
+        status=base_response.status,
+        step_count=base_response.step_count,
+        max_steps=base_response.max_steps,
+        version=base_response.version,
+        workspace_id=base_response.workspace_id,
+        created_at=base_response.created_at,
+        updated_at=base_response.updated_at,
+        steps=step_responses,
+    )
 
 
 @router.post(
@@ -635,6 +703,8 @@ def _agent_run_response(run: AgentRun) -> AgentRunResponse:
         max_steps=run.max_steps,
         version=run.version,
         workspace_id=run.workspace_id,
+        created_at=run.created_at,
+        updated_at=run.updated_at,
     )
 
 

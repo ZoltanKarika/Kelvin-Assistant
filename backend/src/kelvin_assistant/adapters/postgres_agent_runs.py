@@ -310,6 +310,81 @@ class PostgresAgentRunStore(AgentRunStore):
 
         return await self._execute(operation)
 
+    async def list_runs(self) -> Sequence[AgentRun]:
+        """List all stored agent runs sorted by creation time descending."""
+
+        async def operation(cursor: _AgentCursor) -> Sequence[AgentRun]:
+            await cursor.execute(
+                f"""
+                select {_RUN_COLUMNS}
+                from agent_runs
+                order by created_at desc
+                """,
+                (),
+            )
+            rows = await cursor.fetchall()
+            return [_read_run(row) for row in rows]
+
+        return await self._execute(operation)
+
+    async def get_run_steps(
+        self, run_id: UUID
+    ) -> Sequence[tuple[ToolProposal, ToolExecutionResult | None]]:
+        """Return all proposals and results for a run, sorted by creation time."""
+
+        async def operation(
+            cursor: _AgentCursor,
+        ) -> Sequence[tuple[ToolProposal, ToolExecutionResult | None]]:
+            # Load proposals
+            await cursor.execute(
+                f"""
+                select
+                    p.tool_call_id,
+                    p.tool_name,
+                    p.arguments,
+                    p.reason,
+                    p.expected_effect,
+                    p.risk,
+                    p.policy_decision,
+                    p.policy_reason,
+                    p.approval_status,
+                    p.approval_decided_by,
+                    p.approval_decided_at,
+                    {_PREFIXED_RUN_COLUMNS}
+                from agent_tool_proposals p
+                join agent_runs r on r.id = p.run_id
+                where p.run_id = %s
+                order by p.created_at asc
+                """,
+                (run_id,),
+            )
+            proposal_rows = await cursor.fetchall()
+            proposals = [_read_proposal(row) for row in proposal_rows]
+
+            # Load results
+            await cursor.execute(
+                """
+                select
+                    tool_call_id,
+                    tool_name,
+                    succeeded,
+                    output,
+                    error,
+                    truncated,
+                    duration_ms
+                from agent_tool_results
+                where run_id = %s
+                order by created_at asc
+                """,
+                (run_id,),
+            )
+            result_rows = await cursor.fetchall()
+            results = {_read_uuid(row[0]): _read_result(row) for row in result_rows}
+
+            return [(p, results.get(p.call.id)) for p in proposals]
+
+        return await self._execute(operation)
+
     async def _execute(
         self,
         operation: Callable[[_AgentCursor], Awaitable[_T]],
@@ -340,7 +415,9 @@ _RUN_COLUMNS = """
     step_count,
     max_steps,
     version,
-    workspace_id
+    workspace_id,
+    created_at,
+    updated_at
 """
 
 _PREFIXED_RUN_COLUMNS = """
@@ -350,7 +427,9 @@ _PREFIXED_RUN_COLUMNS = """
     r.step_count,
     r.max_steps,
     r.version,
-    r.workspace_id
+    r.workspace_id,
+    r.created_at,
+    r.updated_at
 """
 
 
@@ -497,6 +576,8 @@ def _read_run(row: tuple[object, ...]) -> AgentRun:
         max_steps=_read_int(row[4]),
         version=_read_int(row[5]),
         workspace_id=str(row[6]) if row[6] is not None else None,
+        created_at=_read_datetime(row[7]),
+        updated_at=_read_datetime(row[8]),
     )
 
 
@@ -514,7 +595,7 @@ def _read_proposal(row: tuple[object, ...]) -> ToolProposal:
         else None
     )
     return ToolProposal(
-        run=_read_run(row[11:18]),
+        run=_read_run(row[11:20]),
         call=ToolCall(
             id=call_id,
             name=str(row[1]),
@@ -607,4 +688,12 @@ def _read_int(value: object) -> int:
 def _read_bool(value: object) -> bool:
     if not isinstance(value, bool):
         raise AgentRunStoreUnavailableError("PostgreSQL returned an invalid boolean")
+    return value
+
+
+def _read_datetime(value: object) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, datetime):
+        raise AgentRunStoreUnavailableError("PostgreSQL returned an invalid datetime")
     return value
