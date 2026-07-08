@@ -34,6 +34,7 @@ chroma/
 # Editors and operating systems
 .idea/
 .vscode/
+.antigravity.md
 .DS_Store
 Thumbs.db
 Desktop.ini
