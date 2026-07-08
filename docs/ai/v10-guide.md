@@ -25,7 +25,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 | **1** | Release Readiness Gap Audit | - | `feat/v1.0-readiness-audit` | done |
 | **2** | Installation & Upgrade Runbook | #1 | `feat/v1.0-install-runbook` | done |
 | **3** | Runtime & Service Hardening | #1, #2 | `feat/v1.0-runtime-hardening` | done |
-| **4** | Backup, Restore & Data Retention Verification | #1, #2 | `feat/v1.0-backup-restore` | pending |
+| **4** | Backup, Restore & Data Retention Verification | #1, #2 | `feat/v1.0-backup-restore` | done |
 | **5** | Security & Permission Baseline Verification | #1 | `feat/v1.0-security-baseline` | pending |
 | **6** | Operational UI, Email & n8n Runbooks | #1, #3, #5 | `feat/v1.0-ops-runbooks` | pending |
 | **7** | API, Client & Configuration Contract Freeze | #1, #3, #5 | `feat/v1.0-contract-freeze` | pending |
@@ -138,6 +138,10 @@ feat(runtime): harden v1.0 service readiness
 ### Step 4: Backup, Restore & Data Retention Verification
 
 **Goal:** Prove Kelvin data can be protected and restored without leaking secrets.
+
+**Result:** Updated `docs/backup-restore.md` with Kelvin post-restore checks,
+n8n credential restore verification, retention guidance, and acceptance
+criteria.
 
 **What to do:**
 

@@ -46,7 +46,7 @@ as one repeatable stable-release procedure.
 |---|---|---|
 | Installation docs | `docs/installation.md` now covers the operational UI, production auth, email/n8n settings pointers, v1.0 upgrade, rollback, and smoke checks. | Done in `codex/v1.0-install-runbook` |
 | Runtime readiness docs | `/health`, `/status`, `/ready`, and `/ready/database` now distinguish process health, aggregate degraded state, and strict dependency readiness. | Done in `codex/v1.0-runtime-hardening` |
-| Backup/restore docs | `docs/backup-restore.md` covers database and n8n backups but lacks Kelvin post-restore API/UI verification, retention guidance, and restore acceptance criteria. | Step 4 |
+| Backup/restore docs | `docs/backup-restore.md` now covers Kelvin post-restore API/UI/audit verification, retention guidance, n8n credential restore checks, and acceptance criteria. | Done in `codex/v1.0-backup-restore` |
 | Security docs | Token management and security behavior are spread across several docs; v1.0 needs one baseline checklist for tokens, approvals, masking, audit, email, and n8n boundaries. | Step 5 |
 | Operational runbooks | UI, email, n8n, audit, approvals, and troubleshooting docs exist in pieces but are not combined into daily-operation runbooks. | Step 6 |
 | API contract | Versioned routes and schemas exist, but v1.0 stable/unstable surfaces are not explicitly frozen. | Step 7 |
@@ -61,7 +61,7 @@ as one repeatable stable-release procedure.
 |---|---|---|---|
 | P1 | n8n credential guide shows a plaintext `token` field that conflicts with the hashed `token_sha256` format. | `docs/n8n-credential-setup.md` vs `api-tokens.example.json` and `tests/unit/adapters/test_file_api_tokens.py` | Done in `codex/v1.0-security-doc-sync` |
 | P1 | Production auth mode is documented as optional, but v1.0 needs a clear rule for when `KELVIN_API_AUTH_MODE=required` is mandatory. | `.env.example`, `docs/installation.md`, `create_app()` | Done in `codex/v1.0-security-doc-sync` |
-| P1 | Backup restore does not end with Kelvin-specific health/readiness/UI/audit verification. | `docs/backup-restore.md` | Step 4 |
+| P1 | Backup restore does not end with Kelvin-specific health/readiness/UI/audit verification. | `docs/backup-restore.md` | Done in `codex/v1.0-backup-restore` |
 | P2 | Install docs still reference the old minimal chat UI instead of the full operational UI. | `docs/installation.md` | Done in `codex/v1.0-install-runbook` |
 | P2 | `.env.example` does not list v0.9 email and n8n settings, even though `Settings` supports them. | `.env.example`, `backend/src/kelvin_assistant/config/settings.py` | Done in `codex/v1.0-install-runbook` |
 | P2 | Release version metadata is behind the milestone history. | `pyproject.toml` version `0.6.0` | Step 8 |
@@ -84,7 +84,7 @@ as one repeatable stable-release procedure.
    - Commit: `docs: add v1.0 install and upgrade runbook`
    - Covers: fresh install, v0.9 to v1.0 upgrade, UI/email/n8n config pointers.
 
-3. **Verify backup and restore**
+3. **Verify backup and restore** - done in `codex/v1.0-backup-restore`
    - Branch: `codex/v1.0-backup-restore`
    - Commit: `docs: verify v1.0 backup and restore process`
    - Covers: Kelvin post-restore checks, n8n encryption key handling, retention.
