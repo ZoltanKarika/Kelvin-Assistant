@@ -165,6 +165,47 @@ class SecurityAuditEntryResponse(BaseModel):
     created_at: datetime
 
 
+class SettingsResponse(BaseModel):
+    """Public configuration and safety summary response."""
+
+    ollama_base_url: str
+    ollama_model: str
+    ollama_embedding_model: str
+    system_prompt: str
+    n8n_url: str | None
+    n8n_token_configured: bool
+    email_notifications_enabled: bool
+    email_smtp_host: str
+    email_smtp_port: int
+    email_smtp_username: str | None
+    email_smtp_password_configured: bool
+    email_smtp_use_tls: bool
+    email_sender: str
+    email_recipient: str | None
+    tool_policy_summary: str
+    allowed_scopes: list[str]
+    workspace_ids: list[str]
+
+
+class SettingsUpdateRequest(BaseModel):
+    """Payload to update runtime and integration settings."""
+
+    ollama_base_url: str | None = None
+    ollama_model: str | None = None
+    ollama_embedding_model: str | None = None
+    system_prompt: str | None = Field(default=None, min_length=1)
+    n8n_url: str | None = None
+    n8n_token: str | None = None
+    email_notifications_enabled: bool | None = None
+    email_smtp_host: str | None = None
+    email_smtp_port: int | None = Field(default=None, ge=1, le=65535)
+    email_smtp_username: str | None = None
+    email_smtp_password: str | None = None
+    email_smtp_use_tls: bool | None = None
+    email_sender: str | None = None
+    email_recipient: str | None = None
+
+
 class AgentToolCallRequest(BaseModel):
     """Request payload for proposing one structured agent tool call."""
 

@@ -16,6 +16,12 @@
             <small>Local intelligence</small>
           </span>
         </a>
+        <div class="header-actions">
+          <div class="runtime-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="runtime-status-text">Kapcsolódás…</span>
+          </div>
+        </div>
       </header>
       <div class="app-body">
         <nav class="app-nav">
@@ -28,10 +34,154 @@
             <li><a href="/ui/n8n">n8n</a></li>
           </ul>
         </nav>
-        <main class="main-panel">
-          <h1>Settings</h1>
+        <main class="main-panel settings-layout">
+          <div class="settings-header-row">
+            <h1>Rendszerbeállítások</h1>
+          </div>
+
+          <div id="settings-loading" class="loading-state">Beállítások betöltése…</div>
+
+          <form id="settings-form" class="settings-grid" style="display: none;">
+            <!-- Left Column: Settings Fields -->
+            <div class="settings-fields-column">
+              
+              <!-- 1. LLM & Ollama Configuration -->
+              <div class="settings-section">
+                <h2>Ollama & Modell konfiguráció</h2>
+                <div class="form-group">
+                  <label for="ollama-base-url">Ollama Base URL</label>
+                  <input type="url" id="ollama-base-url" required placeholder="http://localhost:11434">
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="ollama-model">Modell név</label>
+                    <input type="text" id="ollama-model" required placeholder="gemma4:e4b">
+                  </div>
+                  <div class="form-group">
+                    <label for="ollama-embedding-model">Beágyazó modell</label>
+                    <input type="text" id="ollama-embedding-model" required placeholder="nomic-embed-text">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="system-prompt">Rendszer prompt (System Prompt)</label>
+                  <textarea id="system-prompt" rows="5" required></textarea>
+                </div>
+              </div>
+
+              <!-- 2. n8n Integration Settings -->
+              <div class="settings-section">
+                <h2>n8n Integrációs beállítások</h2>
+                <div class="form-group">
+                  <label for="n8n-url">n8n Base URL</label>
+                  <input type="url" id="n8n-url" placeholder="http://localhost:5678">
+                </div>
+                <div class="form-group">
+                  <label for="n8n-token">n8n Hitelesítési Token</label>
+                  <input type="password" id="n8n-token" placeholder="Változatlan (már konfigurálva)" data-configured="false">
+                </div>
+              </div>
+
+              <!-- 3. Email Settings -->
+              <div class="settings-section">
+                <h2>E-mail értesítések beállításai</h2>
+                <div class="form-group checkbox-group">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="email-enabled">
+                    <span>E-mail értesítések engedélyezése</span>
+                  </label>
+                </div>
+                
+                <div id="email-smtp-fields">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="email-smtp-host">SMTP Kiszolgáló (Host)</label>
+                      <input type="text" id="email-smtp-host" placeholder="localhost">
+                    </div>
+                    <div class="form-group">
+                      <label for="email-smtp-port">SMTP Port</label>
+                      <input type="number" id="email-smtp-port" min="1" max="65535" placeholder="1025">
+                    </div>
+                  </div>
+                  
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="email-smtp-username">SMTP Felhasználónév</label>
+                      <input type="text" id="email-smtp-username" placeholder="felhasználónév">
+                    </div>
+                    <div class="form-group">
+                      <label for="email-smtp-password">SMTP Jelszó</label>
+                      <input type="password" id="email-smtp-password" placeholder="Változatlan (már konfigurálva)" data-configured="false">
+                    </div>
+                  </div>
+
+                  <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="email-use-tls">
+                      <span>TLS titkosítás használata</span>
+                    </label>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="email-sender">Feladó címe (Sender)</label>
+                      <input type="email" id="email-sender" placeholder="kelvin@localhost">
+                    </div>
+                    <div class="form-group">
+                      <label for="email-recipient">Címzett címe (Recipient)</label>
+                      <input type="email" id="email-recipient" placeholder="user@example.com">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Save Actions -->
+              <div class="settings-actions">
+                <button type="submit" id="save-settings-btn" class="approve-button">Módosítások mentése</button>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Safety & Policy Summary -->
+            <div class="settings-policy-column">
+              <div class="settings-section policy-summary-box">
+                <h2>Biztonsági és hozzáférési összegzés</h2>
+                
+                <div class="policy-item">
+                  <h3>Helyi eszköz-házirend (Tool Policy)</h3>
+                  <p id="policy-tool-summary" class="policy-desc">Betöltés…</p>
+                </div>
+
+                <div class="policy-item">
+                  <h3>Engedélyezett API Scopes</h3>
+                  <div id="policy-scopes-list" class="tag-cloud">
+                    <!-- Dynamic tags -->
+                  </div>
+                </div>
+
+                <div class="policy-item">
+                  <h3>Autorizált Munkakörnyezetek (Workspace IDs)</h3>
+                  <div id="policy-workspaces-list" class="tag-cloud">
+                    <!-- Dynamic tags -->
+                  </div>
+                </div>
+
+                <div class="policy-item system-runtime-info">
+                  <h3>Rendszer és állapot</h3>
+                  <div class="runtime-info-row">
+                    <span class="info-label">Környezet:</span>
+                    <span id="runtime-env" class="info-val">-</span>
+                  </div>
+                  <div class="runtime-info-row">
+                    <span class="info-label">Verzió:</span>
+                    <span id="runtime-ver" class="info-val">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
         </main>
       </div>
     </div>
+    <script type="module" src="/static/settings.js"></script>
   </body>
 </html>
