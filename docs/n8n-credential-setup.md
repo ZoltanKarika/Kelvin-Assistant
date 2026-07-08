@@ -1,67 +1,144 @@
 # n8n Credential Setup Guide
 
-This guide explains how to configure a Kelvin API token in n8n to allow workflows to authenticate with the Kelvin API.
+This guide explains how to configure a scoped Kelvin API token for n8n
+workflows. Kelvin stores only SHA-256 token digests in `api-tokens.json`; the
+raw token is used only in the n8n credential store and must never be committed.
 
-## 1. Create the API Token File
+## 1. Generate a Raw Token
 
-On the Kelvin VM, create a file named `api-tokens.json`. This file will contain the API tokens that n8n will use to authenticate.
+Generate a high-entropy raw token on an admin machine:
 
-Refer to the `api-tokens.example.json` file in the root of the Kelvin Assistant repository for the correct format.
+```bash
+openssl rand -hex 32
+```
 
-**Example `api-tokens.json`:**
+PowerShell alternative:
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+($bytes | ForEach-Object { $_.ToString("x2") }) -join ""
+```
+
+Save the raw token directly into your password manager. Do not place it in
+Git, workflow JSON, screenshots, issue comments, or documentation.
+
+## 2. Hash the Token
+
+Kelvin expects the SHA-256 digest in `api-tokens.json`.
+
+PowerShell:
+
+```powershell
+$token = "<raw-token-from-step-1>"
+$bytes = [System.Text.Encoding]::ASCII.GetBytes($token)
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+($sha256.ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") }) -join ""
+```
+
+Bash:
+
+```bash
+printf '%s' '<raw-token-from-step-1>' | sha256sum
+```
+
+## 3. Create the Kelvin Token File
+
+On the Kelvin VM, create `/etc/kelvin-assistant/api-tokens.json` from
+`api-tokens.example.json` and replace only the digest values.
+
+Minimal n8n example:
 
 ```json
 {
+  "version": 1,
   "tokens": [
     {
-      "token": "your-secret-token-here",
-      "description": "n8n workflow token",
-      "scopes": ["chat:use"]
+      "id": "n8n-research",
+      "token_sha256": "<sha256-of-raw-token>",
+      "scopes": ["system:read", "chat:use", "memory:read"]
     }
   ]
 }
 ```
 
-## 2. Configure Kelvin Assistant
+Important rules:
 
-In the `.env` file on the Kelvin VM, set the following variables:
+- Use `token_sha256`, not a plaintext `token` field.
+- Keep the real `api-tokens.json` outside Git. It is ignored by `.gitignore`.
+- Grant only the scopes the workflow needs.
+- Do not give n8n `agent:approve`; local approval remains Kelvin's safety
+  boundary.
 
+Recommended ownership on the Kelvin VM:
+
+```bash
+sudo install -d -o root -g kelvin -m 0750 /etc/kelvin-assistant
+sudo install -o root -g kelvin -m 0640 api-tokens.json \
+  /etc/kelvin-assistant/api-tokens.json
 ```
+
+## 4. Configure Kelvin Assistant
+
+Production or LAN-accessible Kelvin deployments must require API auth:
+
+```text
 KELVIN_API_AUTH_MODE=required
-KELVIN_API_TOKEN_FILE=/path/to/your/api-tokens.json
+KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json
 ```
 
-Replace `/path/to/your/api-tokens.json` with the actual path to the `api-tokens.json` file you created in the previous step.
+`KELVIN_API_AUTH_MODE=disabled` is for local development only. When auth mode is
+`required`, Kelvin fails closed at startup if the token file is missing or
+malformed.
 
-## 3. Restart Kelvin Assistant
+Restart Kelvin after changing token configuration:
 
-Restart the Kelvin Assistant service for the changes to take effect.
+```bash
+sudo systemctl restart kelvin-api
+sudo systemctl status kelvin-api --no-pager
+```
 
-## 4. Create n8n Credential
+## 5. Create the n8n Credential
 
-In the n8n UI, create a new "HTTP Header Auth" credential:
+In the n8n UI, create a new **HTTP Header Auth** credential:
 
--   **Header Name:** `Authorization`
--   **Header Value:** `Bearer your-secret-token-here`
+- **Header Name:** `Authorization`
+- **Header Value:** `Bearer <raw-token-from-step-1>`
 
-Replace `your-secret-token-here` with the token value from your `api-tokens.json` file.
+The raw token belongs only in the n8n credential store. Exported n8n workflow
+JSON must not contain it.
 
-## 5. Test the Credential
+## 6. Test the Credential
 
-To test the credential, manually run the "Health Check" workflow in n8n. If the credential is set up correctly, the workflow should execute successfully.
+Run the n8n health-check workflow or call a read-only Kelvin endpoint with the
+credential. A token with `system:read` can call system health/readiness routes.
 
-## 6. Configure Secondary Credentials Securely
+Expected outcomes:
 
-Workflows running on the n8n automation VM often require access to secondary/external AI services (such as Google Gemini, OpenAI, or Anthropic) to extract update details or draft codebase improvements. To ensure maximum safety and alignment with the Kelvin Security Model:
+- `200 OK`: token is valid and has the required scope.
+- `401 Unauthorized`: token is missing, malformed, unknown, or revoked.
+- `403 Forbidden`: token is valid but lacks the required scope.
 
-1. **Use n8n's Native Credential Store**: Never hardcode API keys, passwords, or tokens in workflow nodes or workflow JSON exports. Instead, use the native credentials manager inside the n8n UI (e.g., "Google Gemini API", "OpenAI API", or "Anthropic API").
-2. **Minimal Privileges / Least Privilege Principle**:
-   - **Google Gemini API**: Create a dedicated API key via Google AI Studio. Restrict it to the specific models needed (e.g., `gemini-1.5-flash`). If possible, restrict the API key's HTTP referrer or IP address to the n8n automation VM's external IP.
-   - **OpenAI / Anthropic API**: Create restricted API keys (project-scoped or service-scoped keys) instead of using organization-wide administrator keys. Define strict monthly spending limits on the provider accounts to prevent denial-of-wallet (DoW) attacks.
-3. **Correlation ID Auditing**: Every external model request triggered via an n8n workflow retains the `X-Correlation-ID` header. If a secondary provider key is compromised or misused, check the provider billing logs and cross-reference timestamps with Kelvin's `X-Correlation-ID` inside the security audit database table.
+## 7. Configure Secondary Credentials Securely
+
+Workflows running on the n8n automation VM often require access to secondary or
+external AI services. Keep those credentials in n8n's native credential store,
+not in workflow JSON or Kelvin config.
+
+Use minimal privileges:
+
+- Google Gemini API: use a dedicated key for the required models only.
+- OpenAI or Anthropic API: use restricted project/service keys and provider-side
+  spending limits.
+- Every external model request should retain an `X-Correlation-ID` so provider
+  usage can be cross-referenced with Kelvin audit logs.
 
 ## Troubleshooting
 
--   **401 Unauthorized:** This error indicates that the token is missing or invalid. Double-check that the `Authorization` header and token value are correct in your n8n credential.
--   **403 Forbidden:** This error means the token is valid, but it lacks the required scope for the requested operation. Ensure that the `scopes` array in your `api-tokens.json` file includes the necessary permissions for the workflow.
-
+- **Kelvin does not start:** check that `KELVIN_API_TOKEN_FILE` points to a
+  readable JSON file with `version: 1`, unique `id` values, valid
+  `token_sha256` digests, and known scopes.
+- **401 Unauthorized:** confirm n8n sends `Authorization: Bearer <raw-token>`,
+  not the SHA-256 digest.
+- **403 Forbidden:** add only the missing required scope to that token record,
+  then restart Kelvin.

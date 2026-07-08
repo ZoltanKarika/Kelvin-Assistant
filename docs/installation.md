@@ -91,6 +91,8 @@ A jelenlegi backend által használt változók:
 | `KELVIN_LOG_FORMAT` | `json` | `json` vagy `console` formátum |
 | `KELVIN_API_HOST` | `127.0.0.1` | Figyelt hálózati cím |
 | `KELVIN_API_PORT` | `8000` | Figyelt TCP-port |
+| `KELVIN_API_AUTH_MODE` | `disabled` | `disabled` fejlesztéshez, `required` production vagy LAN-elérés esetén |
+| `KELVIN_API_TOKEN_FILE` | nincs | Hashelt API-tokeneket tartalmazó JSON fájl útvonala |
 | `KELVIN_LLM_PROVIDER` | `ollama` | Aktív LLM-adapter |
 | `KELVIN_OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API alapcíme |
 | `KELVIN_OLLAMA_MODEL` | `gemma4:e4b` | Telepített modell neve |
@@ -105,6 +107,18 @@ A jelenlegi backend által használt változók:
 
 A `.env` fájlban ne tárolj repositoryba kerülő jelszót, tokent vagy más
 titkot. A fájlt soha ne commitold.
+
+Production vagy helyi hálózatról elérhető telepítés esetén az API-hitelesítés
+kötelező:
+
+```text
+KELVIN_API_AUTH_MODE=required
+KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json
+```
+
+Az `api-tokens.json` csak `token_sha256` mezőket tartalmazhat, nyers tokeneket
+nem. A formátumot az `api-tokens.example.json` és a
+`docs/token-management.md` dokumentálja.
 
 ## Függőségek telepítése
 
@@ -464,6 +478,8 @@ KELVIN_ENVIRONMENT=production
 KELVIN_LOG_FORMAT=json
 KELVIN_API_HOST=0.0.0.0
 KELVIN_API_PORT=8000
+KELVIN_API_AUTH_MODE=required
+KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json
 KELVIN_LLM_PROVIDER=ollama
 KELVIN_OLLAMA_BASE_URL=http://<WINDOWS_HOST_IP>:11434
 KELVIN_OLLAMA_MODEL=gemma4:e4b
