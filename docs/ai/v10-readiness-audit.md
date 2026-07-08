@@ -47,7 +47,7 @@ as one repeatable stable-release procedure.
 | Installation docs | `docs/installation.md` now covers the operational UI, production auth, email/n8n settings pointers, v1.0 upgrade, rollback, and smoke checks. | Done in `codex/v1.0-install-runbook` |
 | Runtime readiness docs | `/health`, `/status`, `/ready`, and `/ready/database` now distinguish process health, aggregate degraded state, and strict dependency readiness. | Done in `codex/v1.0-runtime-hardening` |
 | Backup/restore docs | `docs/backup-restore.md` now covers Kelvin post-restore API/UI/audit verification, retention guidance, n8n credential restore checks, and acceptance criteria. | Done in `codex/v1.0-backup-restore` |
-| Security docs | Token management and security behavior are spread across several docs; v1.0 needs one baseline checklist for tokens, approvals, masking, audit, email, and n8n boundaries. | Step 5 |
+| Security docs | `docs/security-baseline.md` now ties tokens, approvals, masking, audit, email, and n8n boundaries to v1.0 regression evidence and known limits. | Done in `codex/v1.0-security-baseline` |
 | Operational runbooks | UI, email, n8n, audit, approvals, and troubleshooting docs exist in pieces but are not combined into daily-operation runbooks. | Step 6 |
 | API contract | Versioned routes and schemas exist, but v1.0 stable/unstable surfaces are not explicitly frozen. | Step 7 |
 | Release package | Version is still `0.6.0` in `pyproject.toml`; release notes, version update, notices review, and offline verification are pending. | Step 8 |
@@ -94,22 +94,27 @@ as one repeatable stable-release procedure.
    - Commit: `feat(runtime): harden v1.0 service readiness`
    - Covers: degraded-mode checklist and any missing readiness regressions.
 
-5. **Create operational runbooks**
+5. **Verify security and permission baseline** - done in `codex/v1.0-security-baseline`
+   - Branch: `codex/v1.0-security-baseline`
+   - Commit: `test(security): verify v1.0 permission baseline`
+   - Covers: tokens, approvals, masking, audit, email, and n8n boundaries.
+
+6. **Create operational runbooks**
    - Branch: `codex/v1.0-ops-runbooks`
    - Commit: `docs: add v1.0 operational runbooks`
    - Covers: UI, approvals, audit, settings, email tests, n8n outage handling.
 
-6. **Freeze API and configuration contracts**
+7. **Freeze API and configuration contracts**
    - Branch: `codex/v1.0-contract-freeze`
    - Commit: `docs(api): freeze v1.0 API and configuration contracts`
    - Covers: stable routes, schema expectations, token scopes, config variables.
 
-7. **Prepare release package**
+8. **Prepare release package**
    - Branch: `codex/v1.0-release-package`
    - Commit: `docs: prepare v1.0 release package`
    - Covers: version update, release notes, licenses, offline artifact checklist.
 
-8. **Run final stable verification**
+9. **Run final stable verification**
    - Branch: `codex/v1.0-stable-verification`
    - Commit: `test(integration): verify v1.0 stable release`
    - Covers: full tests and manual operational verification evidence.

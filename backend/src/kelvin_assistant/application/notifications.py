@@ -6,6 +6,7 @@ from uuid import UUID
 
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.agent import AgentRun, AgentStatus, ToolProposal
+from kelvin_assistant.domain.output_guard import mask_secrets
 from kelvin_assistant.ports.agent_runs import AgentRunStore
 from kelvin_assistant.ports.security_audit import SecurityAuditLogger
 
@@ -262,6 +263,8 @@ async def _send_notification(
     if not recipient:
         return
 
+    safe_body = mask_secrets(body) or ""
+
     if settings.email_provider_mode == "n8n":
         if not settings.n8n_url:
             logger.warning("n8n URL is not configured for email notifications.")
@@ -281,7 +284,7 @@ async def _send_notification(
                         "run_id": run_id,
                         "recipient": recipient,
                         "subject": subject,
-                        "body": body,
+                        "body": safe_body,
                     },
                 )
         except Exception as exc:
@@ -293,7 +296,7 @@ async def _send_notification(
         from email.mime.text import MIMEText
 
         def send_email() -> None:
-            msg = MIMEText(body)
+            msg = MIMEText(safe_body)
             msg["Subject"] = subject
             msg["From"] = settings.email_sender
             msg["To"] = recipient

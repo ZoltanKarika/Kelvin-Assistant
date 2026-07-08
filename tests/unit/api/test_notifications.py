@@ -1,6 +1,7 @@
 """Unit tests for approval pending email/n8n notifications."""
 
 import unittest
+from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -136,7 +137,23 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
             n8n_token="n8n-token",
         )
 
-        proposal = _create_proposal()
+        original_proposal = _create_proposal()
+        proposal = replace(
+            original_proposal,
+            run=replace(
+                original_proposal.run,
+                goal=(
+                    "Investigate DB "
+                    "postgresql://user:secret@db.local:5432/kelvin_assistant"
+                ),
+            ),
+            call=replace(
+                original_proposal.call,
+                reason=(
+                    "Clean up workspace using mysql://user:secret@db.local:3306/kelvin"
+                ),
+            ),
+        )
 
         # Mock response
         mock_response = MagicMock()
@@ -157,6 +174,13 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
         assert payload["recipient"] == "recipient@test.local"
         assert "fs.delete" in payload["body"]
         assert "/important/dir" not in payload["body"]
+        assert (
+            "postgresql://user:secret@db.local:5432/kelvin_assistant"
+            not in payload["body"]
+        )
+        assert "mysql://user:secret@db.local:3306/kelvin" not in payload["body"]
+        assert "[POSTGRES_URL_MASKED]" in payload["body"]
+        assert "[DB_CONNECTION_STRING_MASKED]" in payload["body"]
 
     @patch("smtplib.SMTP")
     async def test_trigger_approval_deduplication(
@@ -238,7 +262,10 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
         mock_smtp_class.return_value.__enter__.return_value = mock_server
 
         await trigger_run_completed_notification(
-            run, "Server successfully written and tested.", settings
+            run,
+            "Server successfully written and tested with "
+            "postgresql://user:secret@db.local:5432/kelvin_assistant.",
+            settings,
         )
 
         # Verify SMTP server lifecycle
@@ -258,7 +285,9 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
 
         assert str(run.id) in body
         assert "Write a secure web server" in body
-        assert "Server successfully written and tested." in body
+        assert "Server successfully written and tested with" in body
+        assert "postgresql://user:secret@db.local:5432/kelvin_assistant" not in body
+        assert "[POSTGRES_URL_MASKED]" in body
         assert "/ui/runs" in body
 
     @patch("smtplib.SMTP")
@@ -290,7 +319,10 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
         mock_smtp_class.return_value.__enter__.return_value = mock_server
 
         await trigger_run_failed_notification(
-            run, "Ollama connection timeout during model query.", settings
+            run,
+            "Ollama connection timeout during model query. "
+            "-----BEGIN RSA PRIVATE KEY-----\nsecret\n-----END RSA PRIVATE KEY-----",
+            settings,
         )
 
         # Verify SMTP server lifecycle
@@ -308,6 +340,8 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
         assert str(run.id) in body
         assert "Write a secure web server" in body
         assert "Ollama connection timeout during model query." in body
+        assert "BEGIN RSA PRIVATE KEY" not in body
+        assert "[PRIVATE_KEY_MASKED]" in body
         assert "/ui/runs" in body
 
     async def test_generate_daily_summary_text_empty(self) -> None:
