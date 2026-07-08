@@ -16,6 +16,12 @@
             <small>Local intelligence</small>
           </span>
         </a>
+        <div class="header-actions">
+          <div class="runtime-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="runtime-status-text">Kapcsolódás…</span>
+          </div>
+        </div>
       </header>
       <div class="app-body">
         <nav class="app-nav">
@@ -28,10 +34,24 @@
             <li><a href="/ui/n8n">n8n</a></li>
           </ul>
         </nav>
-        <main class="main-panel">
-          <h1>Approvals</h1>
+        <main class="main-panel runs-layout">
+          <div class="runs-sidebar">
+            <div class="runs-header">
+              <h1>Jóváhagyások</h1>
+            </div>
+            <div id="approvals-list" class="runs-list">
+              <div class="loading-state">Jóváhagyások betöltése…</div>
+            </div>
+          </div>
+          <div id="approval-detail" class="run-detail">
+            <div class="empty-state">
+              <span class="empty-icon">✓</span>
+              <p>Nincs függőben lévő jóváhagyási kérés</p>
+            </div>
+          </div>
         </main>
       </div>
     </div>
+    <script type="module" src="/static/approvals.js"></script>
   </body>
 </html>

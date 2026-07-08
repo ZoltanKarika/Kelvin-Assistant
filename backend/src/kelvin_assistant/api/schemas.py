@@ -1,7 +1,7 @@
 """Pydantic response models for public endpoints."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -116,6 +116,40 @@ class AgentRunResponse(BaseModel):
     max_steps: int
     version: int
     workspace_id: str | None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class AgentStepResponse(BaseModel):
+    """Execution step detail of an agent run."""
+
+    tool_call_id: UUID
+    tool_name: str
+    arguments: dict[str, Any]
+    reason: str
+    expected_effect: str
+    risk: str
+    policy_decision: str
+    policy_reason: str
+    approval_status: str | None = None
+    approval_decided_by: str | None = None
+    approval_decided_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    closed_at: datetime | None = None
+
+    # Result fields (if executed)
+    succeeded: bool | None = None
+    output: str | None = None
+    error: str | None = None
+    truncated: bool | None = None
+    duration_ms: int | None = None
+
+
+class AgentRunDetailResponse(AgentRunResponse):
+    """Detailed public state of one agent run, including steps."""
+
+    steps: list[AgentStepResponse] = Field(default_factory=list)
 
 
 class AgentToolCallRequest(BaseModel):

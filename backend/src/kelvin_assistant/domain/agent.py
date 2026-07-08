@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from types import MappingProxyType
 from uuid import UUID, uuid4
@@ -367,6 +367,8 @@ class AgentRun:
     max_steps: int = DEFAULT_MAX_AGENT_STEPS
     version: int = 0
     workspace_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     def __post_init__(self) -> None:
         """Normalize and validate run invariants."""
@@ -393,6 +395,10 @@ class AgentRun:
             if not _WORKSPACE_ID_PATTERN.fullmatch(workspace_id):
                 raise AgentDomainError("Workspace ID must be a lowercase identifier")
             object.__setattr__(self, "workspace_id", workspace_id)
+        if self.created_at is None:
+            object.__setattr__(self, "created_at", datetime.now(UTC))
+        if self.updated_at is None:
+            object.__setattr__(self, "updated_at", datetime.now(UTC))
 
     @classmethod
     def create(
@@ -432,4 +438,5 @@ class AgentRun:
             status=next_status,
             step_count=next_step_count,
             version=self.version + 1,
+            updated_at=datetime.now(UTC),
         )
