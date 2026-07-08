@@ -57,6 +57,20 @@ class Settings(BaseSettings):
     max_external_requests_per_hour: int = Field(default=100)
     max_ai_cost_per_day_usd: float = Field(default=1.0)
 
+    # n8n Automation settings
+    n8n_url: str | None = Field(default=None)
+    n8n_token: str | None = Field(default=None)
+
+    # Email Notification settings
+    email_notifications_enabled: bool = Field(default=False)
+    email_smtp_host: str = Field(default="localhost")
+    email_smtp_port: int = Field(default=1025, ge=1, le=65535)
+    email_smtp_username: str | None = Field(default=None)
+    email_smtp_password: str | None = Field(default=None)
+    email_smtp_use_tls: bool = Field(default=False)
+    email_sender: str = Field(default="kelvin@localhost")
+    email_recipient: str | None = Field(default=None)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

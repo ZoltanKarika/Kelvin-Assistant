@@ -31,6 +31,7 @@ from kelvin_assistant.api.frontend_routes import FRONTEND_DIR
 from kelvin_assistant.api.frontend_routes import router as frontend_router
 from kelvin_assistant.api.memory_routes import router as memory_router
 from kelvin_assistant.api.routes import router
+from kelvin_assistant.api.settings_routes import router as settings_router
 from kelvin_assistant.application.agent import AgentService
 from kelvin_assistant.application.agent_planning import AgentPlanningService
 from kelvin_assistant.application.chat import ChatService
@@ -227,6 +228,7 @@ def create_app(
     app.include_router(agent_router)
     app.include_router(frontend_router)
     app.include_router(audit_router)
+    app.include_router(settings_router)
 
     idempotency_store: dict[str, CachedResponse] = {}
 

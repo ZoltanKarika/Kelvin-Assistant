@@ -97,7 +97,7 @@ def test_settings_ui_returns_html() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "<h1>Settings</h1>" in response.text
+    assert "<h1>Rendszerbeállítások</h1>" in response.text
 
 
 def test_n8n_ui_returns_html() -> None:
@@ -120,6 +120,7 @@ def test_static_assets_are_available() -> None:
         runs_script_response = client.get("/static/runs.js")
         approvals_script_response = client.get("/static/approvals.js")
         audit_script_response = client.get("/static/audit.js")
+        settings_script_response = client.get("/static/settings.js")
 
     assert css_response.status_code == 200
     assert css_response.headers["content-type"].startswith("text/css")
@@ -136,3 +137,6 @@ def test_static_assets_are_available() -> None:
     assert audit_script_response.status_code == 200
     assert "javascript" in audit_script_response.headers["content-type"]
     assert "fetchAuditLogs" in audit_script_response.text
+    assert settings_script_response.status_code == 200
+    assert "javascript" in settings_script_response.headers["content-type"]
+    assert "loadSettings" in settings_script_response.text
