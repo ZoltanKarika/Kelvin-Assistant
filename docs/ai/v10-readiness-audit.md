@@ -45,7 +45,7 @@ as one repeatable stable-release procedure.
 | Area | Gap | Next step |
 |---|---|---|
 | Installation docs | `docs/installation.md` now covers the operational UI, production auth, email/n8n settings pointers, v1.0 upgrade, rollback, and smoke checks. | Done in `codex/v1.0-install-runbook` |
-| Runtime readiness docs | `/health`, `/ready`, and `/ready/database` are documented, but v1.0 degraded-mode expectations are not summarized in one operator checklist. | Step 3 |
+| Runtime readiness docs | `/health`, `/status`, `/ready`, and `/ready/database` now distinguish process health, aggregate degraded state, and strict dependency readiness. | Done in `codex/v1.0-runtime-hardening` |
 | Backup/restore docs | `docs/backup-restore.md` covers database and n8n backups but lacks Kelvin post-restore API/UI verification, retention guidance, and restore acceptance criteria. | Step 4 |
 | Security docs | Token management and security behavior are spread across several docs; v1.0 needs one baseline checklist for tokens, approvals, masking, audit, email, and n8n boundaries. | Step 5 |
 | Operational runbooks | UI, email, n8n, audit, approvals, and troubleshooting docs exist in pieces but are not combined into daily-operation runbooks. | Step 6 |
@@ -89,7 +89,7 @@ as one repeatable stable-release procedure.
    - Commit: `docs: verify v1.0 backup and restore process`
    - Covers: Kelvin post-restore checks, n8n encryption key handling, retention.
 
-4. **Harden runtime readiness docs and tests**
+4. **Harden runtime readiness docs and tests** - done in `codex/v1.0-runtime-hardening`
    - Branch: `codex/v1.0-runtime-hardening`
    - Commit: `feat(runtime): harden v1.0 service readiness`
    - Covers: degraded-mode checklist and any missing readiness regressions.

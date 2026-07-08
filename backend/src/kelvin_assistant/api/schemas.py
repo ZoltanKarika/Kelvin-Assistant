@@ -56,6 +56,22 @@ class DatabaseReadinessResponse(BaseModel):
     provider: Literal["postgresql"]
 
 
+class RuntimeComponentStatus(BaseModel):
+    """Status of one runtime dependency or operational component."""
+
+    name: str
+    status: Literal["ready", "disabled", "unconfigured", "unavailable"]
+    required: bool
+    detail: str | None = None
+
+
+class RuntimeStatusResponse(BaseModel):
+    """Aggregated runtime status for local operations."""
+
+    status: Literal["ready", "degraded", "unavailable"]
+    components: list[RuntimeComponentStatus]
+
+
 class ChatRequest(BaseModel):
     """Request payload for one non-streaming conversation turn."""
 

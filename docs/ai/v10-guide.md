@@ -24,7 +24,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 |---|---|---|---|---|
 | **1** | Release Readiness Gap Audit | - | `feat/v1.0-readiness-audit` | done |
 | **2** | Installation & Upgrade Runbook | #1 | `feat/v1.0-install-runbook` | done |
-| **3** | Runtime & Service Hardening | #1, #2 | `feat/v1.0-runtime-hardening` | pending |
+| **3** | Runtime & Service Hardening | #1, #2 | `feat/v1.0-runtime-hardening` | done |
 | **4** | Backup, Restore & Data Retention Verification | #1, #2 | `feat/v1.0-backup-restore` | pending |
 | **5** | Security & Permission Baseline Verification | #1 | `feat/v1.0-security-baseline` | pending |
 | **6** | Operational UI, Email & n8n Runbooks | #1, #3, #5 | `feat/v1.0-ops-runbooks` | pending |
@@ -114,6 +114,8 @@ docs: add v1.0 install and upgrade runbook
 ### Step 3: Runtime & Service Hardening
 
 **Goal:** Ensure Kelvin starts predictably and reports dependency health clearly.
+
+**Result:** Added aggregate `/status` runtime reporting and degraded-mode tests.
 
 **What to do:**
 
