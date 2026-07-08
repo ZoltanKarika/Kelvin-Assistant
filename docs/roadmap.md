@@ -15,7 +15,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
 | v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
 | v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Kész |
-| v0.9 UI & Email Notifications | Helyi kezelőfelület és email értesítések | Tervezett |
+| v0.9 UI & Email Notifications | Helyi kezelőfelület és email értesítések | Kész |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 ## v0.1 Foundation
@@ -340,22 +340,24 @@ jelenhet meg válaszban vagy naplóban, a workflow pedig biztonságosan
 
 ## v0.9 UI & Email Notifications
 
-- használható helyi Kelvin UI futások, jóváhagyások, audit, beállítások és n8n
+Elkészült:
+
+- [x] használható helyi Kelvin UI futások, jóváhagyások, audit, beállítások és n8n
   állapot megjelenítésére;
-- agentfutások listázása státusszal, idővonallal, részletekkel és biztonságosan
+- [x] agentfutások listázása státusszal, idővonallal, részletekkel és biztonságosan
   maszkolt tool-kimenetekkel;
-- helyi jóváhagyási sor író vagy magas kockázatú műveletekhez;
-- auditnapló-keresés és auditbejegyzések összekapcsolása futásokkal,
+- [x] helyi jóváhagyási sor író vagy magas kockázatú műveletekhez;
+- [x] auditnapló-keresés és auditbejegyzések összekapcsolása futásokkal,
   korrelációs azonosítókkal és jóváhagyási eseményekkel;
-- beállítási felület runtime-, biztonsági, email- és n8n-konfigurációhoz nyers
+- [x] beállítási felület runtime-, biztonsági, email- és n8n-konfigurációhoz nyers
   titkok megjelenítése nélkül;
-- n8n állapotpanel, amely láthatóvá teszi az automation réteg egészségét, de
+- [x] n8n állapotpanel, amely láthatóvá teszi az automation réteg egészségét, de
   n8n kiesése esetén nem blokkolja a helyi Kelvin használatát;
-- email értesítés függő jóváhagyásról;
-- email értesítés sikeresen befejezett vagy hibával lezárt futásokról;
-- napi email összefoglaló futásszámokkal, függő jóváhagyásokkal, fontos audit
+- [x] email értesítés függő jóváhagyásról;
+- [x] email értesítés sikeresen befejezett vagy hibával lezárt futásokról;
+- [x] napi email összefoglaló futásszámokkal, függő jóváhagyásokkal, fontos audit
   eseményekkel és n8n állapottal;
-- Slack, WhatsApp, Matrix és Mattermost chat-integrációk nem részei a v0.9
+- [x] Slack, WhatsApp, Matrix és Mattermost chat-integrációk nem részei a v0.9
   mérföldkőnek.
 
 Elfogadási feltétel: Kelvin a helyi UI-ban átláthatóan kezelhető, a felhasználó
