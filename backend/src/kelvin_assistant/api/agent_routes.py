@@ -42,6 +42,8 @@ from kelvin_assistant.application.agent_planning import (
 )
 from kelvin_assistant.application.notifications import (
     trigger_approval_notification,
+    trigger_run_completed_notification,
+    trigger_run_failed_notification,
 )
 from kelvin_assistant.application.tool_policy import ToolPolicyContext
 from kelvin_assistant.config.settings import Settings
@@ -347,6 +349,7 @@ async def plan_next_agent_step(
     store: RuntimeAgentRunStore,
     workspace_authorizer: RuntimeWorkspaceAuthorizer,
     audit_logger: RuntimeSecurityAuditLogger,
+    settings: Annotated[Settings, Depends(get_runtime_settings)],
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> AgentNextResponse:
     """Plan, validate, policy-check, and persist one next agent decision."""
@@ -380,13 +383,17 @@ async def plan_next_agent_step(
             detail=str(exc),
         ) from exc
     except AgentPlannerUnavailableError as exc:
-        await _fail_planning_run(planning_service, store, planned)
+        await _fail_planning_run(
+            planning_service, store, planned, str(exc), settings
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except AgentPlannerResponseError as exc:
-        await _fail_planning_run(planning_service, store, planned)
+        await _fail_planning_run(
+            planning_service, store, planned, str(exc), settings
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
@@ -397,7 +404,9 @@ async def plan_next_agent_step(
             detail=str(exc),
         ) from exc
     except AgentPlanningError as exc:
-        await _fail_planning_run(planning_service, store, planned)
+        await _fail_planning_run(
+            planning_service, store, planned, str(exc), settings
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
@@ -439,6 +448,7 @@ async def plan_next_agent_step(
         if isinstance(outcome, CompletionOutcome):
             await store.update(outcome.run, expected_version=planned.version)
             summary = mask_secrets(outcome.decision.summary) or ""
+            await trigger_run_completed_notification(outcome.run, summary, settings)
             await audit_logger.log_decision(
                 event_type="output_guard",
                 decision="allow",
@@ -455,6 +465,9 @@ async def plan_next_agent_step(
             if outcome.proposal.policy_result.decision is ToolPolicyDecision.DENY:
                 failed = planning_service.fail_run(planned)
                 await store.update(failed, expected_version=planned.version)
+                await trigger_run_failed_notification(
+                    failed, outcome.proposal.policy_result.reason, settings
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=outcome.proposal.policy_result.reason,
@@ -658,6 +671,7 @@ async def submit_agent_tool_result(
     request: AgentToolResultRequest,
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
+    settings: Annotated[Settings, Depends(get_runtime_settings)],
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_WRITE))],
 ) -> AgentToolResultResponse:
     """Store one matching local tool result and advance the agent run."""
@@ -684,6 +698,14 @@ async def submit_agent_tool_result(
             result,
             expected_version=proposal.run.version,
         )
+        from kelvin_assistant.domain.agent import AgentStatus
+
+        if updated_run.status is AgentStatus.FAILED:
+            await trigger_run_failed_notification(
+                updated_run,
+                result.error or f"Tool {result.tool_name} execution failed.",
+                settings,
+            )
     except (AgentRunNotFoundError, AgentProposalNotFoundError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -723,6 +745,8 @@ async def _fail_planning_run(
     planning_service: AgentPlanningService,
     store: AgentRunStore,
     planned: AgentRun | None,
+    error_msg: str,
+    settings: Settings,
 ) -> None:
     """Best-effort persist a failed state without hiding planner errors."""
 
@@ -731,6 +755,7 @@ async def _fail_planning_run(
     try:
         failed = planning_service.fail_run(planned)
         await store.update(failed, expected_version=planned.version)
+        await trigger_run_failed_notification(failed, error_msg, settings)
     except AgentRunStoreError:
         return
 
