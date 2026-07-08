@@ -16,6 +16,12 @@
             <small>Local intelligence</small>
           </span>
         </a>
+        <div class="header-actions">
+          <div class="runtime-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="runtime-status-text">Kapcsolódás…</span>
+          </div>
+        </div>
       </header>
       <div class="app-body">
         <nav class="app-nav">
@@ -28,10 +34,69 @@
             <li><a href="/ui/n8n" class="active" aria-current="page">n8n</a></li>
           </ul>
         </nav>
-        <main class="main-panel">
-          <h1>n8n</h1>
+        <main class="main-panel n8n-layout">
+          <div class="n8n-header-row">
+            <h1>n8n Automációs Állapot</h1>
+            <button id="refresh-n8n-btn" class="secondary-button">Állapot frissítése</button>
+          </div>
+
+          <div class="n8n-grid">
+            <!-- Left Column: Health Check & Details -->
+            <div class="n8n-status-card">
+              <div class="status-header">
+                <h2>Kapcsolat diagnosztika</h2>
+                <span id="n8n-status-badge" class="run-card-status status-observing">Betöltés…</span>
+              </div>
+              
+              <div class="status-details">
+                <div class="detail-row">
+                  <span class="detail-label">Konfigurált URL:</span>
+                  <span id="n8n-base-url" class="detail-value">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Utolsó ellenőrzés:</span>
+                  <span id="n8n-last-checked" class="detail-value">-</span>
+                </div>
+                <div id="n8n-error-box" class="n8n-error-box" style="display: none;">
+                  <strong>Hiba részletei:</strong>
+                  <p id="n8n-error-msg">-</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Info & Workflow status -->
+            <div class="n8n-workflows-card">
+              <h2>Integrált folyamatok (Workflows)</h2>
+              <p class="section-desc">A Kelvin local ágens az alábbi eseményvezérelt folyamatokat képes delegálni az n8n felé:</p>
+              
+              <ul class="workflow-list">
+                <li class="workflow-item">
+                  <div class="wf-info">
+                    <span class="wf-name">Jóváhagyásra váró feladat értesítő</span>
+                    <span class="wf-desc">E-mail értesítést küld, ha egy ágens futás jóváhagyást igényel.</span>
+                  </div>
+                  <span class="wf-status active" id="wf-approval-status">Elérhető</span>
+                </li>
+                <li class="workflow-item">
+                  <div class="wf-info">
+                    <span class="wf-name">Futás befejezve / sikertelen értesítő</span>
+                    <span class="wf-desc">E-mail értesítést küld, ha egy háttérben futó ágens végzett vagy elakadt.</span>
+                  </div>
+                  <span class="wf-status active" id="wf-run-status">Elérhető</span>
+                </li>
+                <li class="workflow-item">
+                  <div class="wf-info">
+                    <span class="wf-name">Napi biztonsági és audit összefoglaló</span>
+                    <span class="wf-desc">Rendszeres napi jelentést generál az elvégzett műveletekről és audit blokkolásokról.</span>
+                  </div>
+                  <span class="wf-status active" id="wf-daily-status">Elérhető</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </main>
       </div>
     </div>
+    <script type="module" src="/static/n8n.js"></script>
   </body>
 </html>
