@@ -12,9 +12,10 @@ ellenőrzi. A Windows hoston futó Ollama adaptere és helyi integrációs
 ellenőrzése működik. A VM és a host közötti, tűzfallal korlátozott Ollama
 kapcsolat, a readiness végpont és a GPU-gyorsított generálás is ellenőrzött.
 A verziózott chat API többfordulós memóriabeli sessionöket kezel, a streaming
-végpont pedig Server-Sent Events formátumban küldi a modell válaszát. A
-minimális webes chatfelület a `/ui` útvonalon érhető el. Az offline
-csomagimport még külön üzemeltetési lépés.
+végpont pedig Server-Sent Events formátumban küldi a modell válaszát. A helyi
+operational UI a `/ui` útvonalon érhető el futások, jóváhagyások, audit,
+beállítások, email és n8n állapot kezeléséhez. Az offline csomagimport még
+külön üzemeltetési lépés.
 
 ## Célkörnyezet
 
@@ -31,7 +32,8 @@ csomagimport még külön üzemeltetési lépés.
 
 - Ubuntu Server 24.04 LTS;
 - Python 3.12 vagy újabb;
-- később Open WebUI, PostgreSQL és pgvector.
+- PostgreSQL és pgvector;
+- opcionálisan külön n8n automation VM.
 
 ### Ellenőrzött VM-konfiguráció
 
@@ -104,6 +106,11 @@ A jelenlegi backend által használt változók:
 | `KELVIN_RAG_ENABLED` | `false` | Tudásbázis-kontekstus bekapcsolása a chatben |
 | `KELVIN_RAG_COLLECTION` | `manual` | Chathez használt tudásgyűjtemény |
 | `KELVIN_RAG_RESULT_LIMIT` | `3` | Chathez lekért tudásbázis-részletek száma |
+| `KELVIN_N8N_URL` | nincs | Opcionális n8n alap URL az állapotpanelhez és delegált emailhez |
+| `KELVIN_N8N_TOKEN` | nincs | Opcionális n8n bearer token, Gitbe nem kerülhet |
+| `KELVIN_EMAIL_NOTIFICATIONS_ENABLED` | `false` | Email értesítések fő kapcsolója |
+| `KELVIN_EMAIL_PROVIDER_MODE` | `smtp` | `smtp` vagy `n8n` email kézbesítési mód |
+| `KELVIN_EMAIL_RECIPIENT` | nincs | Email címzett; titkot nem tartalmaz, de lokális konfiguráció |
 
 A `.env` fájlban ne tárolj repositoryba kerülő jelszót, tokent vagy más
 titkot. A fájlt soha ne commitold.
@@ -119,6 +126,12 @@ KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json
 Az `api-tokens.json` csak `token_sha256` mezőket tartalmazhat, nyers tokeneket
 nem. A formátumot az `api-tokens.example.json` és a
 `docs/token-management.md` dokumentálja.
+
+Email és n8n részletes beállítás:
+
+- `docs/email-setup-guide.md`;
+- `docs/n8n-credential-setup.md`;
+- `docs/n8n-integration.md`.
 
 ## Függőségek telepítése
 
@@ -259,9 +272,9 @@ Az asszisztens válasza csak a teljes stream sikeres befejezése után kerül a
 sessionbe. Így megszakadt kapcsolat vagy modellhiba esetén nem marad félkész
 asszisztens-forduló a beszélgetésben.
 
-## Webes chatfelület
+## Operational UI
 
-A beépített, minimális chatfelület:
+A beépített helyi operational UI:
 
 ```text
 http://127.0.0.1:8000/ui
@@ -274,9 +287,15 @@ http://<VM_IP>:8000/ui
 ```
 
 A felület ugyanazt a FastAPI alkalmazást használja, mint az API, ezért nincs
-külön Node.js build, CORS-beállítás vagy internetfüggőség. A válaszokat
-streamelve jeleníti meg, és a sessionazonosítót csak a böngésző memóriájában
-tartja.
+külön Node.js build, CORS-beállítás vagy internetfüggőség.
+
+Fontos oldalak:
+
+- `/ui/runs` - agent futások listája és részletei;
+- `/ui/approvals` - helyi jóváhagyási sor;
+- `/ui/audit` - auditnapló keresése;
+- `/ui/settings` - runtime, biztonsági, email és n8n beállítások;
+- `/ui/n8n` - n8n elérhetőség és állapot.
 
 ## Fejlesztői ellenőrzések
 
@@ -484,7 +503,12 @@ KELVIN_LLM_PROVIDER=ollama
 KELVIN_OLLAMA_BASE_URL=http://<WINDOWS_HOST_IP>:11434
 KELVIN_OLLAMA_MODEL=gemma4:e4b
 KELVIN_OLLAMA_TIMEOUT=120
+KELVIN_DATABASE_URL=postgresql://kelvin:<password>@127.0.0.1:5432/kelvin_assistant
+KELVIN_DATABASE_CONNECT_TIMEOUT=5
 ```
+
+Az API-token fájl létrehozását és a nyers tokenek kezelését a
+`docs/token-management.md` és `docs/n8n-credential-setup.md` írja le.
 
 A szolgáltatásegység telepítése és indítása:
 
@@ -512,6 +536,52 @@ Invoke-RestMethod http://<VM_IP>:8000/ready
 Invoke-RestMethod http://<VM_IP>:8000/ready/database
 Invoke-RestMethod http://<VM_IP>:8000/version
 ```
+
+Friss telepítés v1.0 smoke check:
+
+1. `systemctl status kelvin-api --no-pager` aktív állapotot mutat.
+2. A fenti négy endpoint elérhető a megbízható helyi hálózatról.
+3. A `http://<VM_IP>:8000/ui` betölt, és a Runs, Approvals, Audit, Settings és
+   n8n oldalak nem adnak szerverhibát.
+4. Production konfigurációban token nélküli védett API-hívás `401` választ ad.
+5. Érvényes `system:read` scope-pal rendelkező tokennel a rendszer endpointok
+   elérhetők.
+
+## Frissítés v0.9-ről v1.0-ra
+
+A frissítés előtt:
+
+1. Ellenőrizd, hogy nincs függőben lévő helyi agent jóváhagyás.
+2. Készíts adatbázis-mentést a `docs/backup-restore.md` alapján.
+3. Mentsd el külön az `/etc/kelvin-assistant/kelvin.env`,
+   `/etc/kelvin-assistant/api-tokens.json` és n8n encryption key értékeit.
+4. Ha VM-szintű Hyper-V checkpointot használsz, csak rövid életű rollback pontra
+   használd, és sikeres ellenőrzés után töröld.
+
+Frissítés:
+
+```bash
+cd /opt/kelvin-assistant
+sudo -u kelvin -H git fetch origin
+sudo -u kelvin -H git switch main
+sudo -u kelvin -H git pull --ff-only origin main
+sudo -u kelvin -H uv sync --locked --no-dev
+sudo systemctl restart kelvin-api
+```
+
+Frissítés után futtasd a friss telepítési smoke checket. Ha a konfiguráció
+production vagy LAN-elérhető, `KELVIN_API_AUTH_MODE=required` és
+`KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json` kötelező.
+
+Rollback:
+
+1. Állítsd meg a szolgáltatást: `sudo systemctl stop kelvin-api`.
+2. Állj vissza az előző ismert jó Git commitra vagy tagre az
+   `/opt/kelvin-assistant` könyvtárban.
+3. Futtasd újra: `sudo -u kelvin -H uv sync --locked --no-dev`.
+4. Ha adatmodell vagy adatváltozás sérült, állítsd vissza a PostgreSQL mentést a
+   `docs/backup-restore.md` alapján.
+5. Indítsd újra a szolgáltatást, majd ismételd meg a smoke checket.
 
 A tanulási VM-et először a `zoltan` felhasználó
 `~/projects/Kelvin-Assistant` könyvtárából ellenőriztük. Ezután sikeresen
