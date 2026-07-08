@@ -419,9 +419,7 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
         mock_server = MagicMock()
         mock_smtp_class.return_value.__enter__.return_value = mock_server
 
-        await trigger_daily_summary_notification(
-            mock_store, mock_audit, settings
-        )
+        await trigger_daily_summary_notification(mock_store, mock_audit, settings)
 
         # Verify SMTP server lifecycle
         mock_smtp_class.assert_called_once_with("smtp.test", 587, timeout=10)

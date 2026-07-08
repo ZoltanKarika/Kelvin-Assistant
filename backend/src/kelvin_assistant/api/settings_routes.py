@@ -357,9 +357,7 @@ async def send_summary_endpoint(
     store: RuntimeAgentRunStore,
     audit_logger: RuntimeSecurityAuditLogger,
     settings: RuntimeSettings,
-    _principal: Annotated[
-        ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))
-    ],
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
 ) -> dict[str, str]:
     """Manually trigger and send the daily summary email now."""
 
@@ -383,9 +381,7 @@ async def send_summary_endpoint(
         # Force send (it ignores the email_on_daily_summary toggle for manual triggers)
         # We can temporarily override setting or construct a temporary setting
         force_settings = settings.model_copy(update={"email_on_daily_summary": True})
-        await trigger_daily_summary_notification(
-            store, audit_logger, force_settings
-        )
+        await trigger_daily_summary_notification(store, audit_logger, force_settings)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

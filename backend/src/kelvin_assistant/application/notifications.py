@@ -41,9 +41,7 @@ async def trigger_approval_notification(
         return
     _NOTIFIED_APPROVALS.add(tool_call_id)
 
-    subject = (
-        f"Kelvin Assistant - Jóváhagyás szükséges (Futás ID: {proposal.run.id})"
-    )
+    subject = f"Kelvin Assistant - Jóváhagyás szükséges (Futás ID: {proposal.run.id})"
     body = (
         "Kedves Felhasználó!\n\n"
         "A Kelvin Assistant helyi ágens futása jóváhagyásra vár.\n\n"
@@ -69,10 +67,7 @@ async def trigger_run_completed_notification(
 ) -> None:
     """Send an email or n8n notification when a run completes successfully."""
 
-    if (
-        not settings.email_notifications_enabled
-        or not settings.email_on_run_completed
-    ):
+    if not settings.email_notifications_enabled or not settings.email_on_run_completed:
         return
 
     recipient = settings.email_recipient
@@ -95,9 +90,7 @@ async def trigger_run_completed_notification(
         "válaszokat vagy érzékeny promptokat."
     )
 
-    await _send_notification(
-        subject, body, "run_completed", str(run.id), settings
-    )
+    await _send_notification(subject, body, "run_completed", str(run.id), settings)
 
 
 async def trigger_run_failed_notification(
@@ -105,10 +98,7 @@ async def trigger_run_failed_notification(
 ) -> None:
     """Send an email or n8n notification when a run fails."""
 
-    if (
-        not settings.email_notifications_enabled
-        or not settings.email_on_run_failed
-    ):
+    if not settings.email_notifications_enabled or not settings.email_on_run_failed:
         return
 
     recipient = settings.email_recipient
@@ -150,15 +140,11 @@ async def generate_daily_summary_text(
     # 1. Fetch runs
     all_runs = await store.list_runs()
     daily_runs = [
-        r
-        for r in all_runs
-        if r.created_at is not None and r.created_at >= day_ago
+        r for r in all_runs if r.created_at is not None and r.created_at >= day_ago
     ]
 
     total_count = len(daily_runs)
-    completed_runs = [
-        r for r in daily_runs if r.status == AgentStatus.COMPLETED
-    ]
+    completed_runs = [r for r in daily_runs if r.status == AgentStatus.COMPLETED]
     failed_runs = [r for r in daily_runs if r.status == AgentStatus.FAILED]
     pending_approvals = [
         r for r in daily_runs if r.status == AgentStatus.AWAITING_APPROVAL
@@ -167,9 +153,7 @@ async def generate_daily_summary_text(
     # 2. Fetch notable audit events
     all_audit = await audit_logger.list_entries(limit=500)
     daily_audit = [
-        e
-        for e in all_audit
-        if e.created_at is not None and e.created_at >= day_ago
+        e for e in all_audit if e.created_at is not None and e.created_at >= day_ago
     ]
     blocked_count = sum(1 for e in daily_audit if e.decision == "block")
 
@@ -248,10 +232,7 @@ async def trigger_daily_summary_notification(
 ) -> None:
     """Generate and send the daily operational summary notification."""
 
-    if (
-        not settings.email_notifications_enabled
-        or not settings.email_on_daily_summary
-    ):
+    if not settings.email_notifications_enabled or not settings.email_on_daily_summary:
         return
 
     recipient = settings.email_recipient
@@ -267,9 +248,7 @@ async def trigger_daily_summary_notification(
         store, audit_logger, settings.n8n_url, settings.n8n_token
     )
 
-    await _send_notification(
-        subject, body, "daily_summary", "system", settings
-    )
+    await _send_notification(subject, body, "daily_summary", "system", settings)
 
 
 async def _send_notification(
@@ -306,9 +285,7 @@ async def _send_notification(
                     },
                 )
         except Exception as exc:
-            logger.error(
-                "Failed to delegate email notification to n8n: %s", exc
-            )
+            logger.error("Failed to delegate email notification to n8n: %s", exc)
     else:
         # SMTP
         import asyncio
@@ -326,10 +303,7 @@ async def _send_notification(
             ) as server:
                 if settings.email_smtp_use_tls:
                     server.starttls()
-                if (
-                    settings.email_smtp_username
-                    and settings.email_smtp_password
-                ):
+                if settings.email_smtp_username and settings.email_smtp_password:
                     server.login(
                         settings.email_smtp_username,
                         settings.email_smtp_password,

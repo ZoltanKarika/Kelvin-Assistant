@@ -383,17 +383,13 @@ async def plan_next_agent_step(
             detail=str(exc),
         ) from exc
     except AgentPlannerUnavailableError as exc:
-        await _fail_planning_run(
-            planning_service, store, planned, str(exc), settings
-        )
+        await _fail_planning_run(planning_service, store, planned, str(exc), settings)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except AgentPlannerResponseError as exc:
-        await _fail_planning_run(
-            planning_service, store, planned, str(exc), settings
-        )
+        await _fail_planning_run(planning_service, store, planned, str(exc), settings)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
@@ -404,9 +400,7 @@ async def plan_next_agent_step(
             detail=str(exc),
         ) from exc
     except AgentPlanningError as exc:
-        await _fail_planning_run(
-            planning_service, store, planned, str(exc), settings
-        )
+        await _fail_planning_run(planning_service, store, planned, str(exc), settings)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
