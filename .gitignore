@@ -23,6 +23,8 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .pytest_temp/
+.sandbox-pytest-temp/
+pytest-cache-files-*/
 
 # Runtime data
 data/*

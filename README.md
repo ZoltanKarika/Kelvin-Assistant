@@ -227,12 +227,14 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.4 Knowledge | RAG és PostgreSQL + pgvector | Kész |
 | v0.5 Memory | Rövid és hosszú távú memória | Kész |
 | v0.6 Agent | Eszközhívások, PowerShell és Git | Kész |
-| v0.7 n8n Integration | Self-hosted n8n és Kelvin API-integráció. Elkészültek az első workflow-k (health check, chat). | Kész |
-| v0.8 Integration Hardening | Biztonság, audit, hibakezelés és mentés | Kész |
-| v0.9 Messaging | Kétirányú üzenetküldés n8n workflow-kon keresztül | Tervezett |
+| v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
+| v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Kész |
+| v0.9 UI & Email Notifications | Helyi kezelőfelület és email értesítések | Kész |
 | v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
 
 Részletesen: [docs/roadmap.md](docs/roadmap.md).
+
+v1.0 tervezés: [docs/ai/v10-guide.md](docs/ai/v10-guide.md).
 
 A memória részletes dokumentációja:
 [v0.5 Memory](docs/memory-design.md).
