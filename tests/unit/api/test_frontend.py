@@ -86,7 +86,7 @@ def test_audit_ui_returns_html() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "<h1>Audit</h1>" in response.text
+    assert "<h1>Biztonsági napló (Audit)</h1>" in response.text
 
 
 def test_settings_ui_returns_html() -> None:
@@ -119,6 +119,7 @@ def test_static_assets_are_available() -> None:
         script_response = client.get("/static/app.js")
         runs_script_response = client.get("/static/runs.js")
         approvals_script_response = client.get("/static/approvals.js")
+        audit_script_response = client.get("/static/audit.js")
 
     assert css_response.status_code == 200
     assert css_response.headers["content-type"].startswith("text/css")
@@ -132,3 +133,6 @@ def test_static_assets_are_available() -> None:
     assert approvals_script_response.status_code == 200
     assert "javascript" in approvals_script_response.headers["content-type"]
     assert "fetchPendingApprovals" in approvals_script_response.text
+    assert audit_script_response.status_code == 200
+    assert "javascript" in audit_script_response.headers["content-type"]
+    assert "fetchAuditLogs" in audit_script_response.text

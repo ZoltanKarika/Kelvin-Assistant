@@ -25,6 +25,7 @@ from kelvin_assistant.adapters.postgres_security_audit import (
     PostgresSecurityAuditLogger,
 )
 from kelvin_assistant.api.agent_routes import router as agent_router
+from kelvin_assistant.api.audit_routes import router as audit_router
 from kelvin_assistant.api.chat_routes import router as chat_router
 from kelvin_assistant.api.frontend_routes import FRONTEND_DIR
 from kelvin_assistant.api.frontend_routes import router as frontend_router
@@ -225,6 +226,7 @@ def create_app(
     app.include_router(memory_router)
     app.include_router(agent_router)
     app.include_router(frontend_router)
+    app.include_router(audit_router)
 
     idempotency_store: dict[str, CachedResponse] = {}
 

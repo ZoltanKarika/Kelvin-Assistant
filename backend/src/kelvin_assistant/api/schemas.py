@@ -152,6 +152,19 @@ class AgentRunDetailResponse(AgentRunResponse):
     steps: list[AgentStepResponse] = Field(default_factory=list)
 
 
+class SecurityAuditEntryResponse(BaseModel):
+    """Public state of one security audit log entry."""
+
+    id: UUID
+    correlation_id: UUID | None
+    run_id: UUID | None
+    event_type: str
+    decision: str
+    masked_content: str | None
+    warnings: list[str]
+    created_at: datetime
+
+
 class AgentToolCallRequest(BaseModel):
     """Request payload for proposing one structured agent tool call."""
 

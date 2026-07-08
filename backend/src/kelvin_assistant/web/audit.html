@@ -16,6 +16,12 @@
             <small>Local intelligence</small>
           </span>
         </a>
+        <div class="header-actions">
+          <div class="runtime-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="runtime-status-text">Kapcsolódás…</span>
+          </div>
+        </div>
       </header>
       <div class="app-body">
         <nav class="app-nav">
@@ -28,10 +34,65 @@
             <li><a href="/ui/n8n">n8n</a></li>
           </ul>
         </nav>
-        <main class="main-panel">
-          <h1>Audit</h1>
+        <main class="main-panel audit-layout">
+          <div class="audit-header-row">
+            <h1>Biztonsági napló (Audit)</h1>
+            <div class="audit-filters-bar">
+              <div class="filter-group">
+                <label for="filter-event-type">Esemény:</label>
+                <select id="filter-event-type">
+                  <option value="all">Minden esemény</option>
+                  <option value="input_guard">Input Guard</option>
+                  <option value="output_guard">Output Guard</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="filter-decision">Döntés:</label>
+                <select id="filter-decision">
+                  <option value="all">Minden döntés</option>
+                  <option value="allow">Engedélyezett</option>
+                  <option value="block">Blokkolt</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="filter-run-id">Futás ID:</label>
+                <input type="text" id="filter-run-id" placeholder="Keresés futás ID alapján…">
+              </div>
+              <div class="filter-group">
+                <label for="filter-correlation-id">Korrelációs ID:</label>
+                <input type="text" id="filter-correlation-id" placeholder="Keresés korrelációs ID alapján…">
+              </div>
+              <button id="reset-filters-btn" class="secondary-button">Szűrők törlése</button>
+            </div>
+          </div>
+
+          <div class="audit-table-container">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Időbélyeg</th>
+                  <th>Esemény</th>
+                  <th>Döntés</th>
+                  <th>Kapcsolódó futás</th>
+                  <th>Korreláció</th>
+                  <th>Tartalom</th>
+                  <th>Figyelmeztetések</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-rows">
+                <tr>
+                  <td colspan="7" class="loading-state">Audit napló betöltése…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="audit-footer-row">
+            <button id="load-more-btn" class="secondary-button" style="display: none;">Továbbiak betöltése</button>
+          </div>
         </main>
       </div>
     </div>
+    <script type="module" src="/static/audit.js"></script>
   </body>
 </html>
