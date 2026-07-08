@@ -23,7 +23,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 | Step | Item | Depends on | Branch suggestion | Status |
 |---|---|---|---|---|
 | **1** | Release Readiness Gap Audit | - | `feat/v1.0-readiness-audit` | done |
-| **2** | Installation & Upgrade Runbook | #1 | `feat/v1.0-install-runbook` | pending |
+| **2** | Installation & Upgrade Runbook | #1 | `feat/v1.0-install-runbook` | done |
 | **3** | Runtime & Service Hardening | #1, #2 | `feat/v1.0-runtime-hardening` | pending |
 | **4** | Backup, Restore & Data Retention Verification | #1, #2 | `feat/v1.0-backup-restore` | pending |
 | **5** | Security & Permission Baseline Verification | #1 | `feat/v1.0-security-baseline` | pending |
@@ -91,6 +91,8 @@ docs: audit v1.0 release readiness gaps
 ### Step 2: Installation & Upgrade Runbook
 
 **Goal:** Make local installation, upgrade, and rollback steps repeatable.
+
+**Result:** Completed in `docs/installation.md` and `.env.example`.
 
 **What to do:**
 
