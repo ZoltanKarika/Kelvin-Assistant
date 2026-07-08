@@ -11,6 +11,7 @@ from kelvin_assistant.api.dependencies import (
     get_agent_run_store,
     get_agent_service,
     get_input_guard,
+    get_runtime_settings,
     get_security_audit_logger,
     get_workspace_authorizer,
     require_scope,
@@ -39,7 +40,11 @@ from kelvin_assistant.application.agent_planning import (
     CompletionOutcome,
     ToolOutcome,
 )
+from kelvin_assistant.application.notifications import (
+    trigger_approval_notification,
+)
 from kelvin_assistant.application.tool_policy import ToolPolicyContext
+from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.agent import (
     AgentDomainError,
     AgentRun,
@@ -504,6 +509,7 @@ async def propose_agent_tool(
     service: RuntimeAgentService,
     store: RuntimeAgentRunStore,
     workspace_authorizer: RuntimeWorkspaceAuthorizer,
+    settings: Annotated[Settings, Depends(get_runtime_settings)],
     _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_WRITE))],
 ) -> AgentToolProposalResponse:
     """Evaluate and persist one structured tool proposal."""
@@ -532,6 +538,11 @@ async def propose_agent_tool(
                 proposal,
                 expected_version=current.version,
             )
+            # If the run enters awaiting_approval, trigger email notification
+            from kelvin_assistant.domain.agent import AgentStatus
+
+            if proposal.run.status is AgentStatus.AWAITING_APPROVAL:
+                await trigger_approval_notification(proposal, settings)
     except AgentRunNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
