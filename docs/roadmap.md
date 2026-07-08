@@ -378,12 +378,35 @@ automatizáció.
 
 ## v1.0 Stable
 
-- stabil és verziózott API;
-- dokumentált telepítés, frissítés, mentés és visszaállítás;
-- container-ready szerverkomponensek, dokumentált natív fallbackkel;
+Tervezett cél:
+
+- stabil és verziózott API, kliens- és konfigurációs szerződéssel;
+- dokumentált telepítés, frissítés, visszagörgetés, mentés és visszaállítás;
+- megbízható helyi szolgáltatásindítás, egészség- és készenléti jelzések;
 - offline kiadási és licencleltár-folyamat;
-- biztonsági és jogosultsági alapértelmezések;
+- ellenőrzött biztonsági és jogosultsági alapértelmezések;
 - self-hosted n8n-en keresztül ütemezhető, korlátozott automatizálás;
 - dokumentált helyi és opcionális felhős n8n integrációk;
-- dokumentált, jogosultságkezelt kétirányú messaging workflow-k;
+- dokumentált UI-, email-, audit-, jóváhagyási és n8n üzemeltetési runbookok;
 - teljes regressziós és üzemeltetési ellenőrzés.
+
+Elfogadási feltételek:
+
+- [ ] a v1.0 readiness audit feltárja a dokumentációs, üzemeltetési és tesztelési
+  hiányokat;
+- [ ] a telepítési és frissítési runbook friss lokális telepítésen végigfuttatható;
+- [ ] a szolgáltatások újraindítás után kiszámíthatóan indulnak, és a `/health`,
+  `/ready`, `/version` végpontok helyesen jelzik az állapotot;
+- [ ] a mentés, visszaállítás és adatmegőrzés dokumentáltan és ellenőrizhetően
+  működik;
+- [ ] az API-tokenek, jogosultságok, jóváhagyások, audit, secret-maszkolás és email
+  redakció biztonsági regressziótesztekkel védettek;
+- [ ] a helyi UI-ban ellenőrizhető a futások, jóváhagyások, audit, beállítások,
+  email és n8n működése;
+- [ ] az n8n kiesése nem blokkolja a helyi Kelvin chat-, agent-, approval-,
+  audit- vagy settings-funkciókat;
+- [ ] az API-, kliens-, token- és konfigurációs szerződések v1.0-ra rögzítettek;
+- [ ] a kiadási jegyzetek, licencleltár és offline ellenőrzési lépések készek;
+- [ ] a teljes quality gate és üzemeltetési ellenőrzés sikeresen lefut.
+
+Részletes v1.0 feladatbontás: [docs/ai/v10-guide.md](ai/v10-guide.md).
