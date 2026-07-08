@@ -155,3 +155,38 @@ def test_send_test_email_success(mock_smtp_class: MagicMock) -> None:
         mock_server.starttls.assert_called_once()
         mock_server.login.assert_called_once_with("mock-user", "mock-smtp-password")
         mock_server.sendmail.assert_called_once()
+
+
+def test_send_summary_disabled() -> None:
+    """POST /api/v1/settings/send-summary fails if email notifications are disabled."""
+
+    app = _app()
+    app.state.settings.email_notifications_enabled = False
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/settings/send-summary")
+        assert response.status_code == 400
+        assert "disabled" in response.json()["detail"].lower()
+
+
+@patch("smtplib.SMTP")
+def test_send_summary_success(mock_smtp_class: MagicMock) -> None:
+    """POST /api/v1/settings/send-summary sends daily summary email when enabled."""
+
+    app = _app()
+    app.state.settings.email_notifications_enabled = True
+
+    # Setup mock SMTP server instance
+    mock_server = MagicMock()
+    mock_smtp_class.return_value.__enter__.return_value = mock_server
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/settings/send-summary")
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+
+        # Verify SMTP server lifecycle was called correctly
+        mock_smtp_class.assert_called_once_with("mock-smtp", 587, timeout=10)
+        mock_server.starttls.assert_called_once()
+        mock_server.login.assert_called_once_with("mock-user", "mock-smtp-password")
+        mock_server.sendmail.assert_called_once()

@@ -1,10 +1,13 @@
 """Notification services for email and external automation adapters."""
 
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from kelvin_assistant.config.settings import Settings
-from kelvin_assistant.domain.agent import AgentRun, ToolProposal
+from kelvin_assistant.domain.agent import AgentRun, AgentStatus, ToolProposal
+from kelvin_assistant.ports.agent_runs import AgentRunStore
+from kelvin_assistant.ports.security_audit import SecurityAuditLogger
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +135,141 @@ async def trigger_run_failed_notification(
     )
 
     await _send_notification(subject, body, "run_failed", str(run.id), settings)
+
+
+async def generate_daily_summary_text(
+    store: AgentRunStore,
+    audit_logger: SecurityAuditLogger,
+    n8n_url: str | None,
+    n8n_token: str | None,
+) -> str:
+    """Generate a clean, safe, and localized plain text daily summary."""
+    now = datetime.now(UTC)
+    day_ago = now - timedelta(days=1)
+
+    # 1. Fetch runs
+    all_runs = await store.list_runs()
+    daily_runs = [
+        r
+        for r in all_runs
+        if r.created_at is not None and r.created_at >= day_ago
+    ]
+
+    total_count = len(daily_runs)
+    completed_runs = [
+        r for r in daily_runs if r.status == AgentStatus.COMPLETED
+    ]
+    failed_runs = [r for r in daily_runs if r.status == AgentStatus.FAILED]
+    pending_approvals = [
+        r for r in daily_runs if r.status == AgentStatus.AWAITING_APPROVAL
+    ]
+
+    # 2. Fetch notable audit events
+    all_audit = await audit_logger.list_entries(limit=500)
+    daily_audit = [
+        e
+        for e in all_audit
+        if e.created_at is not None and e.created_at >= day_ago
+    ]
+    blocked_count = sum(1 for e in daily_audit if e.decision == "block")
+
+    # 3. Check n8n status
+    n8n_status = "Nincs konfigurálva"
+    if n8n_url:
+        try:
+            import httpx2
+
+            headers = {}
+            if n8n_token:
+                headers["X-N8N-API-KEY"] = n8n_token
+            async with httpx2.AsyncClient(timeout=3.0) as client:
+                res = await client.get(n8n_url, headers=headers)
+                if res.status_code >= 500:
+                    n8n_status = f"Degradált (HTTP {res.status_code})"
+                else:
+                    n8n_status = "Elérhető / Egészséges"
+        except Exception:
+            n8n_status = "Nem elérhető (Kapcsolódási hiba)"
+
+    # 4. Format localized text
+    lines = [
+        "==================================================",
+        "          KELVIN ASSISTANT NAPI ÖSSZEGFOGLALÓ     ",
+        "==================================================",
+        f"Készült: {now.strftime('%Y-%m-%d %H:%M:%S')} (UTC)",
+        (
+            f"Időszak: {day_ago.strftime('%Y-%m-%d %H:%M:%S')} - "
+            f"{now.strftime('%Y-%m-%d %H:%M:%S')}"
+        ),
+        "",
+        "--- 1. Futási statisztikák ---",
+        f"Összes indított futás: {total_count}",
+        f"Sikeresen befejeződött: {len(completed_runs)}",
+        f"Meghiúsult / elakadt: {len(failed_runs)}",
+        f"Jóváhagyásra vár: {len(pending_approvals)}",
+        "",
+    ]
+
+    if failed_runs:
+        lines.append("Meghiúsult futások részletei:")
+        for r in failed_runs:
+            lines.append(f"  - Futás ID: {r.id}")
+            lines.append(f"    Cél: {r.goal}")
+        lines.append("")
+
+    if pending_approvals:
+        lines.append("Jóváhagyásra váró futások részletei:")
+        for r in pending_approvals:
+            lines.append(f"  - Futás ID: {r.id}")
+            lines.append(f"    Cél: {r.goal}")
+        lines.append("")
+
+    lines.extend(
+        [
+            "--- 2. Biztonsági audit ---",
+            f"Blokkolt ágens műveletek száma: {blocked_count}",
+            f"Összes biztonsági ellenőrzés: {len(daily_audit)}",
+            "",
+            "--- 3. Rendszerállapot ---",
+            f"n8n Integrációs Réteg: {n8n_status}",
+            "==================================================",
+            "Biztonsági okokból ez az összefoglaló nem tartalmazza a nyers model",
+            "válaszokat, érzékeny promptokat vagy kódmódosítási diffeket.",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+async def trigger_daily_summary_notification(
+    store: AgentRunStore,
+    audit_logger: SecurityAuditLogger,
+    settings: Settings,
+) -> None:
+    """Generate and send the daily operational summary notification."""
+
+    if (
+        not settings.email_notifications_enabled
+        or not settings.email_on_daily_summary
+    ):
+        return
+
+    recipient = settings.email_recipient
+    if not recipient:
+        logger.warning("No email recipient configured.")
+        return
+
+    subject = (
+        f"Kelvin Assistant - Napi Rendszerösszefoglaló "
+        f"({datetime.now(UTC).strftime('%Y-%m-%d')})"
+    )
+    body = await generate_daily_summary_text(
+        store, audit_logger, settings.n8n_url, settings.n8n_token
+    )
+
+    await _send_notification(
+        subject, body, "daily_summary", "system", settings
+    )
 
 
 async def _send_notification(

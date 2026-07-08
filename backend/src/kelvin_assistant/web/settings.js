@@ -33,6 +33,7 @@ const emailOnFailedInput = document.querySelector("#email-on-failed");
 const emailOnDailyInput = document.querySelector("#email-on-daily");
 
 const testEmailBtn = document.querySelector("#test-email-btn");
+const sendSummaryBtn = document.querySelector("#send-summary-btn");
 
 // Policy items
 const policyToolSummary = document.querySelector("#policy-tool-summary");
@@ -297,6 +298,34 @@ testEmailBtn.addEventListener("click", async () => {
   } finally {
     testEmailBtn.disabled = false;
     testEmailBtn.textContent = originalText;
+  }
+});
+
+// Daily Summary button listener
+sendSummaryBtn.addEventListener("click", async () => {
+  if (!emailEnabledInput.checked) {
+    showToast("Kérjük, előbb engedélyezze és mentse el a beállításokat az összefoglaló küldéséhez!", true);
+    return;
+  }
+
+  sendSummaryBtn.disabled = true;
+  const originalText = sendSummaryBtn.textContent;
+  sendSummaryBtn.textContent = "Küldés…";
+
+  try {
+    const response = await fetch("/api/v1/settings/send-summary", {
+      method: "POST"
+    });
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.detail || "Sikertelen küldés");
+    }
+    showToast("Napi összefoglaló sikeresen elküldve a megadott címzettnek!");
+  } catch (error) {
+    showToast(`Hiba a küldés során: ${error.message}`, true);
+  } finally {
+    sendSummaryBtn.disabled = false;
+    sendSummaryBtn.textContent = originalText;
   }
 });
 
