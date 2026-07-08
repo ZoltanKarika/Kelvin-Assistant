@@ -59,8 +59,8 @@ as one repeatable stable-release procedure.
 
 | Priority | Finding | Evidence | Proposed owner step |
 |---|---|---|---|
-| P1 | n8n credential guide shows a plaintext `token` field that conflicts with the hashed `token_sha256` format. | `docs/n8n-credential-setup.md` vs `api-tokens.example.json` and `tests/unit/adapters/test_file_api_tokens.py` | Step 5 or Step 7 |
-| P1 | Production auth mode is documented as optional, but v1.0 needs a clear rule for when `KELVIN_API_AUTH_MODE=required` is mandatory. | `.env.example`, `docs/installation.md`, `create_app()` | Step 5 |
+| P1 | n8n credential guide shows a plaintext `token` field that conflicts with the hashed `token_sha256` format. | `docs/n8n-credential-setup.md` vs `api-tokens.example.json` and `tests/unit/adapters/test_file_api_tokens.py` | Done in `codex/v1.0-security-doc-sync` |
+| P1 | Production auth mode is documented as optional, but v1.0 needs a clear rule for when `KELVIN_API_AUTH_MODE=required` is mandatory. | `.env.example`, `docs/installation.md`, `create_app()` | Done in `codex/v1.0-security-doc-sync` |
 | P1 | Backup restore does not end with Kelvin-specific health/readiness/UI/audit verification. | `docs/backup-restore.md` | Step 4 |
 | P2 | Install docs still reference the old minimal chat UI instead of the full operational UI. | `docs/installation.md` | Step 2 |
 | P2 | `.env.example` does not list v0.9 email and n8n settings, even though `Settings` supports them. | `.env.example`, `backend/src/kelvin_assistant/config/settings.py` | Step 2 or Step 6 |
@@ -74,7 +74,7 @@ as one repeatable stable-release procedure.
 
 ## Recommended PR Order
 
-1. **Fix security-critical doc contradictions**
+1. **Fix security-critical doc contradictions** - done in `codex/v1.0-security-doc-sync`
    - Branch: `codex/v1.0-security-doc-sync`
    - Commit: `docs: align v1.0 token and credential guidance`
    - Covers: n8n credential format, production auth rule, `.env.example` auth notes.

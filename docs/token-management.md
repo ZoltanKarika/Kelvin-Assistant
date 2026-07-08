@@ -28,6 +28,21 @@ The configuration format looks like this:
 }
 ```
 
+The raw bearer token is shown to the client exactly once when you create it.
+Only the `token_sha256` digest is stored in Kelvin configuration.
+
+For production or any LAN-accessible deployment, set:
+
+```text
+KELVIN_API_AUTH_MODE=required
+KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json
+```
+
+`KELVIN_API_AUTH_MODE=disabled` is allowed only for local development on a
+trusted loopback interface. When auth mode is `required`, Kelvin fails closed at
+startup if the token file is missing, malformed, contains plaintext `token`
+fields, duplicate identities, duplicate digests, or unknown scopes.
+
 ---
 
 ## API Scopes and Least Privilege
@@ -87,6 +102,9 @@ To rotate a token without service interruption:
 
 6. **Remove the Old Token**:
    Once you verify the client is successfully communicating with the new token, remove the old token record from `api-tokens.json` and restart the backend server.
+
+Never send the SHA-256 digest as the bearer token. Clients send the raw token;
+Kelvin hashes it and compares the digest internally.
 
 ---
 
