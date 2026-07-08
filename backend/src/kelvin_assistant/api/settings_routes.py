@@ -6,16 +6,24 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from kelvin_assistant.api.dependencies import (
+    get_agent_run_store,
     get_runtime_settings,
+    get_security_audit_logger,
     require_scope,
 )
 from kelvin_assistant.api.schemas import SettingsResponse, SettingsUpdateRequest
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.auth import ApiPrincipal, ApiScope
+from kelvin_assistant.ports.agent_runs import AgentRunStore
+from kelvin_assistant.ports.security_audit import SecurityAuditLogger
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 RuntimeSettings = Annotated[Settings, Depends(get_runtime_settings)]
+RuntimeAgentRunStore = Annotated[AgentRunStore, Depends(get_agent_run_store)]
+RuntimeSecurityAuditLogger = Annotated[
+    SecurityAuditLogger, Depends(get_security_audit_logger)
+]
 
 
 def update_env_file(updates: dict[str, str]) -> None:
@@ -339,3 +347,48 @@ async def send_test_email_endpoint(
         ) from exc
 
     return {"status": "success", "message": "Test email sent successfully."}
+
+
+@router.post(
+    "/send-summary",
+    status_code=status.HTTP_200_OK,
+)
+async def send_summary_endpoint(
+    store: RuntimeAgentRunStore,
+    audit_logger: RuntimeSecurityAuditLogger,
+    settings: RuntimeSettings,
+    _principal: Annotated[ApiPrincipal, Depends(require_scope(ApiScope.AGENT_EXECUTE))],
+) -> dict[str, str]:
+    """Manually trigger and send the daily summary email now."""
+
+    if not settings.email_notifications_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email notifications are currently disabled in settings.",
+        )
+
+    if not settings.email_recipient:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No email recipient configured.",
+        )
+
+    try:
+        from kelvin_assistant.application.notifications import (
+            trigger_daily_summary_notification,
+        )
+
+        # Force send (it ignores the email_on_daily_summary toggle for manual triggers)
+        # We can temporarily override setting or construct a temporary setting
+        force_settings = settings.model_copy(update={"email_on_daily_summary": True})
+        await trigger_daily_summary_notification(store, audit_logger, force_settings)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to send daily summary: {exc}",
+        ) from exc
+
+    return {
+        "status": "success",
+        "message": "Daily summary email sent successfully.",
+    }

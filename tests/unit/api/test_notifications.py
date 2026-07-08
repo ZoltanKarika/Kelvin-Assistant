@@ -1,12 +1,16 @@
 """Unit tests for approval pending email/n8n notifications."""
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from kelvin_assistant.application.notifications import (
     clear_notified_approvals,
+    generate_daily_summary_text,
     trigger_approval_notification,
+    trigger_daily_summary_notification,
+    trigger_run_completed_notification,
+    trigger_run_failed_notification,
 )
 from kelvin_assistant.config.settings import Settings
 from kelvin_assistant.domain.agent import (
@@ -204,3 +208,233 @@ class TestNotifications(unittest.IsolatedAsyncioTestCase):
         )
         await trigger_approval_notification(proposal, settings_toggled_off)
         assert mock_smtp_class.call_count == 0
+
+    @patch("smtplib.SMTP")
+    async def test_trigger_run_completed_notification(
+        self, mock_smtp_class: MagicMock
+    ) -> None:
+        """SMTP email notification is sent when a run completes successfully."""
+
+        settings = Settings(
+            email_notifications_enabled=True,
+            email_on_run_completed=True,
+            email_provider_mode="smtp",
+            email_sender="kelvin@localhost",
+            email_recipient="recipient@test.local",
+            email_smtp_host="smtp.test",
+            email_smtp_port=587,
+        )
+
+        run = AgentRun(
+            id=uuid4(),
+            goal="Write a secure web server",
+            status=AgentStatus.COMPLETED,
+            step_count=5,
+            max_steps=12,
+            version=1,
+        )
+
+        mock_server = MagicMock()
+        mock_smtp_class.return_value.__enter__.return_value = mock_server
+
+        await trigger_run_completed_notification(
+            run, "Server successfully written and tested.", settings
+        )
+
+        # Verify SMTP server lifecycle
+        mock_smtp_class.assert_called_once_with("smtp.test", 587, timeout=10)
+        mock_server.sendmail.assert_called_once()
+
+        sendmail_args = mock_server.sendmail.call_args[0]
+        assert sendmail_args[0] == "kelvin@localhost"
+        assert sendmail_args[1] == ["recipient@test.local"]
+
+        import email
+
+        msg = email.message_from_string(sendmail_args[2])
+        payload = msg.get_payload(decode=True)
+        assert isinstance(payload, bytes)
+        body = payload.decode("utf-8")
+
+        assert str(run.id) in body
+        assert "Write a secure web server" in body
+        assert "Server successfully written and tested." in body
+        assert "/ui/runs" in body
+
+    @patch("smtplib.SMTP")
+    async def test_trigger_run_failed_notification(
+        self, mock_smtp_class: MagicMock
+    ) -> None:
+        """SMTP email notification is sent when a run fails."""
+
+        settings = Settings(
+            email_notifications_enabled=True,
+            email_on_run_failed=True,
+            email_provider_mode="smtp",
+            email_sender="kelvin@localhost",
+            email_recipient="recipient@test.local",
+            email_smtp_host="smtp.test",
+            email_smtp_port=587,
+        )
+
+        run = AgentRun(
+            id=uuid4(),
+            goal="Write a secure web server",
+            status=AgentStatus.FAILED,
+            step_count=3,
+            max_steps=12,
+            version=1,
+        )
+
+        mock_server = MagicMock()
+        mock_smtp_class.return_value.__enter__.return_value = mock_server
+
+        await trigger_run_failed_notification(
+            run, "Ollama connection timeout during model query.", settings
+        )
+
+        # Verify SMTP server lifecycle
+        mock_smtp_class.assert_called_once_with("smtp.test", 587, timeout=10)
+        mock_server.sendmail.assert_called_once()
+
+        sendmail_args = mock_server.sendmail.call_args[0]
+        import email
+
+        msg = email.message_from_string(sendmail_args[2])
+        payload = msg.get_payload(decode=True)
+        assert isinstance(payload, bytes)
+        body = payload.decode("utf-8")
+
+        assert str(run.id) in body
+        assert "Write a secure web server" in body
+        assert "Ollama connection timeout during model query." in body
+        assert "/ui/runs" in body
+
+    async def test_generate_daily_summary_text_empty(self) -> None:
+        """Daily summary generation produces a valid empty summary
+
+        when there are no runs.
+        """
+
+        mock_store = MagicMock()
+        mock_store.list_runs = AsyncMock(return_value=[])
+
+        mock_audit = MagicMock()
+        mock_audit.list_entries = AsyncMock(return_value=[])
+
+        text = await generate_daily_summary_text(
+            mock_store, mock_audit, n8n_url=None, n8n_token=None
+        )
+
+        assert "KELVIN ASSISTANT NAPI ÖSSZEGFOGLALÓ" in text
+        assert "Összes indított futás: 0" in text
+        assert "Sikeresen befejeződött: 0" in text
+        assert "n8n Integrációs Réteg: Nincs konfigurálva" in text
+
+    async def test_generate_daily_summary_text_with_data(self) -> None:
+        """Daily summary generation aggregates stats and details safely."""
+
+        from datetime import UTC, datetime
+
+        from kelvin_assistant.ports.security_audit import SecurityAuditEntry
+
+        run_completed = AgentRun(
+            id=uuid4(),
+            goal="Task completed successfully",
+            status=AgentStatus.COMPLETED,
+            step_count=2,
+            max_steps=12,
+            version=1,
+            created_at=datetime.now(UTC),
+        )
+
+        run_failed = AgentRun(
+            id=uuid4(),
+            goal="Task failed unexpectedly",
+            status=AgentStatus.FAILED,
+            step_count=4,
+            max_steps=12,
+            version=1,
+            created_at=datetime.now(UTC),
+        )
+
+        mock_store = MagicMock()
+        mock_store.list_runs = AsyncMock(return_value=[run_completed, run_failed])
+
+        # Blocked audit entry
+        audit_entry = SecurityAuditEntry(
+            id=uuid4(),
+            correlation_id=None,
+            run_id=run_failed.id,
+            event_type="output_guard",
+            decision="block",
+            masked_content="Some malicious shell command blocked",
+            warnings=[],
+            created_at=datetime.now(UTC),
+        )
+
+        mock_audit = MagicMock()
+        mock_audit.list_entries = AsyncMock(return_value=[audit_entry])
+
+        text = await generate_daily_summary_text(
+            mock_store,
+            mock_audit,
+            n8n_url="http://mock-n8n:5678",
+            n8n_token=None,
+        )
+
+        assert "Összes indított futás: 2" in text
+        assert "Sikeresen befejeződött: 1" in text
+        assert "Meghiúsult / elakadt: 1" in text
+        assert "Blokkolt ágens műveletek száma: 1" in text
+        assert "Meghiúsult futások részletei:" in text
+        assert "Task failed unexpectedly" in text
+        assert "Some malicious shell command blocked" not in text  # Safe redaction
+
+    @patch("smtplib.SMTP")
+    async def test_trigger_daily_summary_notification(
+        self, mock_smtp_class: MagicMock
+    ) -> None:
+        """SMTP email notification is sent for daily summary with
+
+        correct subject and body.
+        """
+
+        settings = Settings(
+            email_notifications_enabled=True,
+            email_on_daily_summary=True,
+            email_provider_mode="smtp",
+            email_sender="kelvin@localhost",
+            email_recipient="recipient@test.local",
+            email_smtp_host="smtp.test",
+            email_smtp_port=587,
+        )
+
+        mock_store = MagicMock()
+        mock_store.list_runs = AsyncMock(return_value=[])
+
+        mock_audit = MagicMock()
+        mock_audit.list_entries = AsyncMock(return_value=[])
+
+        mock_server = MagicMock()
+        mock_smtp_class.return_value.__enter__.return_value = mock_server
+
+        await trigger_daily_summary_notification(mock_store, mock_audit, settings)
+
+        # Verify SMTP server lifecycle
+        mock_smtp_class.assert_called_once_with("smtp.test", 587, timeout=10)
+        mock_server.sendmail.assert_called_once()
+
+        sendmail_args = mock_server.sendmail.call_args[0]
+        assert sendmail_args[0] == "kelvin@localhost"
+        assert sendmail_args[1] == ["recipient@test.local"]
+
+        import email
+
+        msg = email.message_from_string(sendmail_args[2])
+        payload = msg.get_payload(decode=True)
+        assert isinstance(payload, bytes)
+        body = payload.decode("utf-8")
+
+        assert "KELVIN ASSISTANT NAPI ÖSSZEGFOGLALÓ" in body
+        assert "Összes indított futás: 0" in body
