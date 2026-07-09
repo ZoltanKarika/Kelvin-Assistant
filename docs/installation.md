@@ -132,6 +132,7 @@ Email és n8n részletes beállítás:
 - `docs/email-setup-guide.md`;
 - `docs/n8n-credential-setup.md`;
 - `docs/n8n-integration.md`.
+- `docs/operational-runbooks.md` az operátori napi ellenőrzésekhez.
 
 ## Függőségek telepítése
 
