@@ -611,6 +611,9 @@ környezetben kell összeállítani:
 Az átvitt csomagokhoz verziólista és SHA-256 ellenőrző összeg tartozik majd.
 Az offline VM csak az ellenőrzés után telepíti őket.
 
+A v1.0 offline kiadási csomag részletes ellenőrzőlistája:
+`docs/release-package.md`.
+
 Az Ubuntu VM-en a `KELVIN_API_HOST=0.0.0.0` beállítás csak a Hyper-V
 hálózat és az Ubuntu tűzfal külön ellenőrzése után használható. Internet felé
 közvetlen API-kitettség nincs tervezve.

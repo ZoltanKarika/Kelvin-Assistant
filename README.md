@@ -7,11 +7,11 @@ hoston biztosít Codexhez hasonló terminálos munkafolyamatot.
 
 ## Jelenlegi állapot
 
-A projekt a **v0.8 AI Security & Integration Hardening** mérföldkőnél tart. A FastAPI
-backend Windowson fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig
-automatikusan induló `systemd` szolgáltatásként fut. Az ellenőrzések
-helyileg, a VM-en és GitHub Actions alatt Ubuntu 24.04 / Python 3.12/3.13
-környezetben is sikeresek.
+A projekt a **v1.0 Stable** előkészítésénél tart. A FastAPI backend Windowson
+fejlesztői folyamatként, a saját Ubuntu Server VM-en pedig automatikusan induló
+`systemd` szolgáltatásként fut. A v1.0 telepítési, üzemeltetési, mentési,
+biztonsági, API-szerződéses és offline kiadási dokumentáció elkészült; a teljes
+end-to-end stabil kiadás ellenőrzése a következő lépés.
 
 Jelenleg működik:
 
@@ -56,10 +56,11 @@ Jelenleg működik:
 - **Konténerizációs tesztkörnyezet**: `Dockerfile.backend` és `docker-compose.test.yaml` a különálló tesztüzemhez;
 - **Biztonságos credential-kezelés**: dokumentált n8n credential store használat külső LLM és képgenerálók számára.
 
-A v0.8 funkciói elkészültek és a Windows–Ubuntu production környezetben
-validálva lettek. Az n8n-integráció és a mentési eljárás ellenőrzése sikeres.
-Az opcionális hangvezérlés még nincs kész. A DHCP-foglalás és az offline csomag-előkészítés
-továbbra is hátralévő üzemeltetési feladat.
+A v1.0 előkészítő lépései elkészültek a Windows–Ubuntu production
+környezethez. Az n8n-integráció, mentési eljárás, jogosultsági modell,
+operátori UI és offline csomag-előkészítés dokumentált. Az opcionális
+hangvezérlés és a nyilvános internetes kitettség nem része a v1.0 támogatott
+felületének.
 
 ## Projektcél
 
@@ -230,7 +231,7 @@ uv run pytest --cov=kelvin_assistant --cov-report=term-missing
 | v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
 | v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Kész |
 | v0.9 UI & Email Notifications | Helyi kezelőfelület és email értesítések | Kész |
-| v1.0 Stable | Stabil, dokumentált offline AI-platform | Tervezett |
+| v1.0 Stable | Stabil, dokumentált offline AI-platform | Előkészítés alatt |
 
 Részletesen: [docs/roadmap.md](docs/roadmap.md).
 

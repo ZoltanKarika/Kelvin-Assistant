@@ -1,3 +1,3 @@
 """Project version helpers."""
 
-APP_VERSION = "0.6.0"
+APP_VERSION = "1.0.0"

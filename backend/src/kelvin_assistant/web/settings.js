@@ -155,7 +155,7 @@ async function loadSettings() {
     }
 
     // Version/env summary
-    runtimeVer.textContent = settings.app_version || "v0.9";
+    runtimeVer.textContent = settings.app_version || "v1.0";
     
     // Fetch environment from root
     try {

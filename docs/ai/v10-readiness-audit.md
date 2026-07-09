@@ -50,7 +50,7 @@ as one repeatable stable-release procedure.
 | Security docs | `docs/security-baseline.md` now ties tokens, approvals, masking, audit, email, and n8n boundaries to v1.0 regression evidence and known limits. | Done in `codex/v1.0-security-baseline` |
 | Operational runbooks | `docs/operational-runbooks.md` now combines daily UI, approvals, audit, settings, email, n8n, outage, and troubleshooting checks. | Done in `codex/v1.0-ops-runbooks` |
 | API contract | `docs/api-contract.md` now freezes stable v1.0 routes, schema expectations, token scopes, configuration variables, UI routes, and internal surfaces. | Done in `codex/v1.0-contract-freeze` |
-| Release package | Version is still `0.6.0` in `pyproject.toml`; release notes, version update, notices review, and offline verification are pending. | Step 8 |
+| Release package | Version metadata is `1.0.0`; `docs/release-notes-v1.0.md` and `docs/release-package.md` now cover release notes, notices, offline dependencies, model assets, checksums, and known limits. | Done in `codex/v1.0-release-package` |
 | End-to-end verification | Unit tests pass in prior v0.9 checks, but v1.0 needs a recorded operational verification across install, service startup, UI, email, n8n outage, backup, and restore. | Step 9 |
 
 ---
@@ -64,8 +64,8 @@ as one repeatable stable-release procedure.
 | P1 | Backup restore does not end with Kelvin-specific health/readiness/UI/audit verification. | `docs/backup-restore.md` | Done in `codex/v1.0-backup-restore` |
 | P2 | Install docs still reference the old minimal chat UI instead of the full operational UI. | `docs/installation.md` | Done in `codex/v1.0-install-runbook` |
 | P2 | `.env.example` does not list v0.9 email and n8n settings, even though `Settings` supports them. | `.env.example`, `backend/src/kelvin_assistant/config/settings.py` | Done in `codex/v1.0-install-runbook` |
-| P2 | Release version metadata is behind the milestone history. | `pyproject.toml` version `0.6.0` | Step 8 |
-| P2 | Offline supply-chain section is aspirational and lacks concrete artifact/checksum commands. | `docs/installation.md` | Step 8 |
+| P2 | Release version metadata was behind the milestone history. | `pyproject.toml` and `uv.lock` now use `1.0.0` | Done in `codex/v1.0-release-package` |
+| P2 | Offline supply-chain docs needed concrete artifact/checksum commands. | `docs/release-package.md` now records the package checklist | Done in `codex/v1.0-release-package` |
 | P2 | Containerization is documented as a trial stack, not a v1.0-supported deployment path. | `docs/containerization-test.md` | Step 2 or Step 8 |
 | P3 | Deprecation warnings remain in tests for FastAPI status naming and `datetime.utcnow()`. | Prior test output and related tests | Step 9 or a small cleanup PR |
 | P3 | Several docs mix English and Hungarian; v1.0 should decide whether this is acceptable or standardize operator-facing sections. | README and docs | Step 1 follow-up or Step 2 |
@@ -109,7 +109,7 @@ as one repeatable stable-release procedure.
    - Commit: `docs(api): freeze v1.0 API and configuration contracts`
    - Covers: stable routes, schema expectations, token scopes, config variables.
 
-8. **Prepare release package**
+8. **Prepare release package** - done in `codex/v1.0-release-package`
    - Branch: `codex/v1.0-release-package`
    - Commit: `docs: prepare v1.0 release package`
    - Covers: version update, release notes, licenses, offline artifact checklist.
