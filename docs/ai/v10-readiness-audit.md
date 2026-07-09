@@ -51,7 +51,7 @@ as one repeatable stable-release procedure.
 | Operational runbooks | `docs/operational-runbooks.md` now combines daily UI, approvals, audit, settings, email, n8n, outage, and troubleshooting checks. | Done in `codex/v1.0-ops-runbooks` |
 | API contract | `docs/api-contract.md` now freezes stable v1.0 routes, schema expectations, token scopes, configuration variables, UI routes, and internal surfaces. | Done in `codex/v1.0-contract-freeze` |
 | Release package | Version metadata is `1.0.0`; `docs/release-notes-v1.0.md` and `docs/release-package.md` now cover release notes, notices, offline dependencies, model assets, checksums, and known limits. | Done in `codex/v1.0-release-package` |
-| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready; final UI, email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
+| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready; a live UI pass found that protected UI data calls return `401` under production auth because the frontend has no authenticated operator token/session path. Final UI, email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
 
 ---
 
@@ -67,6 +67,7 @@ as one repeatable stable-release procedure.
 | P2 | Release version metadata was behind the milestone history. | `pyproject.toml` and `uv.lock` now use `1.0.0` | Done in `codex/v1.0-release-package` |
 | P2 | Offline supply-chain docs needed concrete artifact/checksum commands. | `docs/release-package.md` now records the package checklist | Done in `codex/v1.0-release-package` |
 | P2 | Containerization is documented as a trial stack, not a v1.0-supported deployment path. | `docs/containerization-test.md` | Step 2 or Step 8 |
+| P2 | Static UI pages load in production auth mode, but protected data calls for runs, approvals, audit, settings, n8n health, test email, and daily summary return `401` because the frontend does not attach an operator bearer token. | `backend/src/kelvin_assistant/web/*.js`, `docs/v1.0-verification.md` | Step 9 follow-up |
 | P3 | Deprecation warnings remain in tests for FastAPI status naming and `datetime.utcnow()`. | Prior test output and related tests | Step 9 or a small cleanup PR |
 | P3 | Several docs mix English and Hungarian; v1.0 should decide whether this is acceptable or standardize operator-facing sections. | README and docs | Step 1 follow-up or Step 2 |
 
