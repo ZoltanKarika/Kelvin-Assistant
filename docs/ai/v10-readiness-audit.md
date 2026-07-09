@@ -51,7 +51,7 @@ as one repeatable stable-release procedure.
 | Operational runbooks | `docs/operational-runbooks.md` now combines daily UI, approvals, audit, settings, email, n8n, outage, and troubleshooting checks. | Done in `codex/v1.0-ops-runbooks` |
 | API contract | `docs/api-contract.md` now freezes stable v1.0 routes, schema expectations, token scopes, configuration variables, UI routes, and internal surfaces. | Done in `codex/v1.0-contract-freeze` |
 | Release package | Version metadata is `1.0.0`; `docs/release-notes-v1.0.md` and `docs/release-package.md` now cover release notes, notices, offline dependencies, model assets, checksums, and known limits. | Done in `codex/v1.0-release-package` |
-| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0`, but live verification is blocked until production auth is enabled and `/status` is no longer `unavailable`; see `docs/v1.0-verification.md`. | Step 9 |
+| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready; final UI, email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
 
 ---
 

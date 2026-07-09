@@ -272,10 +272,9 @@ docs: prepare v1.0 release package
 **Goal:** Mark v1.0 complete only after the platform is verified end to end.
 
 **Current verification attempt:** The automated quality gate passed on
-2026-07-09 and the VM now reports `/version` as `1.0.0`, but final live
-verification is blocked because `/status` is `unavailable` while authentication
-is disabled in a production-required runtime profile. See
-`docs/v1.0-verification.md`.
+2026-07-09, the VM reports `/version` as `1.0.0`, and `/status` is `ready`
+with production/LAN auth enabled. Final completion still needs recorded UI,
+email, n8n outage, backup, and restore evidence. See `docs/v1.0-verification.md`.
 
 **What to do:**
 
