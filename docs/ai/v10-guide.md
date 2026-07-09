@@ -274,10 +274,10 @@ docs: prepare v1.0 release package
 **Current verification attempt:** The automated quality gate passed on
 2026-07-09, the VM reports `/version` as `1.0.0`, and `/status` is `ready`
 with production/LAN auth enabled. A follow-up live UI pass found that static UI
-pages load, but protected UI data calls return `401` because the frontend does
-not yet provide an authenticated bearer-token/session path. Final completion is
-blocked until the UI can run the operational checklist with auth enabled. See
-`docs/v1.0-verification.md`.
+pages load, but protected UI data calls return `401` when no operator bearer
+token is supplied. The UI auth flow now adds a session-only header API token
+control; final completion is still blocked until this is deployed and the full
+operational checklist passes. See `docs/v1.0-verification.md`.
 
 **What to do:**
 

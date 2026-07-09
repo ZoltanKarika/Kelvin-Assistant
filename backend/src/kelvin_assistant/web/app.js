@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiErrorMessage, authFetch, initAuthControls } from "./auth.js";
+
 const form = document.querySelector("#chat-form");
 const input = document.querySelector("#message-input");
 const sendButton = document.querySelector("#send-button");
@@ -193,7 +195,7 @@ async function sendMessage(message) {
   clearError();
 
   try {
-    const response = await fetch("/api/v1/chat/stream", {
+    const response = await authFetch("/api/v1/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -204,7 +206,9 @@ async function sendMessage(message) {
 
     if (!response.ok) {
       const body = await readResponseBody(response);
-      throw new Error(describeApiError(response.status, body.detail));
+      throw new Error(
+        apiErrorMessage(response, describeApiError(response.status, body.detail)),
+      );
     }
 
     await readStreamingResponse(response, pendingMessage);
@@ -274,6 +278,7 @@ newChatButton.addEventListener("click", () => {
 });
 
 document.documentElement.dataset.kelvinUi = "ready";
+initAuthControls();
 resizeInput();
 input.focus();
 void checkRuntime();

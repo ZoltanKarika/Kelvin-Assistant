@@ -140,6 +140,16 @@ button {
   background: rgb(153 232 201 / 8%);
 }
 
+.api-token-button {
+  white-space: nowrap;
+}
+
+.api-token-button[data-state="set"] {
+  border-color: rgb(98 214 167 / 38%);
+  background: rgb(98 214 167 / 10%);
+  color: #bff8df;
+}
+
 .chat-panel {
   display: grid;
   grid-template-rows: 1fr auto auto auto;
@@ -1463,4 +1473,3 @@ button {
   color: #70827c;
   border: 1px solid rgb(255 255 255 / 8%);
 }
-

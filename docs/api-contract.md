@@ -263,6 +263,11 @@ The exact HTML, CSS, and JavaScript module internals are not a public API.
 Operators should rely on the visible workflow documented in
 `docs/operational-runbooks.md`.
 
+When `KELVIN_API_AUTH_MODE=required`, the UI must let the local operator provide
+a raw bearer token for the current browser session. The token is attached as
+`Authorization: Bearer <token>` to protected API calls and is kept in
+`sessionStorage`, not in server-rendered HTML, Git, or permanent local storage.
+
 ---
 
 ## 10. Intentionally Unstable or Internal Surfaces

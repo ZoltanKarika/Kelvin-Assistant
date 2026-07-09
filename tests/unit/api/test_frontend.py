@@ -122,12 +122,14 @@ def test_static_assets_are_available() -> None:
         audit_script_response = client.get("/static/audit.js")
         settings_script_response = client.get("/static/settings.js")
         n8n_script_response = client.get("/static/n8n.js")
+        auth_script_response = client.get("/static/auth.js")
 
     assert css_response.status_code == 200
     assert css_response.headers["content-type"].startswith("text/css")
     assert script_response.status_code == 200
     assert "javascript" in script_response.headers["content-type"]
-    assert 'fetch("/api/v1/chat/stream"' in script_response.text
+    assert 'authFetch("/api/v1/chat/stream"' in script_response.text
+    assert 'from "./auth.js"' in script_response.text
     assert "readStreamingResponse" in script_response.text
     assert runs_script_response.status_code == 200
     assert "javascript" in runs_script_response.headers["content-type"]
@@ -144,3 +146,7 @@ def test_static_assets_are_available() -> None:
     assert n8n_script_response.status_code == 200
     assert "javascript" in n8n_script_response.headers["content-type"]
     assert "fetchN8NHealth" in n8n_script_response.text
+    assert auth_script_response.status_code == 200
+    assert "javascript" in auth_script_response.headers["content-type"]
+    assert "sessionStorage" in auth_script_response.text
+    assert "Authorization" in auth_script_response.text

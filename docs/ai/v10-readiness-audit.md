@@ -67,7 +67,7 @@ as one repeatable stable-release procedure.
 | P2 | Release version metadata was behind the milestone history. | `pyproject.toml` and `uv.lock` now use `1.0.0` | Done in `codex/v1.0-release-package` |
 | P2 | Offline supply-chain docs needed concrete artifact/checksum commands. | `docs/release-package.md` now records the package checklist | Done in `codex/v1.0-release-package` |
 | P2 | Containerization is documented as a trial stack, not a v1.0-supported deployment path. | `docs/containerization-test.md` | Step 2 or Step 8 |
-| P2 | Static UI pages load in production auth mode, but protected data calls for runs, approvals, audit, settings, n8n health, test email, and daily summary return `401` because the frontend does not attach an operator bearer token. | `backend/src/kelvin_assistant/web/*.js`, `docs/v1.0-verification.md` | Step 9 follow-up |
+| P2 | Static UI pages load in production auth mode, but protected data calls for runs, approvals, audit, settings, n8n health, test email, and daily summary require an operator bearer token. | `backend/src/kelvin_assistant/web/auth.js`, `docs/v1.0-verification.md` | Step 9 follow-up |
 | P3 | Deprecation warnings remain in tests for FastAPI status naming and `datetime.utcnow()`. | Prior test output and related tests | Step 9 or a small cleanup PR |
 | P3 | Several docs mix English and Hungarian; v1.0 should decide whether this is acceptable or standardize operator-facing sections. | README and docs | Step 1 follow-up or Step 2 |
 

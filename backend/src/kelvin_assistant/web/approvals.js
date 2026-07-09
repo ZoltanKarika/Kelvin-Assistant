@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiErrorMessage, authFetch, initAuthControls } from "./auth.js";
+
 const approvalsList = document.querySelector("#approvals-list");
 const approvalDetail = document.querySelector("#approval-detail");
 const runtimeStatus = document.querySelector(".runtime-status");
@@ -49,9 +51,9 @@ function formatTime(isoString) {
 
 async function fetchPendingApprovals() {
   try {
-    const response = await fetch("/api/v1/agent/runs");
+    const response = await authFetch("/api/v1/agent/runs");
     if (!response.ok) {
-      throw new Error("Sikertelen betöltés");
+      throw new Error(apiErrorMessage(response, "Sikertelen betöltés"));
     }
     const allRuns = await response.json();
     pendingRuns = allRuns.filter(run => run.status === "awaiting_approval");
@@ -123,9 +125,11 @@ async function fetchApprovalDetails(runId, silent = false) {
   }
 
   try {
-    const response = await fetch(`/api/v1/agent/runs/${runId}/tools/active`);
+    const response = await authFetch(`/api/v1/agent/runs/${runId}/tools/active`);
     if (!response.ok) {
-      throw new Error("Nem sikerült betölteni az aktív javaslatot");
+      throw new Error(
+        apiErrorMessage(response, "Nem sikerült betölteni az aktív javaslatot"),
+      );
     }
     const proposal = await response.json();
     
@@ -240,7 +244,7 @@ async function resolveApproval(runId, toolCallId, decision) {
   if (rejectBtn) rejectBtn.disabled = true;
 
   try {
-    const response = await fetch(`/api/v1/agent/runs/${runId}/approval`, {
+    const response = await authFetch(`/api/v1/agent/runs/${runId}/approval`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -250,7 +254,9 @@ async function resolveApproval(runId, toolCallId, decision) {
     });
 
     if (!response.ok) {
-      throw new Error("Nem sikerült elküldeni a döntést az API-nak");
+      throw new Error(
+        apiErrorMessage(response, "Nem sikerült elküldeni a döntést az API-nak"),
+      );
     }
 
     // Refresh list and clear detail
@@ -265,6 +271,7 @@ async function resolveApproval(runId, toolCallId, decision) {
 }
 
 // Initial load
+initAuthControls();
 void checkRuntime();
 void fetchPendingApprovals();
 

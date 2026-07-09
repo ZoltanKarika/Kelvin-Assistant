@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiErrorMessage, authFetch, initAuthControls } from "./auth.js";
+
 const n8nStatusBadge = document.querySelector("#n8n-status-badge");
 const n8nBaseUrl = document.querySelector("#n8n-base-url");
 const n8nLastChecked = document.querySelector("#n8n-last-checked");
@@ -59,9 +61,9 @@ async function fetchN8NHealth() {
   n8nErrorBox.style.display = "none";
 
   try {
-    const response = await fetch("/api/v1/n8n/health");
+    const response = await authFetch("/api/v1/n8n/health");
     if (!response.ok) {
-      throw new Error("Sikertelen API lekérdezés");
+      throw new Error(apiErrorMessage(response, "Sikertelen API lekérdezés"));
     }
     const data = await response.json();
 
@@ -118,5 +120,6 @@ refreshN8NBtn.addEventListener("click", () => {
 });
 
 // Initial load
+initAuthControls();
 void checkRuntime();
 void fetchN8NHealth();

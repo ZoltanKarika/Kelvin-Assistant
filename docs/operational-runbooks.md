@@ -26,12 +26,14 @@ Daily checklist:
 
 1. Confirm `kelvin-api` is running.
 2. Check `/status` for the aggregate runtime state.
-3. Open the UI and verify Runs, Approvals, Audit, Settings, and n8n pages load.
-4. Review failed or stuck agent runs.
-5. Resolve or reject pending approvals.
-6. Check recent blocked audit entries.
-7. Verify email notification settings and send a test email after config changes.
-8. Check n8n status if delegated notifications or workflows are enabled.
+3. Open the UI and, when production auth is enabled, use the header API token
+   button to enter an operator token for this browser session.
+4. Verify Runs, Approvals, Audit, Settings, and n8n pages load.
+5. Review failed or stuck agent runs.
+6. Resolve or reject pending approvals.
+7. Check recent blocked audit entries.
+8. Verify email notification settings and send a test email after config changes.
+9. Check n8n status if delegated notifications or workflows are enabled.
 
 PowerShell endpoint check:
 
@@ -190,6 +192,9 @@ Production reminder:
 
 - `KELVIN_API_AUTH_MODE=required` and a hashed token file are mandatory for LAN
   or production access.
+- The UI stores the operator API token only in browser session storage. Close the
+  browser tab or clear the token from the header control after shared-machine
+  use.
 - Keep real `.env`, token files, SMTP passwords, and n8n tokens outside Git.
 
 ---
