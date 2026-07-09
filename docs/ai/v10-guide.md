@@ -273,8 +273,11 @@ docs: prepare v1.0 release package
 
 **Current verification attempt:** The automated quality gate passed on
 2026-07-09, the VM reports `/version` as `1.0.0`, and `/status` is `ready`
-with production/LAN auth enabled. Final completion still needs recorded UI,
-email, n8n outage, backup, and restore evidence. See `docs/v1.0-verification.md`.
+with production/LAN auth enabled. A follow-up live UI pass found that static UI
+pages load, but protected UI data calls return `401` because the frontend does
+not yet provide an authenticated bearer-token/session path. Final completion is
+blocked until the UI can run the operational checklist with auth enabled. See
+`docs/v1.0-verification.md`.
 
 **What to do:**
 
@@ -282,9 +285,12 @@ email, n8n outage, backup, and restore evidence. See `docs/v1.0-verification.md`
 2. Verify install/upgrade, service startup, health/readiness, UI operation,
    approvals, audit, email notifications, n8n outage behavior, backup, and
    restore.
-3. Update `docs/roadmap.md` and this guide to mark v1.0 complete.
-4. Record final verification commands and results.
-5. Prepare the final v1.0 PR summary.
+3. Fix or document the authenticated UI operator flow required for production
+   auth mode.
+4. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
+   full checklist passes.
+5. Record final verification commands and results.
+6. Prepare the final v1.0 PR summary.
 
 **Commit message:**
 
