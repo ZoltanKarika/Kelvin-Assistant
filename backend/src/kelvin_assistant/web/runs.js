@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiErrorMessage, authFetch, initAuthControls } from "./auth.js";
+
 const runsList = document.querySelector("#runs-list");
 const runDetail = document.querySelector("#run-detail");
 const filterButtons = document.querySelectorAll(".filter-btn");
@@ -75,9 +77,9 @@ function getStatusLabel(status) {
 
 async function fetchRuns() {
   try {
-    const response = await fetch("/api/v1/agent/runs");
+    const response = await authFetch("/api/v1/agent/runs");
     if (!response.ok) {
-      throw new Error("Sikertelen betöltés");
+      throw new Error(apiErrorMessage(response, "Sikertelen betöltés"));
     }
     allRuns = await response.json();
     renderRunsList();
@@ -142,9 +144,11 @@ async function fetchRunDetails(runId, silent = false) {
   }
 
   try {
-    const response = await fetch(`/api/v1/agent/runs/${runId}`);
+    const response = await authFetch(`/api/v1/agent/runs/${runId}`);
     if (!response.ok) {
-      throw new Error("Nem sikerült lekérni a részleteket");
+      throw new Error(
+        apiErrorMessage(response, "Nem sikerült lekérni a részleteket"),
+      );
     }
     const run = await response.json();
     
@@ -249,11 +253,13 @@ function renderRunDetails(run) {
       cancelBtn.disabled = true;
       cancelBtn.textContent = "Megszakítás folyamatban…";
       try {
-        const response = await fetch(`/api/v1/agent/runs/${run.id}/cancel`, {
+        const response = await authFetch(`/api/v1/agent/runs/${run.id}/cancel`, {
           method: "POST"
         });
         if (!response.ok) {
-          throw new Error("Nem sikerült megszakítani a futást");
+          throw new Error(
+            apiErrorMessage(response, "Nem sikerült megszakítani a futást"),
+          );
         }
         await fetchRuns();
       } catch (error) {
@@ -276,6 +282,7 @@ filterButtons.forEach(btn => {
 });
 
 // Initial load
+initAuthControls();
 void checkRuntime();
 
 const urlParams = new URLSearchParams(window.location.search);

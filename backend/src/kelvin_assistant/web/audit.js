@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiErrorMessage, authFetch, initAuthControls } from "./auth.js";
+
 const auditLogRows = document.querySelector("#audit-log-rows");
 const filterEventType = document.querySelector("#filter-event-type");
 const filterDecision = document.querySelector("#filter-decision");
@@ -83,9 +85,9 @@ async function fetchAuditLogs(append = false) {
   }
 
   try {
-    const response = await fetch(`/api/v1/security/audit?${params.toString()}`);
+    const response = await authFetch(`/api/v1/security/audit?${params.toString()}`);
     if (!response.ok) {
-      throw new Error("Sikertelen API lekérdezés");
+      throw new Error(apiErrorMessage(response, "Sikertelen API lekérdezés"));
     }
     const data = await response.json();
 
@@ -189,5 +191,6 @@ loadMoreBtn.addEventListener("click", () => {
 });
 
 // Initial load
+initAuthControls();
 void checkRuntime();
 void fetchAuditLogs();

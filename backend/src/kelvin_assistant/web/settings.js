@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiErrorMessage, authFetch, initAuthControls } from "./auth.js";
+
 const settingsLoading = document.querySelector("#settings-loading");
 const settingsForm = document.querySelector("#settings-form");
 const runtimeStatus = document.querySelector(".runtime-status");
@@ -86,9 +88,9 @@ emailEnabledInput.addEventListener("change", toggleSmtpFields);
 
 async function loadSettings() {
   try {
-    const response = await fetch("/api/v1/settings");
+    const response = await authFetch("/api/v1/settings");
     if (!response.ok) {
-      throw new Error("Sikertelen betöltés");
+      throw new Error(apiErrorMessage(response, "Sikertelen betöltés"));
     }
     const settings = await response.json();
 
@@ -248,7 +250,7 @@ settingsForm.addEventListener("submit", async (e) => {
   saveBtn.textContent = "Mentés…";
 
   try {
-    const response = await fetch("/api/v1/settings", {
+    const response = await authFetch("/api/v1/settings", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
@@ -258,7 +260,9 @@ settingsForm.addEventListener("submit", async (e) => {
 
     if (!response.ok) {
       const errData = await response.json();
-      throw new Error(errData.detail || "Sikertelen frissítés");
+      throw new Error(
+        apiErrorMessage(response, errData.detail || "Sikertelen frissítés"),
+      );
     }
 
     showToast("A beállítások sikeresen elmentve!");
@@ -285,12 +289,14 @@ testEmailBtn.addEventListener("click", async () => {
   testEmailBtn.textContent = "Küldés…";
 
   try {
-    const response = await fetch("/api/v1/settings/test-email", {
+    const response = await authFetch("/api/v1/settings/test-email", {
       method: "POST"
     });
     if (!response.ok) {
       const errData = await response.json();
-      throw new Error(errData.detail || "Sikertelen kapcsolódás");
+      throw new Error(
+        apiErrorMessage(response, errData.detail || "Sikertelen kapcsolódás"),
+      );
     }
     showToast("Teszt e-mail sikeresen elküldve a megadott címzettnek!");
   } catch (error) {
@@ -313,12 +319,14 @@ sendSummaryBtn.addEventListener("click", async () => {
   sendSummaryBtn.textContent = "Küldés…";
 
   try {
-    const response = await fetch("/api/v1/settings/send-summary", {
+    const response = await authFetch("/api/v1/settings/send-summary", {
       method: "POST"
     });
     if (!response.ok) {
       const errData = await response.json();
-      throw new Error(errData.detail || "Sikertelen küldés");
+      throw new Error(
+        apiErrorMessage(response, errData.detail || "Sikertelen küldés"),
+      );
     }
     showToast("Napi összefoglaló sikeresen elküldve a megadott címzettnek!");
   } catch (error) {
@@ -330,5 +338,6 @@ sendSummaryBtn.addEventListener("click", async () => {
 });
 
 // Initial load
+initAuthControls();
 void checkRuntime();
 void loadSettings();
