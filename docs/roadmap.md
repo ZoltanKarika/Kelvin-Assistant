@@ -405,7 +405,7 @@ Elfogadási feltételek:
   email és n8n működése;
 - [ ] az n8n kiesése nem blokkolja a helyi Kelvin chat-, agent-, approval-,
   audit- vagy settings-funkciókat;
-- [ ] az API-, kliens-, token- és konfigurációs szerződések v1.0-ra rögzítettek;
+- [x] az API-, kliens-, token- és konfigurációs szerződések v1.0-ra rögzítettek;
 - [ ] a kiadási jegyzetek, licencleltár és offline ellenőrzési lépések készek;
 - [ ] a teljes quality gate és üzemeltetési ellenőrzés sikeresen lefut.
 
