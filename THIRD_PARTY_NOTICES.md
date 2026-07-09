@@ -14,8 +14,10 @@ they are not vendored in this repository.
 | --- | ---: | --- |
 | FastAPI | 0.138.1 | MIT |
 | Pydantic Settings | 2.14.2 | MIT |
+| psycopg | 3.3.4 | LGPL-3.0-only with exceptions |
+| psycopg-binary | 3.3.4 | LGPL-3.0-only with exceptions |
 | Uvicorn | 0.49.0 | BSD-3-Clause |
-| HTTPX2 (development) | 2.5.0 | BSD-3-Clause |
+| HTTPX2 | 2.5.0 | BSD-3-Clause |
 | mypy (development) | 2.1.0 | MIT |
 | pytest (development) | 9.1.1 | MIT |
 | pytest-cov (development) | 7.1.0 | MIT |

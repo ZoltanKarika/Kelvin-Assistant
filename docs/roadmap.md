@@ -406,7 +406,7 @@ Elfogadási feltételek:
 - [ ] az n8n kiesése nem blokkolja a helyi Kelvin chat-, agent-, approval-,
   audit- vagy settings-funkciókat;
 - [x] az API-, kliens-, token- és konfigurációs szerződések v1.0-ra rögzítettek;
-- [ ] a kiadási jegyzetek, licencleltár és offline ellenőrzési lépések készek;
+- [x] a kiadási jegyzetek, licencleltár és offline ellenőrzési lépések készek;
 - [ ] a teljes quality gate és üzemeltetési ellenőrzés sikeresen lefut.
 
 Részletes v1.0 feladatbontás: [docs/ai/v10-guide.md](ai/v10-guide.md).

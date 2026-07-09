@@ -11,6 +11,8 @@ Related documents:
 - [Backup and restore](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/backup-restore.md) - data protection procedures.
 - [API contract](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/api-contract.md) - stable v1.0 routes, scopes, and configuration variables.
 - [Operational runbooks](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/operational-runbooks.md) - daily UI, email, audit, and n8n procedures.
+- [Release package](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/release-package.md) - offline package, license, model, and checksum checklist.
+- [v1.0 release notes](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/release-notes-v1.0.md) - release summary and known limits.
 - [v0.8 AI Security & Integration Hardening](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/ai/v08-guide.md) - security gates and audit foundations.
 - [v0.9 Kelvin UI & Email Notifications](file:///c:/Users/Zoltan/Documents/Kelvin%20Assistant/docs/ai/v09-guide.md) - operational UI and email layer.
 
@@ -31,7 +33,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 | **5** | Security & Permission Baseline Verification | #1 | `feat/v1.0-security-baseline` | done |
 | **6** | Operational UI, Email & n8n Runbooks | #1, #3, #5 | `feat/v1.0-ops-runbooks` | done |
 | **7** | API, Client & Configuration Contract Freeze | #1, #3, #5 | `feat/v1.0-contract-freeze` | done |
-| **8** | Offline Release, Licensing & Version Package | #2, #4, #7 | `feat/v1.0-release-package` | pending |
+| **8** | Offline Release, Licensing & Version Package | #2, #4, #7 | `feat/v1.0-release-package` | done |
 | **9** | End-to-End Stable Release Verification | #1-#8 | `feat/v1.0-stable-verification` | pending |
 
 ---
@@ -242,6 +244,11 @@ docs(api): freeze v1.0 API and configuration contracts
 ### Step 8: Offline Release, Licensing & Version Package
 
 **Goal:** Prepare a release package that can be reviewed without internet access.
+
+**Result:** Bumped release metadata to `1.0.0`, added
+`docs/release-notes-v1.0.md` and `docs/release-package.md`, refreshed direct
+third-party notices, and documented offline dependency, model, checksum, and
+known-limit review steps.
 
 **What to do:**
 
