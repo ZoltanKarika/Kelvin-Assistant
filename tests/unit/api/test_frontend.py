@@ -49,7 +49,7 @@ def test_ui_returns_bundled_html() -> None:
     assert '<html lang="hu">' in response.text
     assert "Kelvin Assistant" in response.text
     assert 'href="/static/styles.css"' in response.text
-    assert 'src="/static/app.js?v=1.0.0-ui-auth"' in response.text
+    assert 'src="/static/app.js?v=1.0.0-ready-auth"' in response.text
     assert 'id="chat-form"' in response.text
     assert 'id="message-input"' in response.text
     assert 'id="new-chat-button"' in response.text
@@ -129,23 +129,29 @@ def test_static_assets_are_available() -> None:
     assert script_response.status_code == 200
     assert "javascript" in script_response.headers["content-type"]
     assert 'authFetch("/api/v1/chat/stream"' in script_response.text
+    assert 'authFetch("/ready"' in script_response.text
     assert 'from "./auth.js"' in script_response.text
     assert "readStreamingResponse" in script_response.text
     assert runs_script_response.status_code == 200
     assert "javascript" in runs_script_response.headers["content-type"]
     assert "fetchRuns" in runs_script_response.text
+    assert 'authFetch("/ready"' in runs_script_response.text
     assert approvals_script_response.status_code == 200
     assert "javascript" in approvals_script_response.headers["content-type"]
     assert "fetchPendingApprovals" in approvals_script_response.text
+    assert 'authFetch("/ready"' in approvals_script_response.text
     assert audit_script_response.status_code == 200
     assert "javascript" in audit_script_response.headers["content-type"]
     assert "fetchAuditLogs" in audit_script_response.text
+    assert 'authFetch("/ready"' in audit_script_response.text
     assert settings_script_response.status_code == 200
     assert "javascript" in settings_script_response.headers["content-type"]
     assert "loadSettings" in settings_script_response.text
+    assert 'authFetch("/ready"' in settings_script_response.text
     assert n8n_script_response.status_code == 200
     assert "javascript" in n8n_script_response.headers["content-type"]
     assert "fetchN8NHealth" in n8n_script_response.text
+    assert 'authFetch("/ready"' in n8n_script_response.text
     assert auth_script_response.status_code == 200
     assert "javascript" in auth_script_response.headers["content-type"]
     assert "sessionStorage" in auth_script_response.text

@@ -27,7 +27,7 @@ async function checkRuntime() {
   try {
     const [healthResponse, readyResponse] = await Promise.all([
       fetch("/health"),
-      fetch("/ready")
+      authFetch("/ready")
     ]);
     if (!healthResponse.ok || !readyResponse.ok) {
       throw new Error("Runtime unavailable");
