@@ -271,6 +271,11 @@ docs: prepare v1.0 release package
 
 **Goal:** Mark v1.0 complete only after the platform is verified end to end.
 
+**Current verification attempt:** The automated quality gate passed on
+2026-07-09, but live VM verification is blocked because the checked VM reports
+`/version` as `0.6.0` and does not expose the v1.0 `/status` endpoint. See
+`docs/v1.0-verification.md`.
+
 **What to do:**
 
 1. Run the full backend, frontend/static, typing, formatting, and test suite.
