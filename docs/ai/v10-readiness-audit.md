@@ -48,7 +48,7 @@ as one repeatable stable-release procedure.
 | Runtime readiness docs | `/health`, `/status`, `/ready`, and `/ready/database` now distinguish process health, aggregate degraded state, and strict dependency readiness. | Done in `codex/v1.0-runtime-hardening` |
 | Backup/restore docs | `docs/backup-restore.md` now covers Kelvin post-restore API/UI/audit verification, retention guidance, n8n credential restore checks, and acceptance criteria. | Done in `codex/v1.0-backup-restore` |
 | Security docs | `docs/security-baseline.md` now ties tokens, approvals, masking, audit, email, and n8n boundaries to v1.0 regression evidence and known limits. | Done in `codex/v1.0-security-baseline` |
-| Operational runbooks | UI, email, n8n, audit, approvals, and troubleshooting docs exist in pieces but are not combined into daily-operation runbooks. | Step 6 |
+| Operational runbooks | `docs/operational-runbooks.md` now combines daily UI, approvals, audit, settings, email, n8n, outage, and troubleshooting checks. | Done in `codex/v1.0-ops-runbooks` |
 | API contract | Versioned routes and schemas exist, but v1.0 stable/unstable surfaces are not explicitly frozen. | Step 7 |
 | Release package | Version is still `0.6.0` in `pyproject.toml`; release notes, version update, notices review, and offline verification are pending. | Step 8 |
 | End-to-end verification | Unit tests pass in prior v0.9 checks, but v1.0 needs a recorded operational verification across install, service startup, UI, email, n8n outage, backup, and restore. | Step 9 |
@@ -99,7 +99,7 @@ as one repeatable stable-release procedure.
    - Commit: `test(security): verify v1.0 permission baseline`
    - Covers: tokens, approvals, masking, audit, email, and n8n boundaries.
 
-6. **Create operational runbooks**
+6. **Create operational runbooks** - done in `codex/v1.0-ops-runbooks`
    - Branch: `codex/v1.0-ops-runbooks`
    - Commit: `docs: add v1.0 operational runbooks`
    - Covers: UI, approvals, audit, settings, email tests, n8n outage handling.
