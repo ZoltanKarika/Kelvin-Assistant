@@ -272,12 +272,14 @@ docs: prepare v1.0 release package
 **Goal:** Mark v1.0 complete only after the platform is verified end to end.
 
 **Current verification attempt:** The automated quality gate passed on
-2026-07-09, the VM reports `/version` as `1.0.0`, and `/status` is `ready`
-with production/LAN auth enabled. A follow-up live UI pass found that static UI
-pages load, but protected UI data calls return `401` when no operator bearer
-token is supplied. The UI auth flow now adds a session-only header API token
-control; final completion is still blocked until this is deployed and the full
-operational checklist passes. See `docs/v1.0-verification.md`.
+2026-07-09. On 2026-07-10 the VM reports `/version` as `1.0.0`, `/status` is
+`ready` with production/LAN auth enabled, protected operator APIs accept the
+scoped `ps-client` token, and a live chat turn completed against
+`ollama:gemma4:e4b`. The UI auth flow and authenticated readiness checks are
+deployed, and the operator confirmed the UI works with the session-only header
+API token control. Final completion is still blocked until email notification,
+n8n outage, approval/audit review, and backup/restore evidence is recorded. See
+`docs/v1.0-verification.md`.
 
 **What to do:**
 
@@ -285,12 +287,12 @@ operational checklist passes. See `docs/v1.0-verification.md`.
 2. Verify install/upgrade, service startup, health/readiness, UI operation,
    approvals, audit, email notifications, n8n outage behavior, backup, and
    restore.
-3. Fix or document the authenticated UI operator flow required for production
-   auth mode.
-4. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
+3. Record approval/audit UI evidence under production auth.
+4. Record email notification, n8n outage, backup, and restore evidence.
+5. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
    full checklist passes.
-5. Record final verification commands and results.
-6. Prepare the final v1.0 PR summary.
+6. Record final verification commands and results.
+7. Prepare the final v1.0 PR summary.
 
 **Commit message:**
 
