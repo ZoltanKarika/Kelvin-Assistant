@@ -279,8 +279,9 @@ scoped `ps-client` token, and a live chat turn completed against
 deployed, and the operator confirmed the UI works with the session-only header
 API token control. A harmless write-tool proposal was created, shown as pending,
 and rejected successfully. Live blocked input-guard decisions now persist to the
-security audit log. Final completion is still blocked until audit UI review,
-email notification, n8n outage, and backup/restore evidence is recorded. See
+security audit log, and the operator confirmed the authenticated audit UI table
+loads in Chrome. Final completion is still blocked until email notification,
+n8n outage, and backup/restore evidence is recorded. See
 `docs/v1.0-verification.md`.
 
 **What to do:**
@@ -289,12 +290,11 @@ email notification, n8n outage, and backup/restore evidence is recorded. See
 2. Verify install/upgrade, service startup, health/readiness, UI operation,
    approvals, audit, email notifications, n8n outage behavior, backup, and
    restore.
-3. Record audit review evidence from the authenticated UI.
-4. Record email notification, n8n outage, backup, and restore evidence.
-5. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
+3. Record email notification, n8n outage, backup, and restore evidence.
+4. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
    full checklist passes.
-6. Record final verification commands and results.
-7. Prepare the final v1.0 PR summary.
+5. Record final verification commands and results.
+6. Prepare the final v1.0 PR summary.
 
 **Commit message:**
 
