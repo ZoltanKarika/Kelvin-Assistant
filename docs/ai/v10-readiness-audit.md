@@ -17,8 +17,8 @@ adapters, scoped API tokens, approval-gated write tools, security guards,
 operational UI pages, n8n status, and email notifications.
 
 v1.0 is not complete yet because final release verification still needs
-recorded live evidence for audit persistence/review, notification delivery, n8n
-outage behavior, and backup/restore execution.
+recorded live evidence for audit UI review, notification delivery, n8n outage
+behavior, and backup/restore execution.
 
 ---
 
@@ -51,7 +51,7 @@ outage behavior, and backup/restore execution.
 | Operational runbooks | `docs/operational-runbooks.md` now combines daily UI, approvals, audit, settings, email, n8n, outage, and troubleshooting checks. | Done in `codex/v1.0-ops-runbooks` |
 | API contract | `docs/api-contract.md` now freezes stable v1.0 routes, schema expectations, token scopes, configuration variables, UI routes, and internal surfaces. | Done in `codex/v1.0-contract-freeze` |
 | Release package | Version metadata is `1.0.0`; `docs/release-notes-v1.0.md` and `docs/release-package.md` now cover release notes, notices, offline dependencies, model assets, checksums, and known limits. | Done in `codex/v1.0-release-package` |
-| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready under production auth. The UI auth flow and authenticated readiness checks are deployed, protected operator APIs accept the scoped token, a live chat turn completed against `ollama:gemma4:e4b`, and a harmless write-tool proposal was created and rejected. Audit persistence/review, email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
+| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready under production auth. The UI auth flow and authenticated readiness checks are deployed, protected operator APIs accept the scoped token, a live chat turn completed against `ollama:gemma4:e4b`, a harmless write-tool proposal was created and rejected, and live blocked input-guard decisions now persist to the security audit log. Audit UI review, email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
 
 ---
 
@@ -68,7 +68,7 @@ outage behavior, and backup/restore execution.
 | P2 | Offline supply-chain docs needed concrete artifact/checksum commands. | `docs/release-package.md` now records the package checklist | Done in `codex/v1.0-release-package` |
 | P2 | Containerization is documented as a trial stack, not a v1.0-supported deployment path. | `docs/containerization-test.md` | Step 2 or Step 8 |
 | P2 | Static UI pages need a session-only operator token in production auth mode. The UI token control and authenticated readiness/data calls are now deployed and operator-confirmed; final UI operational evidence still needs audit and notification coverage. | `backend/src/kelvin_assistant/web/auth.js`, `docs/v1.0-verification.md` | Step 9 follow-up |
-| P2 | Live input guard blocking works, but `/api/v1/security/audit` returned an empty list after a blocked credential-harvesting request. | `docs/v1.0-verification.md`, `backend/src/kelvin_assistant/adapters/postgres_security_audit.py` | Step 9 follow-up |
+| P2 | Live input guard blocking originally returned an empty audit list because the VM schema update path did not verify `security_audit_logs`; after the updater fixes and a full VM update, `/api/v1/security/audit` returns the blocked input-guard entry. | `docs/v1.0-verification.md`, `scripts/update-kelvin-vm.sh` | Done in Step 9 follow-up |
 | P3 | Deprecation warnings remain in tests for FastAPI status naming and `datetime.utcnow()`. | Prior test output and related tests | Step 9 or a small cleanup PR |
 | P3 | Several docs mix English and Hungarian; v1.0 should decide whether this is acceptable or standardize operator-facing sections. | README and docs | Step 1 follow-up or Step 2 |
 

@@ -278,9 +278,10 @@ scoped `ps-client` token, and a live chat turn completed against
 `ollama:gemma4:e4b`. The UI auth flow and authenticated readiness checks are
 deployed, and the operator confirmed the UI works with the session-only header
 API token control. A harmless write-tool proposal was created, shown as pending,
-and rejected successfully. Final completion is still blocked until audit
-persistence/review, email notification, n8n outage, and backup/restore evidence
-is recorded. See `docs/v1.0-verification.md`.
+and rejected successfully. Live blocked input-guard decisions now persist to the
+security audit log. Final completion is still blocked until audit UI review,
+email notification, n8n outage, and backup/restore evidence is recorded. See
+`docs/v1.0-verification.md`.
 
 **What to do:**
 
@@ -288,7 +289,7 @@ is recorded. See `docs/v1.0-verification.md`.
 2. Verify install/upgrade, service startup, health/readiness, UI operation,
    approvals, audit, email notifications, n8n outage behavior, backup, and
    restore.
-3. Investigate live audit persistence and record audit review evidence.
+3. Record audit review evidence from the authenticated UI.
 4. Record email notification, n8n outage, backup, and restore evidence.
 5. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
    full checklist passes.
