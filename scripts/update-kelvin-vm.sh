@@ -174,6 +174,12 @@ apply_database_schemas() {
     "$database_url" \
     --set=ON_ERROR_STOP=1 \
     --file="$APP_DIR/infrastructure/sql/004_create_security_audit_schema.sql"
+  run_as_app_user psql \
+    "$database_url" \
+    --set=ON_ERROR_STOP=1 \
+    --tuples-only \
+    --no-align \
+    --command="select count(*) from security_audit_logs;" >/dev/null
 }
 
 if [ ! -d "$APP_DIR/.git" ]; then
@@ -220,9 +226,13 @@ if [ "$SKIP_DB_SCHEMA" -eq 0 ]; then
   log "Applying database schemas"
   database_url="$(discover_database_url || true)"
   if [ -z "$database_url" ]; then
-    echo "KELVIN_DATABASE_URL was not found; skipping database schema application."
+    echo "Error: KELVIN_DATABASE_URL was not found." >&2
+    echo "Set it in the shell, the $SERVICE_NAME systemd environment file, or $APP_DIR/.env." >&2
+    echo "Use --skip-db-schema only when the database schema is already managed separately." >&2
+    exit 1
   else
     apply_database_schemas "$database_url"
+    echo "Database schemas are ready."
   fi
 else
   log "Skipping database schemas"
