@@ -70,3 +70,25 @@ uv run kelvin-search-knowledge `
 
 Ez még diagnosztikai/admin parancs. A következő lépésben ugyanez a keresés kerül
 majd be a chat/RAG folyamatba.
+
+## Kelvin VM update
+
+`update-kelvin-vm.sh` updates the systemd deployment on the Kelvin VM. It pulls
+the selected branch, syncs production dependencies, applies the idempotent agent
+and security audit database schemas when `KELVIN_DATABASE_URL` is available, and
+then restarts `kelvin-api`.
+
+Run it on the VM:
+
+```bash
+cd /opt/kelvin-assistant
+sudo ./scripts/update-kelvin-vm.sh
+```
+
+For a static-only hotfix you can skip dependency sync. Only skip database schema
+application when you have already applied the matching SQL manually:
+
+```bash
+sudo ./scripts/update-kelvin-vm.sh --skip-uv-sync
+sudo ./scripts/update-kelvin-vm.sh --skip-db-schema
+```
