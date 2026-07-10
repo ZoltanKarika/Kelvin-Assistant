@@ -103,19 +103,38 @@ strip_optional_quotes() {
 
 read_env_file_value() {
   local key="$1"
-  local env_file="$APP_DIR/.env"
+  local env_file="$2"
 
   if [ ! -f "$env_file" ]; then
     return 1
   fi
 
   local line
-  line="$(run_as_app_user bash -lc "grep -m1 -E '^${key}=' '$env_file' || true")"
+  line="$(grep -m1 -E "^${key}=" "$env_file" || true)"
   if [ -z "$line" ]; then
     return 1
   fi
 
   strip_optional_quotes "${line#*=}"
+}
+
+read_systemd_environment_file_value() {
+  local key="$1"
+  local service_environment_files
+
+  service_environment_files="$(systemctl show "$SERVICE_NAME" -p EnvironmentFiles --value)"
+  if [ -z "$service_environment_files" ]; then
+    return 1
+  fi
+
+  local env_file
+  for env_file in $(printf '%s\n' "$service_environment_files" | tr ' ' '\n' | sed -n 's/^-*\(\/.*\)$/\1/p'); do
+    if read_env_file_value "$key" "$env_file"; then
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 discover_database_url() {
@@ -135,7 +154,8 @@ discover_database_url() {
     fi
   fi
 
-  read_env_file_value "KELVIN_DATABASE_URL"
+  read_systemd_environment_file_value "KELVIN_DATABASE_URL" && return 0
+  read_env_file_value "KELVIN_DATABASE_URL" "$APP_DIR/.env"
 }
 
 apply_database_schemas() {

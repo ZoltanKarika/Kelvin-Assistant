@@ -75,8 +75,9 @@ majd be a chat/RAG folyamatba.
 
 `update-kelvin-vm.sh` updates the systemd deployment on the Kelvin VM. It pulls
 the selected branch, syncs production dependencies, applies the idempotent agent
-and security audit database schemas when `KELVIN_DATABASE_URL` is available, and
-then restarts `kelvin-api`.
+and security audit database schemas when `KELVIN_DATABASE_URL` is available from
+the shell, the `kelvin-api` systemd environment file, or the repo `.env`, and then
+restarts `kelvin-api`.
 
 Run it on the VM:
 
