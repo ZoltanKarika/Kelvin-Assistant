@@ -79,6 +79,10 @@ and security audit database schemas when `KELVIN_DATABASE_URL` is available from
 the shell, the `kelvin-api` systemd environment file, or the repo `.env`, and then
 restarts `kelvin-api`.
 
+The schema step is required by default and verifies that `security_audit_logs`
+can be queried. Use `--skip-db-schema` only when the database schema is managed
+separately.
+
 Run it on the VM:
 
 ```bash
@@ -86,10 +90,15 @@ cd /opt/kelvin-assistant
 sudo ./scripts/update-kelvin-vm.sh
 ```
 
-For a static-only hotfix you can skip dependency sync. Only skip database schema
-application when you have already applied the matching SQL manually:
+For a static-only hotfix you can skip dependency sync:
 
 ```bash
 sudo ./scripts/update-kelvin-vm.sh --skip-uv-sync
+```
+
+Only skip database schema application when you have already applied the matching
+SQL manually:
+
+```bash
 sudo ./scripts/update-kelvin-vm.sh --skip-db-schema
 ```
