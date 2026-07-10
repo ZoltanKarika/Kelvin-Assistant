@@ -17,8 +17,8 @@ adapters, scoped API tokens, approval-gated write tools, security guards,
 operational UI pages, n8n status, and email notifications.
 
 v1.0 is not complete yet because final release verification still needs
-recorded live evidence for audit UI review, notification delivery, n8n outage
-behavior, and backup/restore execution.
+recorded live evidence for notification delivery, n8n outage behavior, and
+backup/restore execution.
 
 ---
 
@@ -51,7 +51,7 @@ behavior, and backup/restore execution.
 | Operational runbooks | `docs/operational-runbooks.md` now combines daily UI, approvals, audit, settings, email, n8n, outage, and troubleshooting checks. | Done in `codex/v1.0-ops-runbooks` |
 | API contract | `docs/api-contract.md` now freezes stable v1.0 routes, schema expectations, token scopes, configuration variables, UI routes, and internal surfaces. | Done in `codex/v1.0-contract-freeze` |
 | Release package | Version metadata is `1.0.0`; `docs/release-notes-v1.0.md` and `docs/release-package.md` now cover release notes, notices, offline dependencies, model assets, checksums, and known limits. | Done in `codex/v1.0-release-package` |
-| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready under production auth. The UI auth flow and authenticated readiness checks are deployed, protected operator APIs accept the scoped token, a live chat turn completed against `ollama:gemma4:e4b`, a harmless write-tool proposal was created and rejected, and live blocked input-guard decisions now persist to the security audit log. Audit UI review, email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
+| End-to-end verification | The local quality gate passes and the VM now serves `1.0.0` with `/status` ready under production auth. The UI auth flow and authenticated readiness checks are deployed, protected operator APIs accept the scoped token, a live chat turn completed against `ollama:gemma4:e4b`, a harmless write-tool proposal was created and rejected, live blocked input-guard decisions now persist to the security audit log, and the operator confirmed the authenticated audit UI table loads in Chrome. Email, n8n outage, backup, and restore evidence is still pending. | Step 9 |
 
 ---
 
