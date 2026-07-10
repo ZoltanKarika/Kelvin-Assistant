@@ -277,9 +277,10 @@ docs: prepare v1.0 release package
 scoped `ps-client` token, and a live chat turn completed against
 `ollama:gemma4:e4b`. The UI auth flow and authenticated readiness checks are
 deployed, and the operator confirmed the UI works with the session-only header
-API token control. Final completion is still blocked until email notification,
-n8n outage, approval/audit review, and backup/restore evidence is recorded. See
-`docs/v1.0-verification.md`.
+API token control. A harmless write-tool proposal was created, shown as pending,
+and rejected successfully. Final completion is still blocked until audit
+persistence/review, email notification, n8n outage, and backup/restore evidence
+is recorded. See `docs/v1.0-verification.md`.
 
 **What to do:**
 
@@ -287,7 +288,7 @@ n8n outage, approval/audit review, and backup/restore evidence is recorded. See
 2. Verify install/upgrade, service startup, health/readiness, UI operation,
    approvals, audit, email notifications, n8n outage behavior, backup, and
    restore.
-3. Record approval/audit UI evidence under production auth.
+3. Investigate live audit persistence and record audit review evidence.
 4. Record email notification, n8n outage, backup, and restore evidence.
 5. Update `docs/roadmap.md` and this guide to mark v1.0 complete only after the
    full checklist passes.
