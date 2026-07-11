@@ -248,7 +248,13 @@ async def update_settings_endpoint(
 
     # Apply to .env file
     if env_updates:
-        update_env_file(env_updates)
+        try:
+            update_env_file(env_updates)
+        except OSError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save settings file: {exc}",
+            ) from exc
 
     # Apply to in-memory active settings
     for key, val in in_memory_updates.items():
