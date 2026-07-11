@@ -34,7 +34,7 @@ v1.0 is planned. The table below defines small, reviewable PRs.
 | **6** | Operational UI, Email & n8n Runbooks | #1, #3, #5 | `feat/v1.0-ops-runbooks` | done |
 | **7** | API, Client & Configuration Contract Freeze | #1, #3, #5 | `feat/v1.0-contract-freeze` | done |
 | **8** | Offline Release, Licensing & Version Package | #2, #4, #7 | `feat/v1.0-release-package` | done |
-| **9** | End-to-End Stable Release Verification | #1-#8 | `feat/v1.0-stable-verification` | pending |
+| **9** | End-to-End Stable Release Verification | #1-#8 | `feat/v1.0-stable-verification` | done |
 
 ---
 
@@ -271,17 +271,12 @@ docs: prepare v1.0 release package
 
 **Goal:** Mark v1.0 complete only after the platform is verified end to end.
 
-**Current verification attempt:** The automated quality gate passed on
-2026-07-09. On 2026-07-10 the VM reports `/version` as `1.0.0`, `/status` is
-`ready` with production/LAN auth enabled, protected operator APIs accept the
-scoped `ps-client` token, and a live chat turn completed against
-`ollama:gemma4:e4b`. The UI auth flow and authenticated readiness checks are
-deployed, and the operator confirmed the UI works with the session-only header
-API token control. A harmless write-tool proposal was created, shown as pending,
-and rejected successfully. Live blocked input-guard decisions now persist to the
-security audit log, and the operator confirmed the authenticated audit UI table
-loads in Chrome. Final completion is still blocked until email notification,
-n8n outage, and backup/restore evidence is recorded. See
+**Result:** The automated quality gate passed, the VM reports `/version` as
+`1.0.0`, `/status` is `ready` with production/LAN auth enabled, protected
+operator APIs accept scoped tokens, and live chat completed against
+`ollama:gemma4:e4b`. The authenticated UI works with the session-only header
+API token control. Approval, audit persistence, email notifications, n8n outage
+behavior, and backup/restore were verified with recorded live evidence. See
 `docs/v1.0-verification.md`.
 
 **What to do:**
