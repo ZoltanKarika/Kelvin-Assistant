@@ -62,7 +62,23 @@ Always enforce the principle of least privilege when issuing tokens. Only grant 
 
 ---
 
-## Token Rotation Procedure
+## Raw Token vs SHA-256 Digest
+
+Kelvin uses two related values:
+
+- **Raw token**: the secret value clients send as
+  `Authorization: Bearer <raw-token>`. Use this in Chrome, PowerShell, n8n, or
+  another client credential store.
+- **SHA-256 digest**: the 64-character hash stored in
+  `/etc/kelvin-assistant/api-tokens.json` as `token_sha256`.
+
+Never put the raw token in `api-tokens.json`, Git, verification notes, chat
+messages, screenshots, or audit evidence. Never paste the SHA-256 digest into
+the UI token prompt; it will not authenticate.
+
+---
+
+## VM Token Rotation Procedure
 
 To rotate a token without service interruption:
 
@@ -105,6 +121,106 @@ To rotate a token without service interruption:
 
 Never send the SHA-256 digest as the bearer token. Clients send the raw token;
 Kelvin hashes it and compares the digest internally.
+
+---
+
+## Guided Rotation on the Kelvin VM
+
+Use this when rotating the local operator token, such as `ps-client`.
+
+### 1. Generate a New Raw Token and Digest
+
+On the VM:
+
+```bash
+RAW_TOKEN="$(openssl rand -hex 32)"
+SHA256="$(printf '%s' "$RAW_TOKEN" | sha256sum | awk '{print $1}')"
+printf 'RAW_TOKEN=%s\nSHA256=%s\n' "$RAW_TOKEN" "$SHA256"
+```
+
+Copy the raw token into a password manager or other secure local note. You need
+it once for Chrome, PowerShell, or n8n. The raw token cannot be recovered from
+the SHA-256 digest later.
+
+### 2. Add the New Digest
+
+Edit the live token file:
+
+```bash
+sudoedit /etc/kelvin-assistant/api-tokens.json
+```
+
+For a short overlap, add a second token record with the same scopes and a new
+ID. Example:
+
+```json
+{
+  "id": "ps-client-rotated",
+  "token_sha256": "<new-sha256>",
+  "scopes": [
+    "system:read",
+    "chat:use",
+    "knowledge:read",
+    "memory:read",
+    "memory:write",
+    "agent:execute",
+    "agent:write",
+    "agent:approve"
+  ]
+}
+```
+
+The file must remain valid JSON. Token records must contain only `id`,
+`token_sha256`, and `scopes`.
+
+### 3. Restart Kelvin
+
+```bash
+sudo systemctl restart kelvin-api
+sudo systemctl status kelvin-api --no-pager --lines=20
+```
+
+### 4. Test the New Raw Token
+
+From Windows PowerShell:
+
+```powershell
+$Token = "<new-raw-token>"
+$Headers = @{ Authorization = "Bearer $Token" }
+Invoke-RestMethod "http://<VM_IP>:8000/status" -Headers $Headers
+Invoke-RestMethod "http://<VM_IP>:8000/api/v1/security/audit?limit=1" -Headers $Headers
+```
+
+Expected:
+
+- `/status` returns `ready`.
+- The audit endpoint returns HTTP 200.
+
+### 5. Update the UI Token in Chrome
+
+1. Open `http://<VM_IP>:8000/ui`.
+2. Click **API token** in the header.
+3. Paste the **new raw token** only. Do not include `RAW_TOKEN=`.
+4. Press OK.
+5. Confirm the button changes to **API token: set**.
+6. Open `/ui/audit`, `/ui/runs`, `/ui/approvals`, and `/ui/settings`.
+7. Confirm protected data loads without the missing-token error.
+
+If you accidentally pasted a raw token into chat, logs, a ticket, or a shared
+document, rotate it immediately and remove the old digest in step 6.
+
+### 6. Revoke the Old Digest
+
+After all clients work with the new raw token, remove the old token record from
+`/etc/kelvin-assistant/api-tokens.json`, then restart Kelvin:
+
+```bash
+sudoedit /etc/kelvin-assistant/api-tokens.json
+sudo systemctl restart kelvin-api
+```
+
+Verify the old raw token now returns `401 Unauthorized`, and the new raw token
+still works.
 
 ---
 
