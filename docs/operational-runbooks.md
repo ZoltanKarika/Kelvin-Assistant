@@ -192,10 +192,18 @@ Production reminder:
 
 - `KELVIN_API_AUTH_MODE=required` and a hashed token file are mandatory for LAN
   or production access.
+- The Settings UI persists changes to `KELVIN_SETTINGS_ENV_FILE`. On the VM this
+  should be `/etc/kelvin-assistant/kelvin.env`, and the systemd unit must allow
+  `ReadWritePaths=/etc/kelvin-assistant/kelvin.env`.
 - The UI stores the operator API token only in browser session storage. Close the
   browser tab or clear the token from the header control after shared-machine
   use.
 - Keep real `.env`, token files, SMTP passwords, and n8n tokens outside Git.
+
+If saving settings reports `Read-only file system`, update the installed systemd
+unit from `infrastructure/systemd/kelvin-api.service`, verify that
+`/etc/kelvin-assistant/kelvin.env` is group-writable by `kelvin`, then run
+`sudo systemctl daemon-reload` and restart `kelvin-api`.
 
 ### UI API Token Steps After Rotation
 

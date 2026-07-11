@@ -154,7 +154,7 @@ non-terminal unless documented otherwise.
 |---|---|---|---|
 | `GET` | `/api/v1/security/audit` | `system:read` | Lists masked security audit entries with filters. |
 | `GET` | `/api/v1/settings` | `system:read` | Returns runtime settings and policy summaries with secrets masked. |
-| `PUT` | `/api/v1/settings` | `agent:approve` | Updates supported runtime settings and persists them to `.env`. |
+| `PUT` | `/api/v1/settings` | `agent:approve` | Updates supported runtime settings and persists them to the configured settings env file. |
 | `POST` | `/api/v1/settings/test-email` | `agent:approve` | Sends an operator test email. |
 | `POST` | `/api/v1/settings/send-summary` | `agent:approve` | Sends the daily summary email immediately. |
 | `GET` | `/api/v1/n8n/health` | `system:read` | Returns n8n configured/healthy/degraded/unreachable status. |
