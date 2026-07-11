@@ -197,6 +197,24 @@ Production reminder:
   use.
 - Keep real `.env`, token files, SMTP passwords, and n8n tokens outside Git.
 
+### UI API Token Steps After Rotation
+
+Use this after rotating an operator token in
+`/etc/kelvin-assistant/api-tokens.json`:
+
+1. Restart `kelvin-api` after saving the new `token_sha256`.
+2. Open `http://<VM_IP>:8000/ui` in Chrome.
+3. Click **API token** in the header.
+4. Paste the new raw token only, without `RAW_TOKEN=` and without quotes.
+5. Press OK.
+6. Confirm the header button changes to **API token: set**.
+7. Open Runs, Approvals, Audit, Settings, and n8n.
+8. Confirm each protected page loads data instead of the missing-token error.
+9. Remove the old token digest from the VM token file after all clients work.
+
+Use the raw token only in clients. Store only the SHA-256 digest in the VM token
+file. If the raw token is pasted into chat or any shared place, rotate it again.
+
 ---
 
 ## 6. Email Notification Runbook
