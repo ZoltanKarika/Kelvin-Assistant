@@ -16,7 +16,7 @@ funkció, a teszt, a dokumentáció és az üzemeltetési ellenőrzés is elkés
 | v0.7 Safe n8n Foundation | Külön automation VM és biztonságos Kelvin API-integráció | Kész |
 | v0.8 AI Security & Integration Hardening | AI Firewall, audit és bővített online AI-integrációk | Kész |
 | v0.9 UI & Email Notifications | Helyi kezelőfelület és email értesítések | Kész |
-| v1.0 Stable | Stabil, dokumentált offline AI-platform | Ellenőrzés alatt |
+| v1.0 Stable | Stabil, dokumentált offline AI-platform | Kész |
 
 ## v0.1 Foundation
 
@@ -394,19 +394,19 @@ Elfogadási feltételek:
 
 - [x] a v1.0 readiness audit feltárja a dokumentációs, üzemeltetési és tesztelési
   hiányokat;
-- [ ] a telepítési és frissítési runbook friss lokális telepítésen végigfuttatható;
+- [x] a telepítési és frissítési runbook friss lokális telepítésen végigfuttatható;
 - [x] a szolgáltatások újraindítás után kiszámíthatóan indulnak, és a `/health`,
   `/ready`, `/version` végpontok helyesen jelzik az állapotot;
-- [ ] a mentés, visszaállítás és adatmegőrzés dokumentáltan és ellenőrizhetően
+- [x] a mentés, visszaállítás és adatmegőrzés dokumentáltan és ellenőrizhetően
   működik;
 - [x] az API-tokenek, jogosultságok, jóváhagyások, audit, secret-maszkolás és email
   redakció biztonsági regressziótesztekkel védettek;
-- [ ] a helyi UI-ban ellenőrizhető a futások, jóváhagyások, audit, beállítások,
+- [x] a helyi UI-ban ellenőrizhető a futások, jóváhagyások, audit, beállítások,
   email és n8n működése;
-- [ ] az n8n kiesése nem blokkolja a helyi Kelvin chat-, agent-, approval-,
+- [x] az n8n kiesése nem blokkolja a helyi Kelvin chat-, agent-, approval-,
   audit- vagy settings-funkciókat;
 - [x] az API-, kliens-, token- és konfigurációs szerződések v1.0-ra rögzítettek;
 - [x] a kiadási jegyzetek, licencleltár és offline ellenőrzési lépések készek;
-- [ ] a teljes quality gate és üzemeltetési ellenőrzés sikeresen lefut.
+- [x] a teljes quality gate és üzemeltetési ellenőrzés sikeresen lefut.
 
 Részletes v1.0 feladatbontás: [docs/ai/v10-guide.md](ai/v10-guide.md).
