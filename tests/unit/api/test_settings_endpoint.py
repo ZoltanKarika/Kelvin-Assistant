@@ -1,5 +1,6 @@
 """Unit tests for settings and safety controls API endpoints."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from fastapi import FastAPI
@@ -28,6 +29,7 @@ def _app() -> FastAPI:
         email_sender="mock-sender@test.local",
         email_recipient="mock-recipient@test.local",
         agent_workspace_ids=("test-workspace-1", "test-workspace-2"),
+        settings_env_file=Path("test.env"),
     )
     return create_app(settings)
 
@@ -101,10 +103,12 @@ def test_update_settings_success(mock_update_env: MagicMock) -> None:
         # Verify env file update was called
         mock_update_env.assert_called_once()
         called_args = mock_update_env.call_args[0][0]
+        called_env_path = mock_update_env.call_args[0][1]
         assert called_args["KELVIN_OLLAMA_BASE_URL"] == "http://new-ollama:11434"
         assert called_args["KELVIN_SYSTEM_PROMPT"] == "You are a new helpful assistant"
         assert called_args["KELVIN_N8N_TOKEN"] == "new-n8n-token"
         assert called_args["KELVIN_EMAIL_SMTP_PASSWORD"] == "new-smtp-password"
+        assert called_env_path == Path("test.env")
 
 
 def test_update_settings_validation_errors() -> None:
@@ -123,7 +127,7 @@ def test_update_settings_validation_errors() -> None:
 
 @patch("kelvin_assistant.api.settings_routes.update_env_file")
 def test_update_settings_save_failure_returns_json(mock_update_env: MagicMock) -> None:
-    """PUT /api/v1/settings returns a structured error when .env save fails."""
+    """PUT /api/v1/settings returns a structured error when env save fails."""
 
     mock_update_env.side_effect = OSError("permission denied")
     app = _app()
@@ -133,7 +137,9 @@ def test_update_settings_save_failure_returns_json(mock_update_env: MagicMock) -
 
     assert response.status_code == 500
     assert response.headers["content-type"].startswith("application/json")
-    assert response.json()["detail"].startswith("Failed to save settings file:")
+    assert response.json()["detail"].startswith(
+        "Failed to save settings file test.env:"
+    )
     assert app.state.settings.email_smtp_port == 587
 
 

@@ -12,6 +12,7 @@ WorkingDirectory=/opt/kelvin-assistant
 EnvironmentFile=/etc/kelvin-assistant/kelvin.env
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYTHONUNBUFFERED=1
+Environment=KELVIN_SETTINGS_ENV_FILE=/etc/kelvin-assistant/kelvin.env
 ExecStart=/opt/kelvin-assistant/.venv/bin/kelvin-api
 Restart=on-failure
 RestartSec=5s
@@ -23,6 +24,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
+ReadWritePaths=/etc/kelvin-assistant/kelvin.env
 StateDirectory=kelvin-assistant
 StateDirectoryMode=0750
 UMask=0027

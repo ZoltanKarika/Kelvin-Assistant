@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65535)
     api_auth_mode: Literal["disabled", "required"] = Field(default="disabled")
     api_token_file: Path | None = Field(default=None)
+    settings_env_file: Path | None = Field(default=None)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_format: Literal["json", "console"] = "json"
     ollama_base_url: str = Field(default="http://localhost:11434")

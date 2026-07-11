@@ -493,6 +493,7 @@ sudo install -d -o root -g kelvin -m 0750 /etc/kelvin-assistant
 sudo install -o root -g kelvin -m 0640 \
   /opt/kelvin-assistant/.env.example \
   /etc/kelvin-assistant/kelvin.env
+sudo chmod 0660 /etc/kelvin-assistant/kelvin.env
 sudoedit /etc/kelvin-assistant/kelvin.env
 ```
 
@@ -505,6 +506,7 @@ KELVIN_API_HOST=0.0.0.0
 KELVIN_API_PORT=8000
 KELVIN_API_AUTH_MODE=required
 KELVIN_API_TOKEN_FILE=/etc/kelvin-assistant/api-tokens.json
+KELVIN_SETTINGS_ENV_FILE=/etc/kelvin-assistant/kelvin.env
 KELVIN_LLM_PROVIDER=ollama
 KELVIN_OLLAMA_BASE_URL=http://<WINDOWS_HOST_IP>:11434
 KELVIN_OLLAMA_MODEL=gemma4:e4b

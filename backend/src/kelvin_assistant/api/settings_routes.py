@@ -26,9 +26,21 @@ RuntimeSecurityAuditLogger = Annotated[
 ]
 
 
-def update_env_file(updates: dict[str, str]) -> None:
-    """Read existing .env file, update matching keys, append new ones, write back."""
-    env_path = Path(".env")
+DEFAULT_PRODUCTION_ENV_FILE = Path("/etc/kelvin-assistant/kelvin.env")
+
+
+def settings_env_file_path(settings: Settings) -> Path:
+    """Return the env file that should receive Settings UI updates."""
+
+    if settings.settings_env_file is not None:
+        return settings.settings_env_file
+    if DEFAULT_PRODUCTION_ENV_FILE.exists():
+        return DEFAULT_PRODUCTION_ENV_FILE
+    return Path(".env")
+
+
+def update_env_file(updates: dict[str, str], env_path: Path) -> None:
+    """Read an env file, update matching keys, append new ones, write back."""
     lines = []
     if env_path.exists():
         lines = env_path.read_text(encoding="utf-8").splitlines()
@@ -248,12 +260,13 @@ async def update_settings_endpoint(
 
     # Apply to .env file
     if env_updates:
+        env_path = settings_env_file_path(settings)
         try:
-            update_env_file(env_updates)
+            update_env_file(env_updates, env_path)
         except OSError as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to save settings file: {exc}",
+                detail=f"Failed to save settings file {env_path}: {exc}",
             ) from exc
 
     # Apply to in-memory active settings
