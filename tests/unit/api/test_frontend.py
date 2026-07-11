@@ -148,6 +148,7 @@ def test_static_assets_are_available() -> None:
     assert "javascript" in settings_script_response.headers["content-type"]
     assert "loadSettings" in settings_script_response.text
     assert 'authFetch("/ready"' in settings_script_response.text
+    assert "responseErrorMessage" in settings_script_response.text
     assert n8n_script_response.status_code == 200
     assert "javascript" in n8n_script_response.headers["content-type"]
     assert "fetchN8NHealth" in n8n_script_response.text

@@ -76,6 +76,21 @@ function showToast(message, isError = false) {
   }, 4000);
 }
 
+async function responseErrorMessage(response, fallback) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      const data = await response.json();
+      return data.detail || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  const text = await response.text();
+  return text.trim() || fallback;
+}
+
 function toggleSmtpFields() {
   if (emailEnabledInput.checked) {
     emailSmtpFields.style.display = "block";
@@ -259,7 +274,9 @@ settingsForm.addEventListener("submit", async (e) => {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
+      const errData = {
+        detail: await responseErrorMessage(response, "Request failed")
+      };
       throw new Error(
         apiErrorMessage(response, errData.detail || "Sikertelen frissítés"),
       );
@@ -293,7 +310,9 @@ testEmailBtn.addEventListener("click", async () => {
       method: "POST"
     });
     if (!response.ok) {
-      const errData = await response.json();
+      const errData = {
+        detail: await responseErrorMessage(response, "Request failed")
+      };
       throw new Error(
         apiErrorMessage(response, errData.detail || "Sikertelen kapcsolódás"),
       );
@@ -323,7 +342,9 @@ sendSummaryBtn.addEventListener("click", async () => {
       method: "POST"
     });
     if (!response.ok) {
-      const errData = await response.json();
+      const errData = {
+        detail: await responseErrorMessage(response, "Request failed")
+      };
       throw new Error(
         apiErrorMessage(response, errData.detail || "Sikertelen küldés"),
       );

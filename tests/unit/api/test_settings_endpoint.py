@@ -121,6 +121,22 @@ def test_update_settings_validation_errors() -> None:
         assert response.status_code == 422
 
 
+@patch("kelvin_assistant.api.settings_routes.update_env_file")
+def test_update_settings_save_failure_returns_json(mock_update_env: MagicMock) -> None:
+    """PUT /api/v1/settings returns a structured error when .env save fails."""
+
+    mock_update_env.side_effect = OSError("permission denied")
+    app = _app()
+
+    with TestClient(app) as client:
+        response = client.put("/api/v1/settings", json={"email_smtp_port": 1025})
+
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()["detail"].startswith("Failed to save settings file:")
+    assert app.state.settings.email_smtp_port == 587
+
+
 def test_send_test_email_disabled() -> None:
     """POST /api/v1/settings/test-email fails if email notifications are disabled."""
 
